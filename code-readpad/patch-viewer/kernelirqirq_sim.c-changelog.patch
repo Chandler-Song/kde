@@ -1,0 +1,285 @@
+commit 54cffd88e5c928ed24abd06c7d4d1649a072375a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:12:07 2018 +0800
+
+    v4.18-rc1
+
+diff --git a/kernel/irq/irq_sim.c b/kernel/irq/irq_sim.c
+index fc4f361..dd20d0d 100644
+--- a/kernel/irq/irq_sim.c
++++ b/kernel/irq/irq_sim.c
+@@ -1,11 +1,6 @@
+ // SPDX-License-Identifier: GPL-2.0+
+ /*
+- * Copyright (C) 2017 Bartosz Golaszewski <brgl@bgdev.pl>
+- *
+- * This program is free software; you can redistribute  it and/or modify it
+- * under  the terms of  the GNU General  Public License as published by the
+- * Free Software Foundation;  either version 2 of the  License, or (at your
+- * option) any later version.
++ * Copyright (C) 2017-2018 Bartosz Golaszewski <brgl@bgdev.pl>
+  */
+ 
+ #include <linux/slab.h>
+
+commit 0a06a8b61c2f9a75e9099c16fa06964c2d5f7d44
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:48 2018 +0800
+
+    v4.17-rc1
+
+diff --git a/kernel/irq/irq_sim.c b/kernel/irq/irq_sim.c
+index 24caabf..fc4f361 100644
+--- a/kernel/irq/irq_sim.c
++++ b/kernel/irq/irq_sim.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * Copyright (C) 2017 Bartosz Golaszewski <brgl@bgdev.pl>
+  *
+@@ -7,6 +8,7 @@
+  * option) any later version.
+  */
+ 
++#include <linux/slab.h>
+ #include <linux/irq_sim.h>
+ #include <linux/irq.h>
+ 
+@@ -49,7 +51,8 @@ static void irq_sim_handle_irq(struct irq_work *work)
+  * @sim:        The interrupt simulator object to initialize.
+  * @num_irqs:   Number of interrupts to allocate
+  *
+- * Returns 0 on success and a negative error number on failure.
++ * On success: return the base of the allocated interrupt range.
++ * On failure: a negative errno.
+  */
+ int irq_sim_init(struct irq_sim *sim, unsigned int num_irqs)
+ {
+@@ -78,7 +81,7 @@ int irq_sim_init(struct irq_sim *sim, unsigned int num_irqs)
+ 	init_irq_work(&sim->work_ctx.work, irq_sim_handle_irq);
+ 	sim->irq_count = num_irqs;
+ 
+-	return 0;
++	return sim->irq_base;
+ }
+ EXPORT_SYMBOL_GPL(irq_sim_init);
+ 
+@@ -110,7 +113,8 @@ static void devm_irq_sim_release(struct device *dev, void *res)
+  * @sim:        The interrupt simulator object to initialize.
+  * @num_irqs:   Number of interrupts to allocate
+  *
+- * Returns 0 on success and a negative error number on failure.
++ * On success: return the base of the allocated interrupt range.
++ * On failure: a negative errno.
+  */
+ int devm_irq_sim_init(struct device *dev, struct irq_sim *sim,
+ 		      unsigned int num_irqs)
+@@ -123,7 +127,7 @@ int devm_irq_sim_init(struct device *dev, struct irq_sim *sim,
+ 		return -ENOMEM;
+ 
+ 	rv = irq_sim_init(sim, num_irqs);
+-	if (rv) {
++	if (rv < 0) {
+ 		devres_free(dr);
+ 		return rv;
+ 	}
+@@ -131,7 +135,7 @@ int devm_irq_sim_init(struct device *dev, struct irq_sim *sim,
+ 	dr->sim = sim;
+ 	devres_add(dev, dr);
+ 
+-	return 0;
++	return rv;
+ }
+ EXPORT_SYMBOL_GPL(devm_irq_sim_init);
+ 
+
+commit c9fb70170d5dc4ed962f335edf9849e909cf2a17
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:39 2018 +0800
+
+    v4.14-rc1
+
+diff --git a/kernel/irq/irq_sim.c b/kernel/irq/irq_sim.c
+new file mode 100644
+index 0000000..24caabf
+--- /dev/null
++++ b/kernel/irq/irq_sim.c
+@@ -0,0 +1,164 @@
++/*
++ * Copyright (C) 2017 Bartosz Golaszewski <brgl@bgdev.pl>
++ *
++ * This program is free software; you can redistribute  it and/or modify it
++ * under  the terms of  the GNU General  Public License as published by the
++ * Free Software Foundation;  either version 2 of the  License, or (at your
++ * option) any later version.
++ */
++
++#include <linux/irq_sim.h>
++#include <linux/irq.h>
++
++struct irq_sim_devres {
++	struct irq_sim		*sim;
++};
++
++static void irq_sim_irqmask(struct irq_data *data)
++{
++	struct irq_sim_irq_ctx *irq_ctx = irq_data_get_irq_chip_data(data);
++
++	irq_ctx->enabled = false;
++}
++
++static void irq_sim_irqunmask(struct irq_data *data)
++{
++	struct irq_sim_irq_ctx *irq_ctx = irq_data_get_irq_chip_data(data);
++
++	irq_ctx->enabled = true;
++}
++
++static struct irq_chip irq_sim_irqchip = {
++	.name		= "irq_sim",
++	.irq_mask	= irq_sim_irqmask,
++	.irq_unmask	= irq_sim_irqunmask,
++};
++
++static void irq_sim_handle_irq(struct irq_work *work)
++{
++	struct irq_sim_work_ctx *work_ctx;
++
++	work_ctx = container_of(work, struct irq_sim_work_ctx, work);
++	handle_simple_irq(irq_to_desc(work_ctx->irq));
++}
++
++/**
++ * irq_sim_init - Initialize the interrupt simulator: allocate a range of
++ *                dummy interrupts.
++ *
++ * @sim:        The interrupt simulator object to initialize.
++ * @num_irqs:   Number of interrupts to allocate
++ *
++ * Returns 0 on success and a negative error number on failure.
++ */
++int irq_sim_init(struct irq_sim *sim, unsigned int num_irqs)
++{
++	int i;
++
++	sim->irqs = kmalloc_array(num_irqs, sizeof(*sim->irqs), GFP_KERNEL);
++	if (!sim->irqs)
++		return -ENOMEM;
++
++	sim->irq_base = irq_alloc_descs(-1, 0, num_irqs, 0);
++	if (sim->irq_base < 0) {
++		kfree(sim->irqs);
++		return sim->irq_base;
++	}
++
++	for (i = 0; i < num_irqs; i++) {
++		sim->irqs[i].irqnum = sim->irq_base + i;
++		sim->irqs[i].enabled = false;
++		irq_set_chip(sim->irq_base + i, &irq_sim_irqchip);
++		irq_set_chip_data(sim->irq_base + i, &sim->irqs[i]);
++		irq_set_handler(sim->irq_base + i, &handle_simple_irq);
++		irq_modify_status(sim->irq_base + i,
++				  IRQ_NOREQUEST | IRQ_NOAUTOEN, IRQ_NOPROBE);
++	}
++
++	init_irq_work(&sim->work_ctx.work, irq_sim_handle_irq);
++	sim->irq_count = num_irqs;
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(irq_sim_init);
++
++/**
++ * irq_sim_fini - Deinitialize the interrupt simulator: free the interrupt
++ *                descriptors and allocated memory.
++ *
++ * @sim:        The interrupt simulator to tear down.
++ */
++void irq_sim_fini(struct irq_sim *sim)
++{
++	irq_work_sync(&sim->work_ctx.work);
++	irq_free_descs(sim->irq_base, sim->irq_count);
++	kfree(sim->irqs);
++}
++EXPORT_SYMBOL_GPL(irq_sim_fini);
++
++static void devm_irq_sim_release(struct device *dev, void *res)
++{
++	struct irq_sim_devres *this = res;
++
++	irq_sim_fini(this->sim);
++}
++
++/**
++ * irq_sim_init - Initialize the interrupt simulator for a managed device.
++ *
++ * @dev:        Device to initialize the simulator object for.
++ * @sim:        The interrupt simulator object to initialize.
++ * @num_irqs:   Number of interrupts to allocate
++ *
++ * Returns 0 on success and a negative error number on failure.
++ */
++int devm_irq_sim_init(struct device *dev, struct irq_sim *sim,
++		      unsigned int num_irqs)
++{
++	struct irq_sim_devres *dr;
++	int rv;
++
++	dr = devres_alloc(devm_irq_sim_release, sizeof(*dr), GFP_KERNEL);
++	if (!dr)
++		return -ENOMEM;
++
++	rv = irq_sim_init(sim, num_irqs);
++	if (rv) {
++		devres_free(dr);
++		return rv;
++	}
++
++	dr->sim = sim;
++	devres_add(dev, dr);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(devm_irq_sim_init);
++
++/**
++ * irq_sim_fire - Enqueue an interrupt.
++ *
++ * @sim:        The interrupt simulator object.
++ * @offset:     Offset of the simulated interrupt which should be fired.
++ */
++void irq_sim_fire(struct irq_sim *sim, unsigned int offset)
++{
++	if (sim->irqs[offset].enabled) {
++		sim->work_ctx.irq = irq_sim_irqnum(sim, offset);
++		irq_work_queue(&sim->work_ctx.work);
++	}
++}
++EXPORT_SYMBOL_GPL(irq_sim_fire);
++
++/**
++ * irq_sim_irqnum - Get the allocated number of a dummy interrupt.
++ *
++ * @sim:        The interrupt simulator object.
++ * @offset:     Offset of the simulated interrupt for which to retrieve
++ *              the number.
++ */
++int irq_sim_irqnum(struct irq_sim *sim, unsigned int offset)
++{
++	return sim->irqs[offset].irqnum;
++}
++EXPORT_SYMBOL_GPL(irq_sim_irqnum);
+
+commit 46859de2e63ce5c1067cdb9aa6856164a9d53602
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:14 2018 +0800
+
+    target source code file : kernel/irq/irq_sim.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..769fd43
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++kernel/irq/irq_sim.c

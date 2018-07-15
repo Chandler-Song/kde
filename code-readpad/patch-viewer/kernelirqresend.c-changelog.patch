@@ -1,0 +1,721 @@
+commit 3e4e9fda5094b3e2436d8a451aa03b1f626d9aa2
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:49 2018 +0800
+
+    v4.17-rc1
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 1d08f45..95414ad 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -1,7 +1,5 @@
+ // SPDX-License-Identifier: GPL-2.0
+ /*
+- * linux/kernel/irq/resend.c
+- *
+  * Copyright (C) 1992, 1998-2006 Linus Torvalds, Ingo Molnar
+  * Copyright (C) 2005-2006, Thomas Gleixner
+  *
+
+commit 1b85cb2965df598672eb5db344ac646e55c148b0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:57 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index b86886b..1d08f45 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  * linux/kernel/irq/resend.c
+  *
+
+commit c16884a61f69e40023946e070b74c0f4d12c1fec
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:07:00 2018 +0800
+
+    v4.3-rc2
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index dd95f44..b86886b 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -38,7 +38,7 @@ static void resend_irqs(unsigned long arg)
+ 		clear_bit(irq, irqs_resend);
+ 		desc = irq_to_desc(irq);
+ 		local_irq_disable();
+-		desc->handle_irq(irq, desc);
++		desc->handle_irq(desc);
+ 		local_irq_enable();
+ 	}
+ }
+
+commit ae17849e25dc3aa28036392f5e5521e03dc2d127
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:06:58 2018 +0800
+
+    v4.3-rc1
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 7a5237a..dd95f44 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -53,7 +53,7 @@ static DECLARE_TASKLET(resend_tasklet, resend_irqs, 0);
+  *
+  * Is called with interrupts disabled and desc->lock held.
+  */
+-void check_irq_resend(struct irq_desc *desc, unsigned int irq)
++void check_irq_resend(struct irq_desc *desc)
+ {
+ 	/*
+ 	 * We do not resend level type interrupts. Level type
+@@ -74,6 +74,8 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 		if (!desc->irq_data.chip->irq_retrigger ||
+ 		    !desc->irq_data.chip->irq_retrigger(&desc->irq_data)) {
+ #ifdef CONFIG_HARDIRQS_SW_RESEND
++			unsigned int irq = irq_desc_get_irq(desc);
++
+ 			/*
+ 			 * If the interrupt is running in the thread
+ 			 * context of the parent irq we need to be
+
+commit dd529ed8f1207429e9427193f899b4bbbb50d92b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:06:42 2018 +0800
+
+    v4.2-rc3
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 9065107..7a5237a 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -75,13 +75,21 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 		    !desc->irq_data.chip->irq_retrigger(&desc->irq_data)) {
+ #ifdef CONFIG_HARDIRQS_SW_RESEND
+ 			/*
+-			 * If the interrupt has a parent irq and runs
+-			 * in the thread context of the parent irq,
+-			 * retrigger the parent.
++			 * If the interrupt is running in the thread
++			 * context of the parent irq we need to be
++			 * careful, because we cannot trigger it
++			 * directly.
+ 			 */
+-			if (desc->parent_irq &&
+-			    irq_settings_is_nested_thread(desc))
++			if (irq_settings_is_nested_thread(desc)) {
++				/*
++				 * If the parent_irq is valid, we
++				 * retrigger the parent, otherwise we
++				 * do nothing.
++				 */
++				if (!desc->parent_irq)
++					return;
+ 				irq = desc->parent_irq;
++			}
+ 			/* Set it pending and activate the softirq: */
+ 			set_bit(irq, irqs_resend);
+ 			tasklet_schedule(&resend_tasklet);
+
+commit f56c58e3e4aae7fb34a6b0d8b621a6306d4481ce
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:02:35 2018 +0800
+
+    v3.8-rc1
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 6454db7..9065107 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -74,6 +74,14 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 		if (!desc->irq_data.chip->irq_retrigger ||
+ 		    !desc->irq_data.chip->irq_retrigger(&desc->irq_data)) {
+ #ifdef CONFIG_HARDIRQS_SW_RESEND
++			/*
++			 * If the interrupt has a parent irq and runs
++			 * in the thread context of the parent irq,
++			 * retrigger the parent.
++			 */
++			if (desc->parent_irq &&
++			    irq_settings_is_nested_thread(desc))
++				irq = desc->parent_irq;
+ 			/* Set it pending and activate the softirq: */
+ 			set_bit(irq, irqs_resend);
+ 			tasklet_schedule(&resend_tasklet);
+
+commit 9f0e0b79fe9b2a6853ffe2c20b34b047ce3789d7
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:45 2018 +0800
+
+    v3.5-rc1
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 14dd576..6454db7 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -58,10 +58,13 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 	/*
+ 	 * We do not resend level type interrupts. Level type
+ 	 * interrupts are resent by hardware when they are still
+-	 * active.
++	 * active. Clear the pending bit so suspend/resume does not
++	 * get confused.
+ 	 */
+-	if (irq_settings_is_level(desc))
++	if (irq_settings_is_level(desc)) {
++		desc->istate &= ~IRQS_PENDING;
+ 		return;
++	}
+ 	if (desc->istate & IRQS_REPLAY)
+ 		return;
+ 	if (desc->istate & IRQS_PENDING) {
+
+commit 9cde2b9b12e2a6f45b1fbce8c542aa83a5ee6bfb
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:05 2018 +0800
+
+    v2.6.39-rc1
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index dc49358..14dd576 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -55,20 +55,18 @@ static DECLARE_TASKLET(resend_tasklet, resend_irqs, 0);
+  */
+ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ {
+-	unsigned int status = desc->status;
+-
+-	/*
+-	 * Make sure the interrupt is enabled, before resending it:
+-	 */
+-	desc->irq_data.chip->irq_enable(&desc->irq_data);
+-
+ 	/*
+ 	 * We do not resend level type interrupts. Level type
+ 	 * interrupts are resent by hardware when they are still
+ 	 * active.
+ 	 */
+-	if ((status & (IRQ_LEVEL | IRQ_PENDING | IRQ_REPLAY)) == IRQ_PENDING) {
+-		desc->status = (status & ~IRQ_PENDING) | IRQ_REPLAY;
++	if (irq_settings_is_level(desc))
++		return;
++	if (desc->istate & IRQS_REPLAY)
++		return;
++	if (desc->istate & IRQS_PENDING) {
++		desc->istate &= ~IRQS_PENDING;
++		desc->istate |= IRQS_REPLAY;
+ 
+ 		if (!desc->irq_data.chip->irq_retrigger ||
+ 		    !desc->irq_data.chip->irq_retrigger(&desc->irq_data)) {
+
+commit da497785a3778f83446b9f92a6308a9417c8f3bc
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:57 2018 +0800
+
+    v2.6.38-rc7
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 891115a..dc49358 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -23,7 +23,7 @@
+ #ifdef CONFIG_HARDIRQS_SW_RESEND
+ 
+ /* Bitmap to handle software resend of interrupts: */
+-static DECLARE_BITMAP(irqs_resend, NR_IRQS);
++static DECLARE_BITMAP(irqs_resend, IRQ_BITMAP_BITS);
+ 
+ /*
+  * Run software resends of IRQ's
+
+commit f217eecd12112a2bdf65c98467e88b3345e254ed
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:30 2018 +0800
+
+    v2.6.37-rc1
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 090c376..891115a 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -60,7 +60,7 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 	/*
+ 	 * Make sure the interrupt is enabled, before resending it:
+ 	 */
+-	desc->chip->enable(irq);
++	desc->irq_data.chip->irq_enable(&desc->irq_data);
+ 
+ 	/*
+ 	 * We do not resend level type interrupts. Level type
+@@ -70,7 +70,8 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 	if ((status & (IRQ_LEVEL | IRQ_PENDING | IRQ_REPLAY)) == IRQ_PENDING) {
+ 		desc->status = (status & ~IRQ_PENDING) | IRQ_REPLAY;
+ 
+-		if (!desc->chip->retrigger || !desc->chip->retrigger(irq)) {
++		if (!desc->irq_data.chip->irq_retrigger ||
++		    !desc->irq_data.chip->irq_retrigger(&desc->irq_data)) {
+ #ifdef CONFIG_HARDIRQS_SW_RESEND
+ 			/* Set it pending and activate the softirq: */
+ 			set_bit(irq, irqs_resend);
+
+commit d4d7525eae19bda1ab2b61a5800891718a213b01
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:07 2018 +0800
+
+    v2.6.32-rc1
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 89c7117..090c376 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -70,8 +70,7 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 	if ((status & (IRQ_LEVEL | IRQ_PENDING | IRQ_REPLAY)) == IRQ_PENDING) {
+ 		desc->status = (status & ~IRQ_PENDING) | IRQ_REPLAY;
+ 
+-		if (!desc->chip || !desc->chip->retrigger ||
+-					!desc->chip->retrigger(irq)) {
++		if (!desc->chip->retrigger || !desc->chip->retrigger(irq)) {
+ #ifdef CONFIG_HARDIRQS_SW_RESEND
+ 			/* Set it pending and activate the softirq: */
+ 			set_bit(irq, irqs_resend);
+
+commit 40370f87f776f0bba14b63fc059a9419d23fdf4f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:58 2018 +0800
+
+    v2.6.28-rc1
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index a804679..89c7117 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -33,10 +33,10 @@ static void resend_irqs(unsigned long arg)
+ 	struct irq_desc *desc;
+ 	int irq;
+ 
+-	while (!bitmap_empty(irqs_resend, NR_IRQS)) {
+-		irq = find_first_bit(irqs_resend, NR_IRQS);
++	while (!bitmap_empty(irqs_resend, nr_irqs)) {
++		irq = find_first_bit(irqs_resend, nr_irqs);
+ 		clear_bit(irq, irqs_resend);
+-		desc = irq_desc + irq;
++		desc = irq_to_desc(irq);
+ 		local_irq_disable();
+ 		desc->handle_irq(irq, desc);
+ 		local_irq_enable();
+
+commit 016e2cae4aab7ea519049191428f026c5164589c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:38 2018 +0800
+
+    v2.6.23-rc3
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index c382727..a804679 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -63,15 +63,11 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 	desc->chip->enable(irq);
+ 
+ 	/*
+-	 * Temporary hack to figure out more about the problem, which
+-	 * is causing the ancient network cards to die.
++	 * We do not resend level type interrupts. Level type
++	 * interrupts are resent by hardware when they are still
++	 * active.
+ 	 */
+-	if (desc->handle_irq != handle_edge_irq) {
+-		WARN_ON_ONCE(1);
+-		return;
+-	}
+-
+-	if ((status & (IRQ_PENDING | IRQ_REPLAY)) == IRQ_PENDING) {
++	if ((status & (IRQ_LEVEL | IRQ_PENDING | IRQ_REPLAY)) == IRQ_PENDING) {
+ 		desc->status = (status & ~IRQ_PENDING) | IRQ_REPLAY;
+ 
+ 		if (!desc->chip || !desc->chip->retrigger ||
+
+commit d9308e512a48be7ac122eebd65a643d2ed996eb6
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:36 2018 +0800
+
+    v2.6.23-rc2
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 5bfeaed..c382727 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -62,6 +62,15 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 	 */
+ 	desc->chip->enable(irq);
+ 
++	/*
++	 * Temporary hack to figure out more about the problem, which
++	 * is causing the ancient network cards to die.
++	 */
++	if (desc->handle_irq != handle_edge_irq) {
++		WARN_ON_ONCE(1);
++		return;
++	}
++
+ 	if ((status & (IRQ_PENDING | IRQ_REPLAY)) == IRQ_PENDING) {
+ 		desc->status = (status & ~IRQ_PENDING) | IRQ_REPLAY;
+ 
+
+commit 89742b1e8605085d14b7e033c41eed031cc401c0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:47 2018 +0800
+
+    v2.6.19-rc2
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 35f10f7..5bfeaed 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -38,7 +38,7 @@ static void resend_irqs(unsigned long arg)
+ 		clear_bit(irq, irqs_resend);
+ 		desc = irq_desc + irq;
+ 		local_irq_disable();
+-		desc->handle_irq(irq, desc, NULL);
++		desc->handle_irq(irq, desc);
+ 		local_irq_enable();
+ 	}
+ }
+
+commit 5fae2a2c2bc217be6b11771ec831d457ce322477
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:41 2018 +0800
+
+    v2.6.18
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+index 872f91b..35f10f7 100644
+--- a/kernel/irq/resend.c
++++ b/kernel/irq/resend.c
+@@ -63,8 +63,7 @@ void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+ 	desc->chip->enable(irq);
+ 
+ 	if ((status & (IRQ_PENDING | IRQ_REPLAY)) == IRQ_PENDING) {
+-		desc->status &= ~IRQ_PENDING;
+-		desc->status = status | IRQ_REPLAY;
++		desc->status = (status & ~IRQ_PENDING) | IRQ_REPLAY;
+ 
+ 		if (!desc->chip || !desc->chip->retrigger ||
+ 					!desc->chip->retrigger(irq)) {
+
+commit d3ef9baac755eb6996b50ea543c0a9ba3ce53015
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:31 2018 +0800
+
+    v2.6.18-rc1
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+new file mode 100644
+index 0000000..872f91b
+--- /dev/null
++++ b/kernel/irq/resend.c
+@@ -0,0 +1,78 @@
++/*
++ * linux/kernel/irq/resend.c
++ *
++ * Copyright (C) 1992, 1998-2006 Linus Torvalds, Ingo Molnar
++ * Copyright (C) 2005-2006, Thomas Gleixner
++ *
++ * This file contains the IRQ-resend code
++ *
++ * If the interrupt is waiting to be processed, we try to re-run it.
++ * We can't directly run it from here since the caller might be in an
++ * interrupt-protected region. Not all irq controller chips can
++ * retrigger interrupts at the hardware level, so in those cases
++ * we allow the resending of IRQs via a tasklet.
++ */
++
++#include <linux/irq.h>
++#include <linux/module.h>
++#include <linux/random.h>
++#include <linux/interrupt.h>
++
++#include "internals.h"
++
++#ifdef CONFIG_HARDIRQS_SW_RESEND
++
++/* Bitmap to handle software resend of interrupts: */
++static DECLARE_BITMAP(irqs_resend, NR_IRQS);
++
++/*
++ * Run software resends of IRQ's
++ */
++static void resend_irqs(unsigned long arg)
++{
++	struct irq_desc *desc;
++	int irq;
++
++	while (!bitmap_empty(irqs_resend, NR_IRQS)) {
++		irq = find_first_bit(irqs_resend, NR_IRQS);
++		clear_bit(irq, irqs_resend);
++		desc = irq_desc + irq;
++		local_irq_disable();
++		desc->handle_irq(irq, desc, NULL);
++		local_irq_enable();
++	}
++}
++
++/* Tasklet to handle resend: */
++static DECLARE_TASKLET(resend_tasklet, resend_irqs, 0);
++
++#endif
++
++/*
++ * IRQ resend
++ *
++ * Is called with interrupts disabled and desc->lock held.
++ */
++void check_irq_resend(struct irq_desc *desc, unsigned int irq)
++{
++	unsigned int status = desc->status;
++
++	/*
++	 * Make sure the interrupt is enabled, before resending it:
++	 */
++	desc->chip->enable(irq);
++
++	if ((status & (IRQ_PENDING | IRQ_REPLAY)) == IRQ_PENDING) {
++		desc->status &= ~IRQ_PENDING;
++		desc->status = status | IRQ_REPLAY;
++
++		if (!desc->chip || !desc->chip->retrigger ||
++					!desc->chip->retrigger(irq)) {
++#ifdef CONFIG_HARDIRQS_SW_RESEND
++			/* Set it pending and activate the softirq: */
++			set_bit(irq, irqs_resend);
++			tasklet_schedule(&resend_tasklet);
++#endif
++		}
++	}
++}
+
+commit 2e7bd8d4694848f6b14d20ab4db611603bb03628
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:24 2018 +0800
+
+    v2.6.12
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+deleted file mode 100644
+index 9065107..0000000
+--- a/kernel/irq/resend.c
++++ /dev/null
+@@ -1,91 +0,0 @@
+-/*
+- * linux/kernel/irq/resend.c
+- *
+- * Copyright (C) 1992, 1998-2006 Linus Torvalds, Ingo Molnar
+- * Copyright (C) 2005-2006, Thomas Gleixner
+- *
+- * This file contains the IRQ-resend code
+- *
+- * If the interrupt is waiting to be processed, we try to re-run it.
+- * We can't directly run it from here since the caller might be in an
+- * interrupt-protected region. Not all irq controller chips can
+- * retrigger interrupts at the hardware level, so in those cases
+- * we allow the resending of IRQs via a tasklet.
+- */
+-
+-#include <linux/irq.h>
+-#include <linux/module.h>
+-#include <linux/random.h>
+-#include <linux/interrupt.h>
+-
+-#include "internals.h"
+-
+-#ifdef CONFIG_HARDIRQS_SW_RESEND
+-
+-/* Bitmap to handle software resend of interrupts: */
+-static DECLARE_BITMAP(irqs_resend, IRQ_BITMAP_BITS);
+-
+-/*
+- * Run software resends of IRQ's
+- */
+-static void resend_irqs(unsigned long arg)
+-{
+-	struct irq_desc *desc;
+-	int irq;
+-
+-	while (!bitmap_empty(irqs_resend, nr_irqs)) {
+-		irq = find_first_bit(irqs_resend, nr_irqs);
+-		clear_bit(irq, irqs_resend);
+-		desc = irq_to_desc(irq);
+-		local_irq_disable();
+-		desc->handle_irq(irq, desc);
+-		local_irq_enable();
+-	}
+-}
+-
+-/* Tasklet to handle resend: */
+-static DECLARE_TASKLET(resend_tasklet, resend_irqs, 0);
+-
+-#endif
+-
+-/*
+- * IRQ resend
+- *
+- * Is called with interrupts disabled and desc->lock held.
+- */
+-void check_irq_resend(struct irq_desc *desc, unsigned int irq)
+-{
+-	/*
+-	 * We do not resend level type interrupts. Level type
+-	 * interrupts are resent by hardware when they are still
+-	 * active. Clear the pending bit so suspend/resume does not
+-	 * get confused.
+-	 */
+-	if (irq_settings_is_level(desc)) {
+-		desc->istate &= ~IRQS_PENDING;
+-		return;
+-	}
+-	if (desc->istate & IRQS_REPLAY)
+-		return;
+-	if (desc->istate & IRQS_PENDING) {
+-		desc->istate &= ~IRQS_PENDING;
+-		desc->istate |= IRQS_REPLAY;
+-
+-		if (!desc->irq_data.chip->irq_retrigger ||
+-		    !desc->irq_data.chip->irq_retrigger(&desc->irq_data)) {
+-#ifdef CONFIG_HARDIRQS_SW_RESEND
+-			/*
+-			 * If the interrupt has a parent irq and runs
+-			 * in the thread context of the parent irq,
+-			 * retrigger the parent.
+-			 */
+-			if (desc->parent_irq &&
+-			    irq_settings_is_nested_thread(desc))
+-				irq = desc->parent_irq;
+-			/* Set it pending and activate the softirq: */
+-			set_bit(irq, irqs_resend);
+-			tasklet_schedule(&resend_tasklet);
+-#endif
+-		}
+-	}
+-}
+
+commit cbf7d60d98f30934879633b91cfc573c66c48665
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:15 2018 +0800
+
+    v2.6.11
+
+diff --git a/kernel/irq/resend.c b/kernel/irq/resend.c
+new file mode 100644
+index 0000000..9065107
+--- /dev/null
++++ b/kernel/irq/resend.c
+@@ -0,0 +1,91 @@
++/*
++ * linux/kernel/irq/resend.c
++ *
++ * Copyright (C) 1992, 1998-2006 Linus Torvalds, Ingo Molnar
++ * Copyright (C) 2005-2006, Thomas Gleixner
++ *
++ * This file contains the IRQ-resend code
++ *
++ * If the interrupt is waiting to be processed, we try to re-run it.
++ * We can't directly run it from here since the caller might be in an
++ * interrupt-protected region. Not all irq controller chips can
++ * retrigger interrupts at the hardware level, so in those cases
++ * we allow the resending of IRQs via a tasklet.
++ */
++
++#include <linux/irq.h>
++#include <linux/module.h>
++#include <linux/random.h>
++#include <linux/interrupt.h>
++
++#include "internals.h"
++
++#ifdef CONFIG_HARDIRQS_SW_RESEND
++
++/* Bitmap to handle software resend of interrupts: */
++static DECLARE_BITMAP(irqs_resend, IRQ_BITMAP_BITS);
++
++/*
++ * Run software resends of IRQ's
++ */
++static void resend_irqs(unsigned long arg)
++{
++	struct irq_desc *desc;
++	int irq;
++
++	while (!bitmap_empty(irqs_resend, nr_irqs)) {
++		irq = find_first_bit(irqs_resend, nr_irqs);
++		clear_bit(irq, irqs_resend);
++		desc = irq_to_desc(irq);
++		local_irq_disable();
++		desc->handle_irq(irq, desc);
++		local_irq_enable();
++	}
++}
++
++/* Tasklet to handle resend: */
++static DECLARE_TASKLET(resend_tasklet, resend_irqs, 0);
++
++#endif
++
++/*
++ * IRQ resend
++ *
++ * Is called with interrupts disabled and desc->lock held.
++ */
++void check_irq_resend(struct irq_desc *desc, unsigned int irq)
++{
++	/*
++	 * We do not resend level type interrupts. Level type
++	 * interrupts are resent by hardware when they are still
++	 * active. Clear the pending bit so suspend/resume does not
++	 * get confused.
++	 */
++	if (irq_settings_is_level(desc)) {
++		desc->istate &= ~IRQS_PENDING;
++		return;
++	}
++	if (desc->istate & IRQS_REPLAY)
++		return;
++	if (desc->istate & IRQS_PENDING) {
++		desc->istate &= ~IRQS_PENDING;
++		desc->istate |= IRQS_REPLAY;
++
++		if (!desc->irq_data.chip->irq_retrigger ||
++		    !desc->irq_data.chip->irq_retrigger(&desc->irq_data)) {
++#ifdef CONFIG_HARDIRQS_SW_RESEND
++			/*
++			 * If the interrupt has a parent irq and runs
++			 * in the thread context of the parent irq,
++			 * retrigger the parent.
++			 */
++			if (desc->parent_irq &&
++			    irq_settings_is_nested_thread(desc))
++				irq = desc->parent_irq;
++			/* Set it pending and activate the softirq: */
++			set_bit(irq, irqs_resend);
++			tasklet_schedule(&resend_tasklet);
++#endif
++		}
++	}
++}
+
+commit 92d24a7a8156c524e7c3d8fe32446f4f1ef6ccf0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:14 2018 +0800
+
+    target source code file : kernel/irq/resend.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..ba66a70
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++kernel/irq/resend.c

@@ -1,0 +1,350 @@
+commit 9b5b71860885aa9c61e4029ad17f17e024d99db5
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:29 2018 +0800
+
+    v4.16-rc1
+
+diff --git a/kernel/irq/debug.h b/kernel/irq/debug.h
+index e4d3819..8ccb326 100644
+--- a/kernel/irq/debug.h
++++ b/kernel/irq/debug.h
+@@ -3,8 +3,6 @@
+  * Debugging printout:
+  */
+ 
+-#include <linux/kallsyms.h>
+-
+ #define ___P(f) if (desc->status_use_accessors & f) printk("%14s set\n", #f)
+ #define ___PS(f) if (desc->istate & f) printk("%14s set\n", #f)
+ /* FIXME */
+@@ -19,14 +17,14 @@ static inline void print_irq_desc(unsigned int irq, struct irq_desc *desc)
+ 
+ 	printk("irq %d, desc: %p, depth: %d, count: %d, unhandled: %d\n",
+ 		irq, desc, desc->depth, desc->irq_count, desc->irqs_unhandled);
+-	printk("->handle_irq():  %p, ", desc->handle_irq);
+-	print_symbol("%s\n", (unsigned long)desc->handle_irq);
+-	printk("->irq_data.chip(): %p, ", desc->irq_data.chip);
+-	print_symbol("%s\n", (unsigned long)desc->irq_data.chip);
++	printk("->handle_irq():  %p, %pS\n",
++		desc->handle_irq, desc->handle_irq);
++	printk("->irq_data.chip(): %p, %pS\n",
++		desc->irq_data.chip, desc->irq_data.chip);
+ 	printk("->action(): %p\n", desc->action);
+ 	if (desc->action) {
+-		printk("->action->handler(): %p, ", desc->action->handler);
+-		print_symbol("%s\n", (unsigned long)desc->action->handler);
++		printk("->action->handler(): %p, %pS\n",
++			desc->action->handler, desc->action->handler);
+ 	}
+ 
+ 	___P(IRQ_LEVEL);
+
+commit fbb036b146029f1f14ee934d089620aa1b1aa3e8
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:16 2018 +0800
+
+    v4.15-rc6
+
+diff --git a/kernel/irq/debug.h b/kernel/irq/debug.h
+index 17f05ef..e4d3819 100644
+--- a/kernel/irq/debug.h
++++ b/kernel/irq/debug.h
+@@ -12,6 +12,11 @@
+ 
+ static inline void print_irq_desc(unsigned int irq, struct irq_desc *desc)
+ {
++	static DEFINE_RATELIMIT_STATE(ratelimit, 5 * HZ, 5);
++
++	if (!__ratelimit(&ratelimit))
++		return;
++
+ 	printk("irq %d, desc: %p, depth: %d, count: %d, unhandled: %d\n",
+ 		irq, desc, desc->depth, desc->irq_count, desc->irqs_unhandled);
+ 	printk("->handle_irq():  %p, ", desc->handle_irq);
+
+commit 4c02be86de2f5f87f1824b08b2985b110a3ffff4
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:56 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/kernel/irq/debug.h b/kernel/irq/debug.h
+index e75e29e..17f05ef 100644
+--- a/kernel/irq/debug.h
++++ b/kernel/irq/debug.h
+@@ -1,3 +1,4 @@
++/* SPDX-License-Identifier: GPL-2.0 */
+ /*
+  * Debugging printout:
+  */
+
+commit 23d44d5e99d7a08e11ce28c52abd2cd04971fb4f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:36 2018 +0800
+
+    v3.4-rc5
+
+diff --git a/kernel/irq/debug.h b/kernel/irq/debug.h
+index 97a8bfa..e75e29e 100644
+--- a/kernel/irq/debug.h
++++ b/kernel/irq/debug.h
+@@ -4,10 +4,10 @@
+ 
+ #include <linux/kallsyms.h>
+ 
+-#define P(f) if (desc->status_use_accessors & f) printk("%14s set\n", #f)
+-#define PS(f) if (desc->istate & f) printk("%14s set\n", #f)
++#define ___P(f) if (desc->status_use_accessors & f) printk("%14s set\n", #f)
++#define ___PS(f) if (desc->istate & f) printk("%14s set\n", #f)
+ /* FIXME */
+-#define PD(f) do { } while (0)
++#define ___PD(f) do { } while (0)
+ 
+ static inline void print_irq_desc(unsigned int irq, struct irq_desc *desc)
+ {
+@@ -23,23 +23,23 @@ static inline void print_irq_desc(unsigned int irq, struct irq_desc *desc)
+ 		print_symbol("%s\n", (unsigned long)desc->action->handler);
+ 	}
+ 
+-	P(IRQ_LEVEL);
+-	P(IRQ_PER_CPU);
+-	P(IRQ_NOPROBE);
+-	P(IRQ_NOREQUEST);
+-	P(IRQ_NOTHREAD);
+-	P(IRQ_NOAUTOEN);
++	___P(IRQ_LEVEL);
++	___P(IRQ_PER_CPU);
++	___P(IRQ_NOPROBE);
++	___P(IRQ_NOREQUEST);
++	___P(IRQ_NOTHREAD);
++	___P(IRQ_NOAUTOEN);
+ 
+-	PS(IRQS_AUTODETECT);
+-	PS(IRQS_REPLAY);
+-	PS(IRQS_WAITING);
+-	PS(IRQS_PENDING);
++	___PS(IRQS_AUTODETECT);
++	___PS(IRQS_REPLAY);
++	___PS(IRQS_WAITING);
++	___PS(IRQS_PENDING);
+ 
+-	PD(IRQS_INPROGRESS);
+-	PD(IRQS_DISABLED);
+-	PD(IRQS_MASKED);
++	___PD(IRQS_INPROGRESS);
++	___PD(IRQS_DISABLED);
++	___PD(IRQS_MASKED);
+ }
+ 
+-#undef P
+-#undef PS
+-#undef PD
++#undef ___P
++#undef ___PS
++#undef ___PD
+
+commit 42abfbe2e13e854434f622c2a225fa762afa8d8d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:21 2018 +0800
+
+    v3.0-rc1
+
+diff --git a/kernel/irq/debug.h b/kernel/irq/debug.h
+index 306cba3..97a8bfa 100644
+--- a/kernel/irq/debug.h
++++ b/kernel/irq/debug.h
+@@ -27,6 +27,7 @@ static inline void print_irq_desc(unsigned int irq, struct irq_desc *desc)
+ 	P(IRQ_PER_CPU);
+ 	P(IRQ_NOPROBE);
+ 	P(IRQ_NOREQUEST);
++	P(IRQ_NOTHREAD);
+ 	P(IRQ_NOAUTOEN);
+ 
+ 	PS(IRQS_AUTODETECT);
+
+commit d824013142e9ab3ab9f97ca77c8590d40a505099
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:04 2018 +0800
+
+    v2.6.39-rc1
+
+diff --git a/kernel/irq/debug.h b/kernel/irq/debug.h
+new file mode 100644
+index 0000000..306cba3
+--- /dev/null
++++ b/kernel/irq/debug.h
+@@ -0,0 +1,44 @@
++/*
++ * Debugging printout:
++ */
++
++#include <linux/kallsyms.h>
++
++#define P(f) if (desc->status_use_accessors & f) printk("%14s set\n", #f)
++#define PS(f) if (desc->istate & f) printk("%14s set\n", #f)
++/* FIXME */
++#define PD(f) do { } while (0)
++
++static inline void print_irq_desc(unsigned int irq, struct irq_desc *desc)
++{
++	printk("irq %d, desc: %p, depth: %d, count: %d, unhandled: %d\n",
++		irq, desc, desc->depth, desc->irq_count, desc->irqs_unhandled);
++	printk("->handle_irq():  %p, ", desc->handle_irq);
++	print_symbol("%s\n", (unsigned long)desc->handle_irq);
++	printk("->irq_data.chip(): %p, ", desc->irq_data.chip);
++	print_symbol("%s\n", (unsigned long)desc->irq_data.chip);
++	printk("->action(): %p\n", desc->action);
++	if (desc->action) {
++		printk("->action->handler(): %p, ", desc->action->handler);
++		print_symbol("%s\n", (unsigned long)desc->action->handler);
++	}
++
++	P(IRQ_LEVEL);
++	P(IRQ_PER_CPU);
++	P(IRQ_NOPROBE);
++	P(IRQ_NOREQUEST);
++	P(IRQ_NOAUTOEN);
++
++	PS(IRQS_AUTODETECT);
++	PS(IRQS_REPLAY);
++	PS(IRQS_WAITING);
++	PS(IRQS_PENDING);
++
++	PD(IRQS_INPROGRESS);
++	PD(IRQS_DISABLED);
++	PD(IRQS_MASKED);
++}
++
++#undef P
++#undef PS
++#undef PD
+
+commit 5680e36f7e409e1da49adddbeb102fa50428dbb2
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:24 2018 +0800
+
+    v2.6.12
+
+diff --git a/kernel/irq/debug.h b/kernel/irq/debug.h
+deleted file mode 100644
+index e75e29e..0000000
+--- a/kernel/irq/debug.h
++++ /dev/null
+@@ -1,45 +0,0 @@
+-/*
+- * Debugging printout:
+- */
+-
+-#include <linux/kallsyms.h>
+-
+-#define ___P(f) if (desc->status_use_accessors & f) printk("%14s set\n", #f)
+-#define ___PS(f) if (desc->istate & f) printk("%14s set\n", #f)
+-/* FIXME */
+-#define ___PD(f) do { } while (0)
+-
+-static inline void print_irq_desc(unsigned int irq, struct irq_desc *desc)
+-{
+-	printk("irq %d, desc: %p, depth: %d, count: %d, unhandled: %d\n",
+-		irq, desc, desc->depth, desc->irq_count, desc->irqs_unhandled);
+-	printk("->handle_irq():  %p, ", desc->handle_irq);
+-	print_symbol("%s\n", (unsigned long)desc->handle_irq);
+-	printk("->irq_data.chip(): %p, ", desc->irq_data.chip);
+-	print_symbol("%s\n", (unsigned long)desc->irq_data.chip);
+-	printk("->action(): %p\n", desc->action);
+-	if (desc->action) {
+-		printk("->action->handler(): %p, ", desc->action->handler);
+-		print_symbol("%s\n", (unsigned long)desc->action->handler);
+-	}
+-
+-	___P(IRQ_LEVEL);
+-	___P(IRQ_PER_CPU);
+-	___P(IRQ_NOPROBE);
+-	___P(IRQ_NOREQUEST);
+-	___P(IRQ_NOTHREAD);
+-	___P(IRQ_NOAUTOEN);
+-
+-	___PS(IRQS_AUTODETECT);
+-	___PS(IRQS_REPLAY);
+-	___PS(IRQS_WAITING);
+-	___PS(IRQS_PENDING);
+-
+-	___PD(IRQS_INPROGRESS);
+-	___PD(IRQS_DISABLED);
+-	___PD(IRQS_MASKED);
+-}
+-
+-#undef ___P
+-#undef ___PS
+-#undef ___PD
+
+commit 6971404ee141e446ccc2ea89b02345e0072d6839
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:15 2018 +0800
+
+    v2.6.11
+
+diff --git a/kernel/irq/debug.h b/kernel/irq/debug.h
+new file mode 100644
+index 0000000..e75e29e
+--- /dev/null
++++ b/kernel/irq/debug.h
+@@ -0,0 +1,45 @@
++/*
++ * Debugging printout:
++ */
++
++#include <linux/kallsyms.h>
++
++#define ___P(f) if (desc->status_use_accessors & f) printk("%14s set\n", #f)
++#define ___PS(f) if (desc->istate & f) printk("%14s set\n", #f)
++/* FIXME */
++#define ___PD(f) do { } while (0)
++
++static inline void print_irq_desc(unsigned int irq, struct irq_desc *desc)
++{
++	printk("irq %d, desc: %p, depth: %d, count: %d, unhandled: %d\n",
++		irq, desc, desc->depth, desc->irq_count, desc->irqs_unhandled);
++	printk("->handle_irq():  %p, ", desc->handle_irq);
++	print_symbol("%s\n", (unsigned long)desc->handle_irq);
++	printk("->irq_data.chip(): %p, ", desc->irq_data.chip);
++	print_symbol("%s\n", (unsigned long)desc->irq_data.chip);
++	printk("->action(): %p\n", desc->action);
++	if (desc->action) {
++		printk("->action->handler(): %p, ", desc->action->handler);
++		print_symbol("%s\n", (unsigned long)desc->action->handler);
++	}
++
++	___P(IRQ_LEVEL);
++	___P(IRQ_PER_CPU);
++	___P(IRQ_NOPROBE);
++	___P(IRQ_NOREQUEST);
++	___P(IRQ_NOTHREAD);
++	___P(IRQ_NOAUTOEN);
++
++	___PS(IRQS_AUTODETECT);
++	___PS(IRQS_REPLAY);
++	___PS(IRQS_WAITING);
++	___PS(IRQS_PENDING);
++
++	___PD(IRQS_INPROGRESS);
++	___PD(IRQS_DISABLED);
++	___PD(IRQS_MASKED);
++}
++
++#undef ___P
++#undef ___PS
++#undef ___PD
+
+commit 091d9f49abb22aae829520d071d035be171ce961
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:13 2018 +0800
+
+    target source code file : kernel/irq/debug.h
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..f2dc929
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++kernel/irq/debug.h

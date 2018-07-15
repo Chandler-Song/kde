@@ -1,0 +1,1747 @@
+commit cd4f13a7e273f30169c2c1ebdf90aefc230cd783
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:39:48 2018 +0800
+
+    v4.18-rc1
+
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+index 9752dbd..71fbc1f 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+@@ -1,17 +1,6 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+- * Copyright (C) 2016 Etnaviv Project
+-  *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License version 2 as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along with
+- * this program.  If not, see <http://www.gnu.org/licenses/>.
++ * Copyright (C) 2016-2018 Etnaviv Project
+  */
+ 
+ #include <linux/platform_device.h>
+@@ -47,8 +36,8 @@ struct etnaviv_iommuv2_domain {
+ 	u32 *mtlb_cpu;
+ 	dma_addr_t mtlb_dma;
+ 	/* S(lave) TLB aka second level pagetable */
+-	u32 *stlb_cpu[1024];
+-	dma_addr_t stlb_dma[1024];
++	u32 *stlb_cpu[MMUv2_MAX_STLB_ENTRIES];
++	dma_addr_t stlb_dma[MMUv2_MAX_STLB_ENTRIES];
+ };
+ 
+ static struct etnaviv_iommuv2_domain *
+@@ -57,24 +46,54 @@ to_etnaviv_domain(struct etnaviv_iommu_domain *domain)
+ 	return container_of(domain, struct etnaviv_iommuv2_domain, base);
+ }
+ 
++static int
++etnaviv_iommuv2_ensure_stlb(struct etnaviv_iommuv2_domain *etnaviv_domain,
++			    int stlb)
++{
++	if (etnaviv_domain->stlb_cpu[stlb])
++		return 0;
++
++	etnaviv_domain->stlb_cpu[stlb] =
++			dma_alloc_wc(etnaviv_domain->base.dev, SZ_4K,
++				     &etnaviv_domain->stlb_dma[stlb],
++				     GFP_KERNEL);
++
++	if (!etnaviv_domain->stlb_cpu[stlb])
++		return -ENOMEM;
++
++	memset32(etnaviv_domain->stlb_cpu[stlb], MMUv2_PTE_EXCEPTION,
++		 SZ_4K / sizeof(u32));
++
++	etnaviv_domain->mtlb_cpu[stlb] = etnaviv_domain->stlb_dma[stlb] |
++						      MMUv2_PTE_PRESENT;
++	return 0;
++}
++
+ static int etnaviv_iommuv2_map(struct etnaviv_iommu_domain *domain,
+ 			       unsigned long iova, phys_addr_t paddr,
+ 			       size_t size, int prot)
+ {
+ 	struct etnaviv_iommuv2_domain *etnaviv_domain =
+ 			to_etnaviv_domain(domain);
+-	int mtlb_entry, stlb_entry;
+-	u32 entry = (u32)paddr | MMUv2_PTE_PRESENT;
++	int mtlb_entry, stlb_entry, ret;
++	u32 entry = lower_32_bits(paddr) | MMUv2_PTE_PRESENT;
+ 
+ 	if (size != SZ_4K)
+ 		return -EINVAL;
+ 
++	if (IS_ENABLED(CONFIG_PHYS_ADDR_T_64BIT))
++		entry |= (upper_32_bits(paddr) & 0xff) << 4;
++
+ 	if (prot & ETNAVIV_PROT_WRITE)
+ 		entry |= MMUv2_PTE_WRITEABLE;
+ 
+ 	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
+ 	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
+ 
++	ret = etnaviv_iommuv2_ensure_stlb(etnaviv_domain, mtlb_entry);
++	if (ret)
++		return ret;
++
+ 	etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] = entry;
+ 
+ 	return 0;
+@@ -101,14 +120,13 @@ static size_t etnaviv_iommuv2_unmap(struct etnaviv_iommu_domain *domain,
+ static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
+ {
+ 	u32 *p;
+-	int ret, i, j;
++	int ret, i;
+ 
+ 	/* allocate scratch page */
+-	etnaviv_domain->base.bad_page_cpu = dma_alloc_coherent(
+-						etnaviv_domain->base.dev,
+-						SZ_4K,
+-						&etnaviv_domain->base.bad_page_dma,
+-						GFP_KERNEL);
++	etnaviv_domain->base.bad_page_cpu =
++			dma_alloc_wc(etnaviv_domain->base.dev, SZ_4K,
++				     &etnaviv_domain->base.bad_page_dma,
++				     GFP_KERNEL);
+ 	if (!etnaviv_domain->base.bad_page_cpu) {
+ 		ret = -ENOMEM;
+ 		goto fail_mem;
+@@ -117,67 +135,40 @@ static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
+ 	for (i = 0; i < SZ_4K / 4; i++)
+ 		*p++ = 0xdead55aa;
+ 
+-	etnaviv_domain->pta_cpu = dma_alloc_coherent(etnaviv_domain->base.dev,
+-						     SZ_4K,
+-						     &etnaviv_domain->pta_dma,
+-						     GFP_KERNEL);
++	etnaviv_domain->pta_cpu = dma_alloc_wc(etnaviv_domain->base.dev,
++					       SZ_4K, &etnaviv_domain->pta_dma,
++					       GFP_KERNEL);
+ 	if (!etnaviv_domain->pta_cpu) {
+ 		ret = -ENOMEM;
+ 		goto fail_mem;
+ 	}
+ 
+-	etnaviv_domain->mtlb_cpu = dma_alloc_coherent(etnaviv_domain->base.dev,
+-						  SZ_4K,
+-						  &etnaviv_domain->mtlb_dma,
+-						  GFP_KERNEL);
++	etnaviv_domain->mtlb_cpu = dma_alloc_wc(etnaviv_domain->base.dev,
++						SZ_4K, &etnaviv_domain->mtlb_dma,
++						GFP_KERNEL);
+ 	if (!etnaviv_domain->mtlb_cpu) {
+ 		ret = -ENOMEM;
+ 		goto fail_mem;
+ 	}
+ 
+-	/* pre-populate STLB pages (may want to switch to on-demand later) */
+-	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
+-		etnaviv_domain->stlb_cpu[i] =
+-				dma_alloc_coherent(etnaviv_domain->base.dev,
+-						   SZ_4K,
+-						   &etnaviv_domain->stlb_dma[i],
+-						   GFP_KERNEL);
+-		if (!etnaviv_domain->stlb_cpu[i]) {
+-			ret = -ENOMEM;
+-			goto fail_mem;
+-		}
+-		p = etnaviv_domain->stlb_cpu[i];
+-		for (j = 0; j < SZ_4K / 4; j++)
+-			*p++ = MMUv2_PTE_EXCEPTION;
+-
+-		etnaviv_domain->mtlb_cpu[i] = etnaviv_domain->stlb_dma[i] |
+-					      MMUv2_PTE_PRESENT;
+-	}
++	memset32(etnaviv_domain->mtlb_cpu, MMUv2_PTE_EXCEPTION,
++		 MMUv2_MAX_STLB_ENTRIES);
+ 
+ 	return 0;
+ 
+ fail_mem:
+ 	if (etnaviv_domain->base.bad_page_cpu)
+-		dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+-				  etnaviv_domain->base.bad_page_cpu,
+-				  etnaviv_domain->base.bad_page_dma);
++		dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++			    etnaviv_domain->base.bad_page_cpu,
++			    etnaviv_domain->base.bad_page_dma);
+ 
+ 	if (etnaviv_domain->pta_cpu)
+-		dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+-				  etnaviv_domain->pta_cpu,
+-				  etnaviv_domain->pta_dma);
++		dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++			    etnaviv_domain->pta_cpu, etnaviv_domain->pta_dma);
+ 
+ 	if (etnaviv_domain->mtlb_cpu)
+-		dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+-				  etnaviv_domain->mtlb_cpu,
+-				  etnaviv_domain->mtlb_dma);
+-
+-	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
+-		if (etnaviv_domain->stlb_cpu[i])
+-			dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+-					  etnaviv_domain->stlb_cpu[i],
+-					  etnaviv_domain->stlb_dma[i]);
+-	}
++		dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++			    etnaviv_domain->mtlb_cpu, etnaviv_domain->mtlb_dma);
+ 
+ 	return ret;
+ }
+@@ -188,23 +179,21 @@ static void etnaviv_iommuv2_domain_free(struct etnaviv_iommu_domain *domain)
+ 			to_etnaviv_domain(domain);
+ 	int i;
+ 
+-	dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+-			  etnaviv_domain->base.bad_page_cpu,
+-			  etnaviv_domain->base.bad_page_dma);
++	dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++		    etnaviv_domain->base.bad_page_cpu,
++		    etnaviv_domain->base.bad_page_dma);
+ 
+-	dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+-			  etnaviv_domain->pta_cpu,
+-			  etnaviv_domain->pta_dma);
++	dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++		    etnaviv_domain->pta_cpu, etnaviv_domain->pta_dma);
+ 
+-	dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+-			  etnaviv_domain->mtlb_cpu,
+-			  etnaviv_domain->mtlb_dma);
++	dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++		    etnaviv_domain->mtlb_cpu, etnaviv_domain->mtlb_dma);
+ 
+ 	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
+ 		if (etnaviv_domain->stlb_cpu[i])
+-			dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+-					  etnaviv_domain->stlb_cpu[i],
+-					  etnaviv_domain->stlb_dma[i]);
++			dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++				    etnaviv_domain->stlb_cpu[i],
++				    etnaviv_domain->stlb_dma[i]);
+ 	}
+ 
+ 	vfree(etnaviv_domain);
+
+commit c1509fc75699aa5d4bd3081d058f70c3d4282ec3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:39:32 2018 +0800
+
+    v4.17-rc1
+
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+index 1e956e2..9752dbd 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+@@ -40,6 +40,9 @@
+ 
+ struct etnaviv_iommuv2_domain {
+ 	struct etnaviv_iommu_domain base;
++	/* P(age) T(able) A(rray) */
++	u64 *pta_cpu;
++	dma_addr_t pta_dma;
+ 	/* M(aster) TLB aka first level pagetable */
+ 	u32 *mtlb_cpu;
+ 	dma_addr_t mtlb_dma;
+@@ -114,6 +117,15 @@ static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
+ 	for (i = 0; i < SZ_4K / 4; i++)
+ 		*p++ = 0xdead55aa;
+ 
++	etnaviv_domain->pta_cpu = dma_alloc_coherent(etnaviv_domain->base.dev,
++						     SZ_4K,
++						     &etnaviv_domain->pta_dma,
++						     GFP_KERNEL);
++	if (!etnaviv_domain->pta_cpu) {
++		ret = -ENOMEM;
++		goto fail_mem;
++	}
++
+ 	etnaviv_domain->mtlb_cpu = dma_alloc_coherent(etnaviv_domain->base.dev,
+ 						  SZ_4K,
+ 						  &etnaviv_domain->mtlb_dma,
+@@ -150,6 +162,11 @@ fail_mem:
+ 				  etnaviv_domain->base.bad_page_cpu,
+ 				  etnaviv_domain->base.bad_page_dma);
+ 
++	if (etnaviv_domain->pta_cpu)
++		dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
++				  etnaviv_domain->pta_cpu,
++				  etnaviv_domain->pta_dma);
++
+ 	if (etnaviv_domain->mtlb_cpu)
+ 		dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+ 				  etnaviv_domain->mtlb_cpu,
+@@ -176,6 +193,10 @@ static void etnaviv_iommuv2_domain_free(struct etnaviv_iommu_domain *domain)
+ 			  etnaviv_domain->base.bad_page_dma);
+ 
+ 	dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
++			  etnaviv_domain->pta_cpu,
++			  etnaviv_domain->pta_dma);
++
++	dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+ 			  etnaviv_domain->mtlb_cpu,
+ 			  etnaviv_domain->mtlb_dma);
+ 
+@@ -216,7 +237,7 @@ static void etnaviv_iommuv2_dump(struct etnaviv_iommu_domain *domain, void *buf)
+ 			memcpy(buf, etnaviv_domain->stlb_cpu[i], SZ_4K);
+ }
+ 
+-void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
++static void etnaviv_iommuv2_restore_nonsec(struct etnaviv_gpu *gpu)
+ {
+ 	struct etnaviv_iommuv2_domain *etnaviv_domain =
+ 			to_etnaviv_domain(gpu->mmu->domain);
+@@ -236,7 +257,60 @@ void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
+ 	gpu_write(gpu, VIVS_MMUv2_CONTROL, VIVS_MMUv2_CONTROL_ENABLE);
+ }
+ 
+-const struct etnaviv_iommu_domain_ops etnaviv_iommuv2_ops = {
++static void etnaviv_iommuv2_restore_sec(struct etnaviv_gpu *gpu)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++				to_etnaviv_domain(gpu->mmu->domain);
++	u16 prefetch;
++
++	/* If the MMU is already enabled the state is still there. */
++	if (gpu_read(gpu, VIVS_MMUv2_SEC_CONTROL) & VIVS_MMUv2_SEC_CONTROL_ENABLE)
++		return;
++
++	gpu_write(gpu, VIVS_MMUv2_PTA_ADDRESS_LOW,
++		  lower_32_bits(etnaviv_domain->pta_dma));
++	gpu_write(gpu, VIVS_MMUv2_PTA_ADDRESS_HIGH,
++		  upper_32_bits(etnaviv_domain->pta_dma));
++	gpu_write(gpu, VIVS_MMUv2_PTA_CONTROL, VIVS_MMUv2_PTA_CONTROL_ENABLE);
++
++	gpu_write(gpu, VIVS_MMUv2_NONSEC_SAFE_ADDR_LOW,
++		  lower_32_bits(etnaviv_domain->base.bad_page_dma));
++	gpu_write(gpu, VIVS_MMUv2_SEC_SAFE_ADDR_LOW,
++		  lower_32_bits(etnaviv_domain->base.bad_page_dma));
++	gpu_write(gpu, VIVS_MMUv2_SAFE_ADDRESS_CONFIG,
++		  VIVS_MMUv2_SAFE_ADDRESS_CONFIG_NON_SEC_SAFE_ADDR_HIGH(
++		  upper_32_bits(etnaviv_domain->base.bad_page_dma)) |
++		  VIVS_MMUv2_SAFE_ADDRESS_CONFIG_SEC_SAFE_ADDR_HIGH(
++		  upper_32_bits(etnaviv_domain->base.bad_page_dma)));
++
++	etnaviv_domain->pta_cpu[0] = etnaviv_domain->mtlb_dma |
++				     VIVS_MMUv2_CONFIGURATION_MODE_MODE4_K;
++
++	/* trigger a PTA load through the FE */
++	prefetch = etnaviv_buffer_config_pta(gpu);
++	etnaviv_gpu_start_fe(gpu, (u32)etnaviv_cmdbuf_get_pa(&gpu->buffer),
++			     prefetch);
++	etnaviv_gpu_wait_idle(gpu, 100);
++
++	gpu_write(gpu, VIVS_MMUv2_SEC_CONTROL, VIVS_MMUv2_SEC_CONTROL_ENABLE);
++}
++
++void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
++{
++	switch (gpu->sec_mode) {
++	case ETNA_SEC_NONE:
++		etnaviv_iommuv2_restore_nonsec(gpu);
++		break;
++	case ETNA_SEC_KERNEL:
++		etnaviv_iommuv2_restore_sec(gpu);
++		break;
++	default:
++		WARN(1, "unhandled GPU security mode\n");
++		break;
++	}
++}
++
++static const struct etnaviv_iommu_domain_ops etnaviv_iommuv2_ops = {
+ 	.free = etnaviv_iommuv2_domain_free,
+ 	.map = etnaviv_iommuv2_map,
+ 	.unmap = etnaviv_iommuv2_unmap,
+
+commit dc14e1636bb274762bcb8ee6bb180b1c76a74df0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:39:17 2018 +0800
+
+    v4.16-rc1
+
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+index fc60fc8..1e956e2 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+@@ -229,7 +229,7 @@ void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
+ 	prefetch = etnaviv_buffer_config_mmuv2(gpu,
+ 				(u32)etnaviv_domain->mtlb_dma,
+ 				(u32)etnaviv_domain->base.bad_page_dma);
+-	etnaviv_gpu_start_fe(gpu, (u32)etnaviv_cmdbuf_get_pa(gpu->buffer),
++	etnaviv_gpu_start_fe(gpu, (u32)etnaviv_cmdbuf_get_pa(&gpu->buffer),
+ 			     prefetch);
+ 	etnaviv_gpu_wait_idle(gpu, 100);
+ 
+
+commit 3f3a128469f14c4377b8eda13cd63279a6c73003
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:38:57 2018 +0800
+
+    v4.15-rc1
+
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+index cbe447a..fc60fc8 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+@@ -14,7 +14,6 @@
+  * this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ 
+-#include <linux/iommu.h>
+ #include <linux/platform_device.h>
+ #include <linux/sizes.h>
+ #include <linux/slab.h>
+@@ -40,10 +39,7 @@
+ #define MMUv2_MAX_STLB_ENTRIES		1024
+ 
+ struct etnaviv_iommuv2_domain {
+-	struct iommu_domain domain;
+-	struct device *dev;
+-	void *bad_page_cpu;
+-	dma_addr_t bad_page_dma;
++	struct etnaviv_iommu_domain base;
+ 	/* M(aster) TLB aka first level pagetable */
+ 	u32 *mtlb_cpu;
+ 	dma_addr_t mtlb_dma;
+@@ -52,13 +48,15 @@ struct etnaviv_iommuv2_domain {
+ 	dma_addr_t stlb_dma[1024];
+ };
+ 
+-static struct etnaviv_iommuv2_domain *to_etnaviv_domain(struct iommu_domain *domain)
++static struct etnaviv_iommuv2_domain *
++to_etnaviv_domain(struct etnaviv_iommu_domain *domain)
+ {
+-	return container_of(domain, struct etnaviv_iommuv2_domain, domain);
++	return container_of(domain, struct etnaviv_iommuv2_domain, base);
+ }
+ 
+-static int etnaviv_iommuv2_map(struct iommu_domain *domain, unsigned long iova,
+-	   phys_addr_t paddr, size_t size, int prot)
++static int etnaviv_iommuv2_map(struct etnaviv_iommu_domain *domain,
++			       unsigned long iova, phys_addr_t paddr,
++			       size_t size, int prot)
+ {
+ 	struct etnaviv_iommuv2_domain *etnaviv_domain =
+ 			to_etnaviv_domain(domain);
+@@ -68,7 +66,7 @@ static int etnaviv_iommuv2_map(struct iommu_domain *domain, unsigned long iova,
+ 	if (size != SZ_4K)
+ 		return -EINVAL;
+ 
+-	if (prot & IOMMU_WRITE)
++	if (prot & ETNAVIV_PROT_WRITE)
+ 		entry |= MMUv2_PTE_WRITEABLE;
+ 
+ 	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
+@@ -79,8 +77,8 @@ static int etnaviv_iommuv2_map(struct iommu_domain *domain, unsigned long iova,
+ 	return 0;
+ }
+ 
+-static size_t etnaviv_iommuv2_unmap(struct iommu_domain *domain,
+-	unsigned long iova, size_t size)
++static size_t etnaviv_iommuv2_unmap(struct etnaviv_iommu_domain *domain,
++				    unsigned long iova, size_t size)
+ {
+ 	struct etnaviv_iommuv2_domain *etnaviv_domain =
+ 			to_etnaviv_domain(domain);
+@@ -97,38 +95,26 @@ static size_t etnaviv_iommuv2_unmap(struct iommu_domain *domain,
+ 	return SZ_4K;
+ }
+ 
+-static phys_addr_t etnaviv_iommuv2_iova_to_phys(struct iommu_domain *domain,
+-	dma_addr_t iova)
+-{
+-	struct etnaviv_iommuv2_domain *etnaviv_domain =
+-			to_etnaviv_domain(domain);
+-	int mtlb_entry, stlb_entry;
+-
+-	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
+-	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
+-
+-	return etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] & ~(SZ_4K - 1);
+-}
+-
+ static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
+ {
+ 	u32 *p;
+ 	int ret, i, j;
+ 
+ 	/* allocate scratch page */
+-	etnaviv_domain->bad_page_cpu = dma_alloc_coherent(etnaviv_domain->dev,
+-						  SZ_4K,
+-						  &etnaviv_domain->bad_page_dma,
+-						  GFP_KERNEL);
+-	if (!etnaviv_domain->bad_page_cpu) {
++	etnaviv_domain->base.bad_page_cpu = dma_alloc_coherent(
++						etnaviv_domain->base.dev,
++						SZ_4K,
++						&etnaviv_domain->base.bad_page_dma,
++						GFP_KERNEL);
++	if (!etnaviv_domain->base.bad_page_cpu) {
+ 		ret = -ENOMEM;
+ 		goto fail_mem;
+ 	}
+-	p = etnaviv_domain->bad_page_cpu;
++	p = etnaviv_domain->base.bad_page_cpu;
+ 	for (i = 0; i < SZ_4K / 4; i++)
+ 		*p++ = 0xdead55aa;
+ 
+-	etnaviv_domain->mtlb_cpu = dma_alloc_coherent(etnaviv_domain->dev,
++	etnaviv_domain->mtlb_cpu = dma_alloc_coherent(etnaviv_domain->base.dev,
+ 						  SZ_4K,
+ 						  &etnaviv_domain->mtlb_dma,
+ 						  GFP_KERNEL);
+@@ -140,7 +126,7 @@ static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
+ 	/* pre-populate STLB pages (may want to switch to on-demand later) */
+ 	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
+ 		etnaviv_domain->stlb_cpu[i] =
+-				dma_alloc_coherent(etnaviv_domain->dev,
++				dma_alloc_coherent(etnaviv_domain->base.dev,
+ 						   SZ_4K,
+ 						   &etnaviv_domain->stlb_dma[i],
+ 						   GFP_KERNEL);
+@@ -159,19 +145,19 @@ static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
+ 	return 0;
+ 
+ fail_mem:
+-	if (etnaviv_domain->bad_page_cpu)
+-		dma_free_coherent(etnaviv_domain->dev, SZ_4K,
+-				  etnaviv_domain->bad_page_cpu,
+-				  etnaviv_domain->bad_page_dma);
++	if (etnaviv_domain->base.bad_page_cpu)
++		dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
++				  etnaviv_domain->base.bad_page_cpu,
++				  etnaviv_domain->base.bad_page_dma);
+ 
+ 	if (etnaviv_domain->mtlb_cpu)
+-		dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++		dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+ 				  etnaviv_domain->mtlb_cpu,
+ 				  etnaviv_domain->mtlb_dma);
+ 
+ 	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
+ 		if (etnaviv_domain->stlb_cpu[i])
+-			dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++			dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+ 					  etnaviv_domain->stlb_cpu[i],
+ 					  etnaviv_domain->stlb_dma[i]);
+ 	}
+@@ -179,23 +165,23 @@ fail_mem:
+ 	return ret;
+ }
+ 
+-static void etnaviv_iommuv2_domain_free(struct iommu_domain *domain)
++static void etnaviv_iommuv2_domain_free(struct etnaviv_iommu_domain *domain)
+ {
+ 	struct etnaviv_iommuv2_domain *etnaviv_domain =
+ 			to_etnaviv_domain(domain);
+ 	int i;
+ 
+-	dma_free_coherent(etnaviv_domain->dev, SZ_4K,
+-			  etnaviv_domain->bad_page_cpu,
+-			  etnaviv_domain->bad_page_dma);
++	dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
++			  etnaviv_domain->base.bad_page_cpu,
++			  etnaviv_domain->base.bad_page_dma);
+ 
+-	dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++	dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+ 			  etnaviv_domain->mtlb_cpu,
+ 			  etnaviv_domain->mtlb_dma);
+ 
+ 	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
+ 		if (etnaviv_domain->stlb_cpu[i])
+-			dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++			dma_free_coherent(etnaviv_domain->base.dev, SZ_4K,
+ 					  etnaviv_domain->stlb_cpu[i],
+ 					  etnaviv_domain->stlb_dma[i]);
+ 	}
+@@ -203,7 +189,7 @@ static void etnaviv_iommuv2_domain_free(struct iommu_domain *domain)
+ 	vfree(etnaviv_domain);
+ }
+ 
+-static size_t etnaviv_iommuv2_dump_size(struct iommu_domain *domain)
++static size_t etnaviv_iommuv2_dump_size(struct etnaviv_iommu_domain *domain)
+ {
+ 	struct etnaviv_iommuv2_domain *etnaviv_domain =
+ 			to_etnaviv_domain(domain);
+@@ -217,7 +203,7 @@ static size_t etnaviv_iommuv2_dump_size(struct iommu_domain *domain)
+ 	return dump_size;
+ }
+ 
+-static void etnaviv_iommuv2_dump(struct iommu_domain *domain, void *buf)
++static void etnaviv_iommuv2_dump(struct etnaviv_iommu_domain *domain, void *buf)
+ {
+ 	struct etnaviv_iommuv2_domain *etnaviv_domain =
+ 			to_etnaviv_domain(domain);
+@@ -230,18 +216,6 @@ static void etnaviv_iommuv2_dump(struct iommu_domain *domain, void *buf)
+ 			memcpy(buf, etnaviv_domain->stlb_cpu[i], SZ_4K);
+ }
+ 
+-static const struct etnaviv_iommu_ops etnaviv_iommu_ops = {
+-	.ops = {
+-		.domain_free = etnaviv_iommuv2_domain_free,
+-		.map = etnaviv_iommuv2_map,
+-		.unmap = etnaviv_iommuv2_unmap,
+-		.iova_to_phys = etnaviv_iommuv2_iova_to_phys,
+-		.pgsize_bitmap = SZ_4K,
+-	},
+-	.dump_size = etnaviv_iommuv2_dump_size,
+-	.dump = etnaviv_iommuv2_dump,
+-};
+-
+ void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
+ {
+ 	struct etnaviv_iommuv2_domain *etnaviv_domain =
+@@ -254,35 +228,45 @@ void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
+ 
+ 	prefetch = etnaviv_buffer_config_mmuv2(gpu,
+ 				(u32)etnaviv_domain->mtlb_dma,
+-				(u32)etnaviv_domain->bad_page_dma);
++				(u32)etnaviv_domain->base.bad_page_dma);
+ 	etnaviv_gpu_start_fe(gpu, (u32)etnaviv_cmdbuf_get_pa(gpu->buffer),
+ 			     prefetch);
+ 	etnaviv_gpu_wait_idle(gpu, 100);
+ 
+ 	gpu_write(gpu, VIVS_MMUv2_CONTROL, VIVS_MMUv2_CONTROL_ENABLE);
+ }
+-struct iommu_domain *etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu)
++
++const struct etnaviv_iommu_domain_ops etnaviv_iommuv2_ops = {
++	.free = etnaviv_iommuv2_domain_free,
++	.map = etnaviv_iommuv2_map,
++	.unmap = etnaviv_iommuv2_unmap,
++	.dump_size = etnaviv_iommuv2_dump_size,
++	.dump = etnaviv_iommuv2_dump,
++};
++
++struct etnaviv_iommu_domain *
++etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu)
+ {
+ 	struct etnaviv_iommuv2_domain *etnaviv_domain;
++	struct etnaviv_iommu_domain *domain;
+ 	int ret;
+ 
+ 	etnaviv_domain = vzalloc(sizeof(*etnaviv_domain));
+ 	if (!etnaviv_domain)
+ 		return NULL;
+ 
+-	etnaviv_domain->dev = gpu->dev;
++	domain = &etnaviv_domain->base;
+ 
+-	etnaviv_domain->domain.type = __IOMMU_DOMAIN_PAGING;
+-	etnaviv_domain->domain.ops = &etnaviv_iommu_ops.ops;
+-	etnaviv_domain->domain.pgsize_bitmap = SZ_4K;
+-	etnaviv_domain->domain.geometry.aperture_start = 0;
+-	etnaviv_domain->domain.geometry.aperture_end = ~0UL & ~(SZ_4K - 1);
++	domain->dev = gpu->dev;
++	domain->base = 0;
++	domain->size = (u64)SZ_1G * 4;
++	domain->ops = &etnaviv_iommuv2_ops;
+ 
+ 	ret = etnaviv_iommuv2_init(etnaviv_domain);
+ 	if (ret)
+ 		goto out_free;
+ 
+-	return &etnaviv_domain->domain;
++	return &etnaviv_domain->base;
+ 
+ out_free:
+ 	vfree(etnaviv_domain);
+
+commit 635e5d204d1975dbeda255b95b2a3d38caff404d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:37:39 2018 +0800
+
+    v4.11-rc1
+
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+index 7e9c4d2..cbe447a 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+@@ -21,6 +21,7 @@
+ #include <linux/dma-mapping.h>
+ #include <linux/bitops.h>
+ 
++#include "etnaviv_cmdbuf.h"
+ #include "etnaviv_gpu.h"
+ #include "etnaviv_mmu.h"
+ #include "etnaviv_iommu.h"
+@@ -229,7 +230,7 @@ static void etnaviv_iommuv2_dump(struct iommu_domain *domain, void *buf)
+ 			memcpy(buf, etnaviv_domain->stlb_cpu[i], SZ_4K);
+ }
+ 
+-static struct etnaviv_iommu_ops etnaviv_iommu_ops = {
++static const struct etnaviv_iommu_ops etnaviv_iommu_ops = {
+ 	.ops = {
+ 		.domain_free = etnaviv_iommuv2_domain_free,
+ 		.map = etnaviv_iommuv2_map,
+@@ -254,7 +255,8 @@ void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
+ 	prefetch = etnaviv_buffer_config_mmuv2(gpu,
+ 				(u32)etnaviv_domain->mtlb_dma,
+ 				(u32)etnaviv_domain->bad_page_dma);
+-	etnaviv_gpu_start_fe(gpu, gpu->buffer->paddr, prefetch);
++	etnaviv_gpu_start_fe(gpu, (u32)etnaviv_cmdbuf_get_pa(gpu->buffer),
++			     prefetch);
+ 	etnaviv_gpu_wait_idle(gpu, 100);
+ 
+ 	gpu_write(gpu, VIVS_MMUv2_CONTROL, VIVS_MMUv2_CONTROL_ENABLE);
+
+commit 3453c0f2b4c29e967eacf083d1856de951928798
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:37:03 2018 +0800
+
+    v4.9-rc1
+
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+index fbb4aed..7e9c4d2 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (C) 2014 Christian Gmeiner <christian.gmeiner@gmail.com>
++ * Copyright (C) 2016 Etnaviv Project
+   *
+  * This program is free software; you can redistribute it and/or modify it
+  * under the terms of the GNU General Public License version 2 as published by
+@@ -22,12 +22,267 @@
+ #include <linux/bitops.h>
+ 
+ #include "etnaviv_gpu.h"
++#include "etnaviv_mmu.h"
+ #include "etnaviv_iommu.h"
++#include "state.xml.h"
+ #include "state_hi.xml.h"
+ 
++#define MMUv2_PTE_PRESENT		BIT(0)
++#define MMUv2_PTE_EXCEPTION		BIT(1)
++#define MMUv2_PTE_WRITEABLE		BIT(2)
+ 
+-struct iommu_domain *etnaviv_iommu_v2_domain_alloc(struct etnaviv_gpu *gpu)
++#define MMUv2_MTLB_MASK			0xffc00000
++#define MMUv2_MTLB_SHIFT		22
++#define MMUv2_STLB_MASK			0x003ff000
++#define MMUv2_STLB_SHIFT		12
++
++#define MMUv2_MAX_STLB_ENTRIES		1024
++
++struct etnaviv_iommuv2_domain {
++	struct iommu_domain domain;
++	struct device *dev;
++	void *bad_page_cpu;
++	dma_addr_t bad_page_dma;
++	/* M(aster) TLB aka first level pagetable */
++	u32 *mtlb_cpu;
++	dma_addr_t mtlb_dma;
++	/* S(lave) TLB aka second level pagetable */
++	u32 *stlb_cpu[1024];
++	dma_addr_t stlb_dma[1024];
++};
++
++static struct etnaviv_iommuv2_domain *to_etnaviv_domain(struct iommu_domain *domain)
++{
++	return container_of(domain, struct etnaviv_iommuv2_domain, domain);
++}
++
++static int etnaviv_iommuv2_map(struct iommu_domain *domain, unsigned long iova,
++	   phys_addr_t paddr, size_t size, int prot)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	int mtlb_entry, stlb_entry;
++	u32 entry = (u32)paddr | MMUv2_PTE_PRESENT;
++
++	if (size != SZ_4K)
++		return -EINVAL;
++
++	if (prot & IOMMU_WRITE)
++		entry |= MMUv2_PTE_WRITEABLE;
++
++	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
++	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
++
++	etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] = entry;
++
++	return 0;
++}
++
++static size_t etnaviv_iommuv2_unmap(struct iommu_domain *domain,
++	unsigned long iova, size_t size)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	int mtlb_entry, stlb_entry;
++
++	if (size != SZ_4K)
++		return -EINVAL;
++
++	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
++	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
++
++	etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] = MMUv2_PTE_EXCEPTION;
++
++	return SZ_4K;
++}
++
++static phys_addr_t etnaviv_iommuv2_iova_to_phys(struct iommu_domain *domain,
++	dma_addr_t iova)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	int mtlb_entry, stlb_entry;
++
++	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
++	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
++
++	return etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] & ~(SZ_4K - 1);
++}
++
++static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
++{
++	u32 *p;
++	int ret, i, j;
++
++	/* allocate scratch page */
++	etnaviv_domain->bad_page_cpu = dma_alloc_coherent(etnaviv_domain->dev,
++						  SZ_4K,
++						  &etnaviv_domain->bad_page_dma,
++						  GFP_KERNEL);
++	if (!etnaviv_domain->bad_page_cpu) {
++		ret = -ENOMEM;
++		goto fail_mem;
++	}
++	p = etnaviv_domain->bad_page_cpu;
++	for (i = 0; i < SZ_4K / 4; i++)
++		*p++ = 0xdead55aa;
++
++	etnaviv_domain->mtlb_cpu = dma_alloc_coherent(etnaviv_domain->dev,
++						  SZ_4K,
++						  &etnaviv_domain->mtlb_dma,
++						  GFP_KERNEL);
++	if (!etnaviv_domain->mtlb_cpu) {
++		ret = -ENOMEM;
++		goto fail_mem;
++	}
++
++	/* pre-populate STLB pages (may want to switch to on-demand later) */
++	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
++		etnaviv_domain->stlb_cpu[i] =
++				dma_alloc_coherent(etnaviv_domain->dev,
++						   SZ_4K,
++						   &etnaviv_domain->stlb_dma[i],
++						   GFP_KERNEL);
++		if (!etnaviv_domain->stlb_cpu[i]) {
++			ret = -ENOMEM;
++			goto fail_mem;
++		}
++		p = etnaviv_domain->stlb_cpu[i];
++		for (j = 0; j < SZ_4K / 4; j++)
++			*p++ = MMUv2_PTE_EXCEPTION;
++
++		etnaviv_domain->mtlb_cpu[i] = etnaviv_domain->stlb_dma[i] |
++					      MMUv2_PTE_PRESENT;
++	}
++
++	return 0;
++
++fail_mem:
++	if (etnaviv_domain->bad_page_cpu)
++		dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++				  etnaviv_domain->bad_page_cpu,
++				  etnaviv_domain->bad_page_dma);
++
++	if (etnaviv_domain->mtlb_cpu)
++		dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++				  etnaviv_domain->mtlb_cpu,
++				  etnaviv_domain->mtlb_dma);
++
++	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
++		if (etnaviv_domain->stlb_cpu[i])
++			dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++					  etnaviv_domain->stlb_cpu[i],
++					  etnaviv_domain->stlb_dma[i]);
++	}
++
++	return ret;
++}
++
++static void etnaviv_iommuv2_domain_free(struct iommu_domain *domain)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	int i;
++
++	dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++			  etnaviv_domain->bad_page_cpu,
++			  etnaviv_domain->bad_page_dma);
++
++	dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++			  etnaviv_domain->mtlb_cpu,
++			  etnaviv_domain->mtlb_dma);
++
++	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
++		if (etnaviv_domain->stlb_cpu[i])
++			dma_free_coherent(etnaviv_domain->dev, SZ_4K,
++					  etnaviv_domain->stlb_cpu[i],
++					  etnaviv_domain->stlb_dma[i]);
++	}
++
++	vfree(etnaviv_domain);
++}
++
++static size_t etnaviv_iommuv2_dump_size(struct iommu_domain *domain)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	size_t dump_size = SZ_4K;
++	int i;
++
++	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++)
++		if (etnaviv_domain->mtlb_cpu[i] & MMUv2_PTE_PRESENT)
++			dump_size += SZ_4K;
++
++	return dump_size;
++}
++
++static void etnaviv_iommuv2_dump(struct iommu_domain *domain, void *buf)
+ {
+-	/* TODO */
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	int i;
++
++	memcpy(buf, etnaviv_domain->mtlb_cpu, SZ_4K);
++	buf += SZ_4K;
++	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++, buf += SZ_4K)
++		if (etnaviv_domain->mtlb_cpu[i] & MMUv2_PTE_PRESENT)
++			memcpy(buf, etnaviv_domain->stlb_cpu[i], SZ_4K);
++}
++
++static struct etnaviv_iommu_ops etnaviv_iommu_ops = {
++	.ops = {
++		.domain_free = etnaviv_iommuv2_domain_free,
++		.map = etnaviv_iommuv2_map,
++		.unmap = etnaviv_iommuv2_unmap,
++		.iova_to_phys = etnaviv_iommuv2_iova_to_phys,
++		.pgsize_bitmap = SZ_4K,
++	},
++	.dump_size = etnaviv_iommuv2_dump_size,
++	.dump = etnaviv_iommuv2_dump,
++};
++
++void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(gpu->mmu->domain);
++	u16 prefetch;
++
++	/* If the MMU is already enabled the state is still there. */
++	if (gpu_read(gpu, VIVS_MMUv2_CONTROL) & VIVS_MMUv2_CONTROL_ENABLE)
++		return;
++
++	prefetch = etnaviv_buffer_config_mmuv2(gpu,
++				(u32)etnaviv_domain->mtlb_dma,
++				(u32)etnaviv_domain->bad_page_dma);
++	etnaviv_gpu_start_fe(gpu, gpu->buffer->paddr, prefetch);
++	etnaviv_gpu_wait_idle(gpu, 100);
++
++	gpu_write(gpu, VIVS_MMUv2_CONTROL, VIVS_MMUv2_CONTROL_ENABLE);
++}
++struct iommu_domain *etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain;
++	int ret;
++
++	etnaviv_domain = vzalloc(sizeof(*etnaviv_domain));
++	if (!etnaviv_domain)
++		return NULL;
++
++	etnaviv_domain->dev = gpu->dev;
++
++	etnaviv_domain->domain.type = __IOMMU_DOMAIN_PAGING;
++	etnaviv_domain->domain.ops = &etnaviv_iommu_ops.ops;
++	etnaviv_domain->domain.pgsize_bitmap = SZ_4K;
++	etnaviv_domain->domain.geometry.aperture_start = 0;
++	etnaviv_domain->domain.geometry.aperture_end = ~0UL & ~(SZ_4K - 1);
++
++	ret = etnaviv_iommuv2_init(etnaviv_domain);
++	if (ret)
++		goto out_free;
++
++	return &etnaviv_domain->domain;
++
++out_free:
++	vfree(etnaviv_domain);
+ 	return NULL;
+ }
+
+commit e375aca841f3910386402b9c174b862a03858f5a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:35:58 2018 +0800
+
+    v4.5-rc1
+
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+new file mode 100644
+index 0000000..fbb4aed
+--- /dev/null
++++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+@@ -0,0 +1,33 @@
++/*
++ * Copyright (C) 2014 Christian Gmeiner <christian.gmeiner@gmail.com>
++  *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 as published by
++ * the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along with
++ * this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include <linux/iommu.h>
++#include <linux/platform_device.h>
++#include <linux/sizes.h>
++#include <linux/slab.h>
++#include <linux/dma-mapping.h>
++#include <linux/bitops.h>
++
++#include "etnaviv_gpu.h"
++#include "etnaviv_iommu.h"
++#include "state_hi.xml.h"
++
++
++struct iommu_domain *etnaviv_iommu_v2_domain_alloc(struct etnaviv_gpu *gpu)
++{
++	/* TODO */
++	return NULL;
++}
+
+commit 20a1b3557dc27b14b9310f9b7904095ae83dfa93
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:24:30 2018 +0800
+
+    v2.6.12
+
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+deleted file mode 100644
+index 71fbc1f..0000000
+--- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
++++ /dev/null
+@@ -1,337 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0
+-/*
+- * Copyright (C) 2016-2018 Etnaviv Project
+- */
+-
+-#include <linux/platform_device.h>
+-#include <linux/sizes.h>
+-#include <linux/slab.h>
+-#include <linux/dma-mapping.h>
+-#include <linux/bitops.h>
+-
+-#include "etnaviv_cmdbuf.h"
+-#include "etnaviv_gpu.h"
+-#include "etnaviv_mmu.h"
+-#include "etnaviv_iommu.h"
+-#include "state.xml.h"
+-#include "state_hi.xml.h"
+-
+-#define MMUv2_PTE_PRESENT		BIT(0)
+-#define MMUv2_PTE_EXCEPTION		BIT(1)
+-#define MMUv2_PTE_WRITEABLE		BIT(2)
+-
+-#define MMUv2_MTLB_MASK			0xffc00000
+-#define MMUv2_MTLB_SHIFT		22
+-#define MMUv2_STLB_MASK			0x003ff000
+-#define MMUv2_STLB_SHIFT		12
+-
+-#define MMUv2_MAX_STLB_ENTRIES		1024
+-
+-struct etnaviv_iommuv2_domain {
+-	struct etnaviv_iommu_domain base;
+-	/* P(age) T(able) A(rray) */
+-	u64 *pta_cpu;
+-	dma_addr_t pta_dma;
+-	/* M(aster) TLB aka first level pagetable */
+-	u32 *mtlb_cpu;
+-	dma_addr_t mtlb_dma;
+-	/* S(lave) TLB aka second level pagetable */
+-	u32 *stlb_cpu[MMUv2_MAX_STLB_ENTRIES];
+-	dma_addr_t stlb_dma[MMUv2_MAX_STLB_ENTRIES];
+-};
+-
+-static struct etnaviv_iommuv2_domain *
+-to_etnaviv_domain(struct etnaviv_iommu_domain *domain)
+-{
+-	return container_of(domain, struct etnaviv_iommuv2_domain, base);
+-}
+-
+-static int
+-etnaviv_iommuv2_ensure_stlb(struct etnaviv_iommuv2_domain *etnaviv_domain,
+-			    int stlb)
+-{
+-	if (etnaviv_domain->stlb_cpu[stlb])
+-		return 0;
+-
+-	etnaviv_domain->stlb_cpu[stlb] =
+-			dma_alloc_wc(etnaviv_domain->base.dev, SZ_4K,
+-				     &etnaviv_domain->stlb_dma[stlb],
+-				     GFP_KERNEL);
+-
+-	if (!etnaviv_domain->stlb_cpu[stlb])
+-		return -ENOMEM;
+-
+-	memset32(etnaviv_domain->stlb_cpu[stlb], MMUv2_PTE_EXCEPTION,
+-		 SZ_4K / sizeof(u32));
+-
+-	etnaviv_domain->mtlb_cpu[stlb] = etnaviv_domain->stlb_dma[stlb] |
+-						      MMUv2_PTE_PRESENT;
+-	return 0;
+-}
+-
+-static int etnaviv_iommuv2_map(struct etnaviv_iommu_domain *domain,
+-			       unsigned long iova, phys_addr_t paddr,
+-			       size_t size, int prot)
+-{
+-	struct etnaviv_iommuv2_domain *etnaviv_domain =
+-			to_etnaviv_domain(domain);
+-	int mtlb_entry, stlb_entry, ret;
+-	u32 entry = lower_32_bits(paddr) | MMUv2_PTE_PRESENT;
+-
+-	if (size != SZ_4K)
+-		return -EINVAL;
+-
+-	if (IS_ENABLED(CONFIG_PHYS_ADDR_T_64BIT))
+-		entry |= (upper_32_bits(paddr) & 0xff) << 4;
+-
+-	if (prot & ETNAVIV_PROT_WRITE)
+-		entry |= MMUv2_PTE_WRITEABLE;
+-
+-	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
+-	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
+-
+-	ret = etnaviv_iommuv2_ensure_stlb(etnaviv_domain, mtlb_entry);
+-	if (ret)
+-		return ret;
+-
+-	etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] = entry;
+-
+-	return 0;
+-}
+-
+-static size_t etnaviv_iommuv2_unmap(struct etnaviv_iommu_domain *domain,
+-				    unsigned long iova, size_t size)
+-{
+-	struct etnaviv_iommuv2_domain *etnaviv_domain =
+-			to_etnaviv_domain(domain);
+-	int mtlb_entry, stlb_entry;
+-
+-	if (size != SZ_4K)
+-		return -EINVAL;
+-
+-	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
+-	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
+-
+-	etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] = MMUv2_PTE_EXCEPTION;
+-
+-	return SZ_4K;
+-}
+-
+-static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
+-{
+-	u32 *p;
+-	int ret, i;
+-
+-	/* allocate scratch page */
+-	etnaviv_domain->base.bad_page_cpu =
+-			dma_alloc_wc(etnaviv_domain->base.dev, SZ_4K,
+-				     &etnaviv_domain->base.bad_page_dma,
+-				     GFP_KERNEL);
+-	if (!etnaviv_domain->base.bad_page_cpu) {
+-		ret = -ENOMEM;
+-		goto fail_mem;
+-	}
+-	p = etnaviv_domain->base.bad_page_cpu;
+-	for (i = 0; i < SZ_4K / 4; i++)
+-		*p++ = 0xdead55aa;
+-
+-	etnaviv_domain->pta_cpu = dma_alloc_wc(etnaviv_domain->base.dev,
+-					       SZ_4K, &etnaviv_domain->pta_dma,
+-					       GFP_KERNEL);
+-	if (!etnaviv_domain->pta_cpu) {
+-		ret = -ENOMEM;
+-		goto fail_mem;
+-	}
+-
+-	etnaviv_domain->mtlb_cpu = dma_alloc_wc(etnaviv_domain->base.dev,
+-						SZ_4K, &etnaviv_domain->mtlb_dma,
+-						GFP_KERNEL);
+-	if (!etnaviv_domain->mtlb_cpu) {
+-		ret = -ENOMEM;
+-		goto fail_mem;
+-	}
+-
+-	memset32(etnaviv_domain->mtlb_cpu, MMUv2_PTE_EXCEPTION,
+-		 MMUv2_MAX_STLB_ENTRIES);
+-
+-	return 0;
+-
+-fail_mem:
+-	if (etnaviv_domain->base.bad_page_cpu)
+-		dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
+-			    etnaviv_domain->base.bad_page_cpu,
+-			    etnaviv_domain->base.bad_page_dma);
+-
+-	if (etnaviv_domain->pta_cpu)
+-		dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
+-			    etnaviv_domain->pta_cpu, etnaviv_domain->pta_dma);
+-
+-	if (etnaviv_domain->mtlb_cpu)
+-		dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
+-			    etnaviv_domain->mtlb_cpu, etnaviv_domain->mtlb_dma);
+-
+-	return ret;
+-}
+-
+-static void etnaviv_iommuv2_domain_free(struct etnaviv_iommu_domain *domain)
+-{
+-	struct etnaviv_iommuv2_domain *etnaviv_domain =
+-			to_etnaviv_domain(domain);
+-	int i;
+-
+-	dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
+-		    etnaviv_domain->base.bad_page_cpu,
+-		    etnaviv_domain->base.bad_page_dma);
+-
+-	dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
+-		    etnaviv_domain->pta_cpu, etnaviv_domain->pta_dma);
+-
+-	dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
+-		    etnaviv_domain->mtlb_cpu, etnaviv_domain->mtlb_dma);
+-
+-	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
+-		if (etnaviv_domain->stlb_cpu[i])
+-			dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
+-				    etnaviv_domain->stlb_cpu[i],
+-				    etnaviv_domain->stlb_dma[i]);
+-	}
+-
+-	vfree(etnaviv_domain);
+-}
+-
+-static size_t etnaviv_iommuv2_dump_size(struct etnaviv_iommu_domain *domain)
+-{
+-	struct etnaviv_iommuv2_domain *etnaviv_domain =
+-			to_etnaviv_domain(domain);
+-	size_t dump_size = SZ_4K;
+-	int i;
+-
+-	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++)
+-		if (etnaviv_domain->mtlb_cpu[i] & MMUv2_PTE_PRESENT)
+-			dump_size += SZ_4K;
+-
+-	return dump_size;
+-}
+-
+-static void etnaviv_iommuv2_dump(struct etnaviv_iommu_domain *domain, void *buf)
+-{
+-	struct etnaviv_iommuv2_domain *etnaviv_domain =
+-			to_etnaviv_domain(domain);
+-	int i;
+-
+-	memcpy(buf, etnaviv_domain->mtlb_cpu, SZ_4K);
+-	buf += SZ_4K;
+-	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++, buf += SZ_4K)
+-		if (etnaviv_domain->mtlb_cpu[i] & MMUv2_PTE_PRESENT)
+-			memcpy(buf, etnaviv_domain->stlb_cpu[i], SZ_4K);
+-}
+-
+-static void etnaviv_iommuv2_restore_nonsec(struct etnaviv_gpu *gpu)
+-{
+-	struct etnaviv_iommuv2_domain *etnaviv_domain =
+-			to_etnaviv_domain(gpu->mmu->domain);
+-	u16 prefetch;
+-
+-	/* If the MMU is already enabled the state is still there. */
+-	if (gpu_read(gpu, VIVS_MMUv2_CONTROL) & VIVS_MMUv2_CONTROL_ENABLE)
+-		return;
+-
+-	prefetch = etnaviv_buffer_config_mmuv2(gpu,
+-				(u32)etnaviv_domain->mtlb_dma,
+-				(u32)etnaviv_domain->base.bad_page_dma);
+-	etnaviv_gpu_start_fe(gpu, (u32)etnaviv_cmdbuf_get_pa(&gpu->buffer),
+-			     prefetch);
+-	etnaviv_gpu_wait_idle(gpu, 100);
+-
+-	gpu_write(gpu, VIVS_MMUv2_CONTROL, VIVS_MMUv2_CONTROL_ENABLE);
+-}
+-
+-static void etnaviv_iommuv2_restore_sec(struct etnaviv_gpu *gpu)
+-{
+-	struct etnaviv_iommuv2_domain *etnaviv_domain =
+-				to_etnaviv_domain(gpu->mmu->domain);
+-	u16 prefetch;
+-
+-	/* If the MMU is already enabled the state is still there. */
+-	if (gpu_read(gpu, VIVS_MMUv2_SEC_CONTROL) & VIVS_MMUv2_SEC_CONTROL_ENABLE)
+-		return;
+-
+-	gpu_write(gpu, VIVS_MMUv2_PTA_ADDRESS_LOW,
+-		  lower_32_bits(etnaviv_domain->pta_dma));
+-	gpu_write(gpu, VIVS_MMUv2_PTA_ADDRESS_HIGH,
+-		  upper_32_bits(etnaviv_domain->pta_dma));
+-	gpu_write(gpu, VIVS_MMUv2_PTA_CONTROL, VIVS_MMUv2_PTA_CONTROL_ENABLE);
+-
+-	gpu_write(gpu, VIVS_MMUv2_NONSEC_SAFE_ADDR_LOW,
+-		  lower_32_bits(etnaviv_domain->base.bad_page_dma));
+-	gpu_write(gpu, VIVS_MMUv2_SEC_SAFE_ADDR_LOW,
+-		  lower_32_bits(etnaviv_domain->base.bad_page_dma));
+-	gpu_write(gpu, VIVS_MMUv2_SAFE_ADDRESS_CONFIG,
+-		  VIVS_MMUv2_SAFE_ADDRESS_CONFIG_NON_SEC_SAFE_ADDR_HIGH(
+-		  upper_32_bits(etnaviv_domain->base.bad_page_dma)) |
+-		  VIVS_MMUv2_SAFE_ADDRESS_CONFIG_SEC_SAFE_ADDR_HIGH(
+-		  upper_32_bits(etnaviv_domain->base.bad_page_dma)));
+-
+-	etnaviv_domain->pta_cpu[0] = etnaviv_domain->mtlb_dma |
+-				     VIVS_MMUv2_CONFIGURATION_MODE_MODE4_K;
+-
+-	/* trigger a PTA load through the FE */
+-	prefetch = etnaviv_buffer_config_pta(gpu);
+-	etnaviv_gpu_start_fe(gpu, (u32)etnaviv_cmdbuf_get_pa(&gpu->buffer),
+-			     prefetch);
+-	etnaviv_gpu_wait_idle(gpu, 100);
+-
+-	gpu_write(gpu, VIVS_MMUv2_SEC_CONTROL, VIVS_MMUv2_SEC_CONTROL_ENABLE);
+-}
+-
+-void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
+-{
+-	switch (gpu->sec_mode) {
+-	case ETNA_SEC_NONE:
+-		etnaviv_iommuv2_restore_nonsec(gpu);
+-		break;
+-	case ETNA_SEC_KERNEL:
+-		etnaviv_iommuv2_restore_sec(gpu);
+-		break;
+-	default:
+-		WARN(1, "unhandled GPU security mode\n");
+-		break;
+-	}
+-}
+-
+-static const struct etnaviv_iommu_domain_ops etnaviv_iommuv2_ops = {
+-	.free = etnaviv_iommuv2_domain_free,
+-	.map = etnaviv_iommuv2_map,
+-	.unmap = etnaviv_iommuv2_unmap,
+-	.dump_size = etnaviv_iommuv2_dump_size,
+-	.dump = etnaviv_iommuv2_dump,
+-};
+-
+-struct etnaviv_iommu_domain *
+-etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu)
+-{
+-	struct etnaviv_iommuv2_domain *etnaviv_domain;
+-	struct etnaviv_iommu_domain *domain;
+-	int ret;
+-
+-	etnaviv_domain = vzalloc(sizeof(*etnaviv_domain));
+-	if (!etnaviv_domain)
+-		return NULL;
+-
+-	domain = &etnaviv_domain->base;
+-
+-	domain->dev = gpu->dev;
+-	domain->base = 0;
+-	domain->size = (u64)SZ_1G * 4;
+-	domain->ops = &etnaviv_iommuv2_ops;
+-
+-	ret = etnaviv_iommuv2_init(etnaviv_domain);
+-	if (ret)
+-		goto out_free;
+-
+-	return &etnaviv_domain->base;
+-
+-out_free:
+-	vfree(etnaviv_domain);
+-	return NULL;
+-}
+
+commit be99ba8937d6014a2c5fbcf6c5c2792a45f0fde2
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:24:21 2018 +0800
+
+    v2.6.11
+
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+new file mode 100644
+index 0000000..71fbc1f
+--- /dev/null
++++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+@@ -0,0 +1,337 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (C) 2016-2018 Etnaviv Project
++ */
++
++#include <linux/platform_device.h>
++#include <linux/sizes.h>
++#include <linux/slab.h>
++#include <linux/dma-mapping.h>
++#include <linux/bitops.h>
++
++#include "etnaviv_cmdbuf.h"
++#include "etnaviv_gpu.h"
++#include "etnaviv_mmu.h"
++#include "etnaviv_iommu.h"
++#include "state.xml.h"
++#include "state_hi.xml.h"
++
++#define MMUv2_PTE_PRESENT		BIT(0)
++#define MMUv2_PTE_EXCEPTION		BIT(1)
++#define MMUv2_PTE_WRITEABLE		BIT(2)
++
++#define MMUv2_MTLB_MASK			0xffc00000
++#define MMUv2_MTLB_SHIFT		22
++#define MMUv2_STLB_MASK			0x003ff000
++#define MMUv2_STLB_SHIFT		12
++
++#define MMUv2_MAX_STLB_ENTRIES		1024
++
++struct etnaviv_iommuv2_domain {
++	struct etnaviv_iommu_domain base;
++	/* P(age) T(able) A(rray) */
++	u64 *pta_cpu;
++	dma_addr_t pta_dma;
++	/* M(aster) TLB aka first level pagetable */
++	u32 *mtlb_cpu;
++	dma_addr_t mtlb_dma;
++	/* S(lave) TLB aka second level pagetable */
++	u32 *stlb_cpu[MMUv2_MAX_STLB_ENTRIES];
++	dma_addr_t stlb_dma[MMUv2_MAX_STLB_ENTRIES];
++};
++
++static struct etnaviv_iommuv2_domain *
++to_etnaviv_domain(struct etnaviv_iommu_domain *domain)
++{
++	return container_of(domain, struct etnaviv_iommuv2_domain, base);
++}
++
++static int
++etnaviv_iommuv2_ensure_stlb(struct etnaviv_iommuv2_domain *etnaviv_domain,
++			    int stlb)
++{
++	if (etnaviv_domain->stlb_cpu[stlb])
++		return 0;
++
++	etnaviv_domain->stlb_cpu[stlb] =
++			dma_alloc_wc(etnaviv_domain->base.dev, SZ_4K,
++				     &etnaviv_domain->stlb_dma[stlb],
++				     GFP_KERNEL);
++
++	if (!etnaviv_domain->stlb_cpu[stlb])
++		return -ENOMEM;
++
++	memset32(etnaviv_domain->stlb_cpu[stlb], MMUv2_PTE_EXCEPTION,
++		 SZ_4K / sizeof(u32));
++
++	etnaviv_domain->mtlb_cpu[stlb] = etnaviv_domain->stlb_dma[stlb] |
++						      MMUv2_PTE_PRESENT;
++	return 0;
++}
++
++static int etnaviv_iommuv2_map(struct etnaviv_iommu_domain *domain,
++			       unsigned long iova, phys_addr_t paddr,
++			       size_t size, int prot)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	int mtlb_entry, stlb_entry, ret;
++	u32 entry = lower_32_bits(paddr) | MMUv2_PTE_PRESENT;
++
++	if (size != SZ_4K)
++		return -EINVAL;
++
++	if (IS_ENABLED(CONFIG_PHYS_ADDR_T_64BIT))
++		entry |= (upper_32_bits(paddr) & 0xff) << 4;
++
++	if (prot & ETNAVIV_PROT_WRITE)
++		entry |= MMUv2_PTE_WRITEABLE;
++
++	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
++	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
++
++	ret = etnaviv_iommuv2_ensure_stlb(etnaviv_domain, mtlb_entry);
++	if (ret)
++		return ret;
++
++	etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] = entry;
++
++	return 0;
++}
++
++static size_t etnaviv_iommuv2_unmap(struct etnaviv_iommu_domain *domain,
++				    unsigned long iova, size_t size)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	int mtlb_entry, stlb_entry;
++
++	if (size != SZ_4K)
++		return -EINVAL;
++
++	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
++	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
++
++	etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] = MMUv2_PTE_EXCEPTION;
++
++	return SZ_4K;
++}
++
++static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
++{
++	u32 *p;
++	int ret, i;
++
++	/* allocate scratch page */
++	etnaviv_domain->base.bad_page_cpu =
++			dma_alloc_wc(etnaviv_domain->base.dev, SZ_4K,
++				     &etnaviv_domain->base.bad_page_dma,
++				     GFP_KERNEL);
++	if (!etnaviv_domain->base.bad_page_cpu) {
++		ret = -ENOMEM;
++		goto fail_mem;
++	}
++	p = etnaviv_domain->base.bad_page_cpu;
++	for (i = 0; i < SZ_4K / 4; i++)
++		*p++ = 0xdead55aa;
++
++	etnaviv_domain->pta_cpu = dma_alloc_wc(etnaviv_domain->base.dev,
++					       SZ_4K, &etnaviv_domain->pta_dma,
++					       GFP_KERNEL);
++	if (!etnaviv_domain->pta_cpu) {
++		ret = -ENOMEM;
++		goto fail_mem;
++	}
++
++	etnaviv_domain->mtlb_cpu = dma_alloc_wc(etnaviv_domain->base.dev,
++						SZ_4K, &etnaviv_domain->mtlb_dma,
++						GFP_KERNEL);
++	if (!etnaviv_domain->mtlb_cpu) {
++		ret = -ENOMEM;
++		goto fail_mem;
++	}
++
++	memset32(etnaviv_domain->mtlb_cpu, MMUv2_PTE_EXCEPTION,
++		 MMUv2_MAX_STLB_ENTRIES);
++
++	return 0;
++
++fail_mem:
++	if (etnaviv_domain->base.bad_page_cpu)
++		dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++			    etnaviv_domain->base.bad_page_cpu,
++			    etnaviv_domain->base.bad_page_dma);
++
++	if (etnaviv_domain->pta_cpu)
++		dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++			    etnaviv_domain->pta_cpu, etnaviv_domain->pta_dma);
++
++	if (etnaviv_domain->mtlb_cpu)
++		dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++			    etnaviv_domain->mtlb_cpu, etnaviv_domain->mtlb_dma);
++
++	return ret;
++}
++
++static void etnaviv_iommuv2_domain_free(struct etnaviv_iommu_domain *domain)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	int i;
++
++	dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++		    etnaviv_domain->base.bad_page_cpu,
++		    etnaviv_domain->base.bad_page_dma);
++
++	dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++		    etnaviv_domain->pta_cpu, etnaviv_domain->pta_dma);
++
++	dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++		    etnaviv_domain->mtlb_cpu, etnaviv_domain->mtlb_dma);
++
++	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
++		if (etnaviv_domain->stlb_cpu[i])
++			dma_free_wc(etnaviv_domain->base.dev, SZ_4K,
++				    etnaviv_domain->stlb_cpu[i],
++				    etnaviv_domain->stlb_dma[i]);
++	}
++
++	vfree(etnaviv_domain);
++}
++
++static size_t etnaviv_iommuv2_dump_size(struct etnaviv_iommu_domain *domain)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	size_t dump_size = SZ_4K;
++	int i;
++
++	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++)
++		if (etnaviv_domain->mtlb_cpu[i] & MMUv2_PTE_PRESENT)
++			dump_size += SZ_4K;
++
++	return dump_size;
++}
++
++static void etnaviv_iommuv2_dump(struct etnaviv_iommu_domain *domain, void *buf)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(domain);
++	int i;
++
++	memcpy(buf, etnaviv_domain->mtlb_cpu, SZ_4K);
++	buf += SZ_4K;
++	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++, buf += SZ_4K)
++		if (etnaviv_domain->mtlb_cpu[i] & MMUv2_PTE_PRESENT)
++			memcpy(buf, etnaviv_domain->stlb_cpu[i], SZ_4K);
++}
++
++static void etnaviv_iommuv2_restore_nonsec(struct etnaviv_gpu *gpu)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++			to_etnaviv_domain(gpu->mmu->domain);
++	u16 prefetch;
++
++	/* If the MMU is already enabled the state is still there. */
++	if (gpu_read(gpu, VIVS_MMUv2_CONTROL) & VIVS_MMUv2_CONTROL_ENABLE)
++		return;
++
++	prefetch = etnaviv_buffer_config_mmuv2(gpu,
++				(u32)etnaviv_domain->mtlb_dma,
++				(u32)etnaviv_domain->base.bad_page_dma);
++	etnaviv_gpu_start_fe(gpu, (u32)etnaviv_cmdbuf_get_pa(&gpu->buffer),
++			     prefetch);
++	etnaviv_gpu_wait_idle(gpu, 100);
++
++	gpu_write(gpu, VIVS_MMUv2_CONTROL, VIVS_MMUv2_CONTROL_ENABLE);
++}
++
++static void etnaviv_iommuv2_restore_sec(struct etnaviv_gpu *gpu)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain =
++				to_etnaviv_domain(gpu->mmu->domain);
++	u16 prefetch;
++
++	/* If the MMU is already enabled the state is still there. */
++	if (gpu_read(gpu, VIVS_MMUv2_SEC_CONTROL) & VIVS_MMUv2_SEC_CONTROL_ENABLE)
++		return;
++
++	gpu_write(gpu, VIVS_MMUv2_PTA_ADDRESS_LOW,
++		  lower_32_bits(etnaviv_domain->pta_dma));
++	gpu_write(gpu, VIVS_MMUv2_PTA_ADDRESS_HIGH,
++		  upper_32_bits(etnaviv_domain->pta_dma));
++	gpu_write(gpu, VIVS_MMUv2_PTA_CONTROL, VIVS_MMUv2_PTA_CONTROL_ENABLE);
++
++	gpu_write(gpu, VIVS_MMUv2_NONSEC_SAFE_ADDR_LOW,
++		  lower_32_bits(etnaviv_domain->base.bad_page_dma));
++	gpu_write(gpu, VIVS_MMUv2_SEC_SAFE_ADDR_LOW,
++		  lower_32_bits(etnaviv_domain->base.bad_page_dma));
++	gpu_write(gpu, VIVS_MMUv2_SAFE_ADDRESS_CONFIG,
++		  VIVS_MMUv2_SAFE_ADDRESS_CONFIG_NON_SEC_SAFE_ADDR_HIGH(
++		  upper_32_bits(etnaviv_domain->base.bad_page_dma)) |
++		  VIVS_MMUv2_SAFE_ADDRESS_CONFIG_SEC_SAFE_ADDR_HIGH(
++		  upper_32_bits(etnaviv_domain->base.bad_page_dma)));
++
++	etnaviv_domain->pta_cpu[0] = etnaviv_domain->mtlb_dma |
++				     VIVS_MMUv2_CONFIGURATION_MODE_MODE4_K;
++
++	/* trigger a PTA load through the FE */
++	prefetch = etnaviv_buffer_config_pta(gpu);
++	etnaviv_gpu_start_fe(gpu, (u32)etnaviv_cmdbuf_get_pa(&gpu->buffer),
++			     prefetch);
++	etnaviv_gpu_wait_idle(gpu, 100);
++
++	gpu_write(gpu, VIVS_MMUv2_SEC_CONTROL, VIVS_MMUv2_SEC_CONTROL_ENABLE);
++}
++
++void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
++{
++	switch (gpu->sec_mode) {
++	case ETNA_SEC_NONE:
++		etnaviv_iommuv2_restore_nonsec(gpu);
++		break;
++	case ETNA_SEC_KERNEL:
++		etnaviv_iommuv2_restore_sec(gpu);
++		break;
++	default:
++		WARN(1, "unhandled GPU security mode\n");
++		break;
++	}
++}
++
++static const struct etnaviv_iommu_domain_ops etnaviv_iommuv2_ops = {
++	.free = etnaviv_iommuv2_domain_free,
++	.map = etnaviv_iommuv2_map,
++	.unmap = etnaviv_iommuv2_unmap,
++	.dump_size = etnaviv_iommuv2_dump_size,
++	.dump = etnaviv_iommuv2_dump,
++};
++
++struct etnaviv_iommu_domain *
++etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu)
++{
++	struct etnaviv_iommuv2_domain *etnaviv_domain;
++	struct etnaviv_iommu_domain *domain;
++	int ret;
++
++	etnaviv_domain = vzalloc(sizeof(*etnaviv_domain));
++	if (!etnaviv_domain)
++		return NULL;
++
++	domain = &etnaviv_domain->base;
++
++	domain->dev = gpu->dev;
++	domain->base = 0;
++	domain->size = (u64)SZ_1G * 4;
++	domain->ops = &etnaviv_iommuv2_ops;
++
++	ret = etnaviv_iommuv2_init(etnaviv_domain);
++	if (ret)
++		goto out_free;
++
++	return &etnaviv_domain->base;
++
++out_free:
++	vfree(etnaviv_domain);
++	return NULL;
++}
+
+commit 4407a0c07a4e467c87453c694bc4feef681d8532
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:24:20 2018 +0800
+
+    target source code file : drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..e5642f2
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c

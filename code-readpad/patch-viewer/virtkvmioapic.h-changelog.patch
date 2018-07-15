@@ -1,0 +1,617 @@
+commit e249de7bb33f52503e61c2eded52c5758aa1e5d2
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:40:12 2018 +0800
+
+    v3.19-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+deleted file mode 100644
+index e23b706..0000000
+--- a/virt/kvm/ioapic.h
++++ /dev/null
+@@ -1,104 +0,0 @@
+-#ifndef __KVM_IO_APIC_H
+-#define __KVM_IO_APIC_H
+-
+-#include <linux/kvm_host.h>
+-
+-#include "iodev.h"
+-
+-struct kvm;
+-struct kvm_vcpu;
+-
+-#define IOAPIC_NUM_PINS  KVM_IOAPIC_NUM_PINS
+-#define IOAPIC_VERSION_ID 0x11	/* IOAPIC version */
+-#define IOAPIC_EDGE_TRIG  0
+-#define IOAPIC_LEVEL_TRIG 1
+-
+-#define IOAPIC_DEFAULT_BASE_ADDRESS  0xfec00000
+-#define IOAPIC_MEM_LENGTH            0x100
+-
+-/* Direct registers. */
+-#define IOAPIC_REG_SELECT  0x00
+-#define IOAPIC_REG_WINDOW  0x10
+-#define IOAPIC_REG_EOI     0x40	/* IA64 IOSAPIC only */
+-
+-/* Indirect registers. */
+-#define IOAPIC_REG_APIC_ID 0x00	/* x86 IOAPIC only */
+-#define IOAPIC_REG_VERSION 0x01
+-#define IOAPIC_REG_ARB_ID  0x02	/* x86 IOAPIC only */
+-
+-/*ioapic delivery mode*/
+-#define	IOAPIC_FIXED			0x0
+-#define	IOAPIC_LOWEST_PRIORITY		0x1
+-#define	IOAPIC_PMI			0x2
+-#define	IOAPIC_NMI			0x4
+-#define	IOAPIC_INIT			0x5
+-#define	IOAPIC_EXTINT			0x7
+-
+-#ifdef CONFIG_X86
+-#define RTC_GSI 8
+-#else
+-#define RTC_GSI -1U
+-#endif
+-
+-struct rtc_status {
+-	int pending_eoi;
+-	DECLARE_BITMAP(dest_map, KVM_MAX_VCPUS);
+-};
+-
+-struct kvm_ioapic {
+-	u64 base_address;
+-	u32 ioregsel;
+-	u32 id;
+-	u32 irr;
+-	u32 pad;
+-	union kvm_ioapic_redirect_entry redirtbl[IOAPIC_NUM_PINS];
+-	unsigned long irq_states[IOAPIC_NUM_PINS];
+-	struct kvm_io_device dev;
+-	struct kvm *kvm;
+-	void (*ack_notifier)(void *opaque, int irq);
+-	spinlock_t lock;
+-	DECLARE_BITMAP(handled_vectors, 256);
+-	struct rtc_status rtc_status;
+-	struct delayed_work eoi_inject;
+-	u32 irq_eoi[IOAPIC_NUM_PINS];
+-};
+-
+-#ifdef DEBUG
+-#define ASSERT(x)  							\
+-do {									\
+-	if (!(x)) {							\
+-		printk(KERN_EMERG "assertion failed %s: %d: %s\n",	\
+-		       __FILE__, __LINE__, #x);				\
+-		BUG();							\
+-	}								\
+-} while (0)
+-#else
+-#define ASSERT(x) do { } while (0)
+-#endif
+-
+-static inline struct kvm_ioapic *ioapic_irqchip(struct kvm *kvm)
+-{
+-	return kvm->arch.vioapic;
+-}
+-
+-void kvm_rtc_eoi_tracking_restore_one(struct kvm_vcpu *vcpu);
+-int kvm_apic_match_dest(struct kvm_vcpu *vcpu, struct kvm_lapic *source,
+-		int short_hand, int dest, int dest_mode);
+-int kvm_apic_compare_prio(struct kvm_vcpu *vcpu1, struct kvm_vcpu *vcpu2);
+-void kvm_ioapic_update_eoi(struct kvm_vcpu *vcpu, int vector,
+-			int trigger_mode);
+-bool kvm_ioapic_handles_vector(struct kvm *kvm, int vector);
+-int kvm_ioapic_init(struct kvm *kvm);
+-void kvm_ioapic_destroy(struct kvm *kvm);
+-int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int irq_source_id,
+-		       int level, bool line_status);
+-void kvm_ioapic_clear_all(struct kvm_ioapic *ioapic, int irq_source_id);
+-int kvm_irq_delivery_to_apic(struct kvm *kvm, struct kvm_lapic *src,
+-		struct kvm_lapic_irq *irq, unsigned long *dest_map);
+-int kvm_get_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
+-int kvm_set_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
+-void kvm_vcpu_request_scan_ioapic(struct kvm *kvm);
+-void kvm_ioapic_scan_entry(struct kvm_vcpu *vcpu, u64 *eoi_exit_bitmap,
+-			u32 *tmr);
+-
+-#endif
+
+commit 2875e2aab34676883f1f7e6a8c99428a66c843db
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:40:01 2018 +0800
+
+    v3.18-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 90d43e9..e23b706 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -59,6 +59,8 @@ struct kvm_ioapic {
+ 	spinlock_t lock;
+ 	DECLARE_BITMAP(handled_vectors, 256);
+ 	struct rtc_status rtc_status;
++	struct delayed_work eoi_inject;
++	u32 irq_eoi[IOAPIC_NUM_PINS];
+ };
+ 
+ #ifdef DEBUG
+
+commit 2e24e7cf10c32ff0eeb84c5ed5efb609d9fa11a0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:39:19 2018 +0800
+
+    v3.14-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 615d8c9..90d43e9 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -91,7 +91,6 @@ void kvm_ioapic_destroy(struct kvm *kvm);
+ int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int irq_source_id,
+ 		       int level, bool line_status);
+ void kvm_ioapic_clear_all(struct kvm_ioapic *ioapic, int irq_source_id);
+-void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
+ int kvm_irq_delivery_to_apic(struct kvm *kvm, struct kvm_lapic *src,
+ 		struct kvm_lapic_irq *irq, unsigned long *dest_map);
+ int kvm_get_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
+
+commit 248116b90bf4411aac72f54505841053f6bab144
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:38:41 2018 +0800
+
+    v3.10-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 0400a46..615d8c9 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -34,6 +34,17 @@ struct kvm_vcpu;
+ #define	IOAPIC_INIT			0x5
+ #define	IOAPIC_EXTINT			0x7
+ 
++#ifdef CONFIG_X86
++#define RTC_GSI 8
++#else
++#define RTC_GSI -1U
++#endif
++
++struct rtc_status {
++	int pending_eoi;
++	DECLARE_BITMAP(dest_map, KVM_MAX_VCPUS);
++};
++
+ struct kvm_ioapic {
+ 	u64 base_address;
+ 	u32 ioregsel;
+@@ -47,6 +58,7 @@ struct kvm_ioapic {
+ 	void (*ack_notifier)(void *opaque, int irq);
+ 	spinlock_t lock;
+ 	DECLARE_BITMAP(handled_vectors, 256);
++	struct rtc_status rtc_status;
+ };
+ 
+ #ifdef DEBUG
+@@ -67,24 +79,25 @@ static inline struct kvm_ioapic *ioapic_irqchip(struct kvm *kvm)
+ 	return kvm->arch.vioapic;
+ }
+ 
++void kvm_rtc_eoi_tracking_restore_one(struct kvm_vcpu *vcpu);
+ int kvm_apic_match_dest(struct kvm_vcpu *vcpu, struct kvm_lapic *source,
+ 		int short_hand, int dest, int dest_mode);
+ int kvm_apic_compare_prio(struct kvm_vcpu *vcpu1, struct kvm_vcpu *vcpu2);
+-void kvm_ioapic_update_eoi(struct kvm *kvm, int vector, int trigger_mode);
++void kvm_ioapic_update_eoi(struct kvm_vcpu *vcpu, int vector,
++			int trigger_mode);
+ bool kvm_ioapic_handles_vector(struct kvm *kvm, int vector);
+ int kvm_ioapic_init(struct kvm *kvm);
+ void kvm_ioapic_destroy(struct kvm *kvm);
+ int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int irq_source_id,
+-		       int level);
++		       int level, bool line_status);
+ void kvm_ioapic_clear_all(struct kvm_ioapic *ioapic, int irq_source_id);
+ void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
+ int kvm_irq_delivery_to_apic(struct kvm *kvm, struct kvm_lapic *src,
+-		struct kvm_lapic_irq *irq);
++		struct kvm_lapic_irq *irq, unsigned long *dest_map);
+ int kvm_get_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
+ int kvm_set_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
+-void kvm_ioapic_make_eoibitmap_request(struct kvm *kvm);
+-void kvm_ioapic_calculate_eoi_exitmap(struct kvm_vcpu *vcpu,
+-					u64 *eoi_exit_bitmap);
+-
++void kvm_vcpu_request_scan_ioapic(struct kvm *kvm);
++void kvm_ioapic_scan_entry(struct kvm_vcpu *vcpu, u64 *eoi_exit_bitmap,
++			u32 *tmr);
+ 
+ #endif
+
+commit d404c31af88cf203941135ffa1cab1045f23ba76
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:38:31 2018 +0800
+
+    v3.9-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index a30abfe..0400a46 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -82,5 +82,9 @@ int kvm_irq_delivery_to_apic(struct kvm *kvm, struct kvm_lapic *src,
+ 		struct kvm_lapic_irq *irq);
+ int kvm_get_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
+ int kvm_set_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
++void kvm_ioapic_make_eoibitmap_request(struct kvm *kvm);
++void kvm_ioapic_calculate_eoi_exitmap(struct kvm_vcpu *vcpu,
++					u64 *eoi_exit_bitmap);
++
+ 
+ #endif
+
+commit 1c2f0603e68f60dc0c8c6d78722bcb8f43da046b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:38:02 2018 +0800
+
+    v3.6-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 32872a0..a30abfe 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -74,7 +74,9 @@ void kvm_ioapic_update_eoi(struct kvm *kvm, int vector, int trigger_mode);
+ bool kvm_ioapic_handles_vector(struct kvm *kvm, int vector);
+ int kvm_ioapic_init(struct kvm *kvm);
+ void kvm_ioapic_destroy(struct kvm *kvm);
+-int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
++int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int irq_source_id,
++		       int level);
++void kvm_ioapic_clear_all(struct kvm_ioapic *ioapic, int irq_source_id);
+ void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
+ int kvm_irq_delivery_to_apic(struct kvm *kvm, struct kvm_lapic *src,
+ 		struct kvm_lapic_irq *irq);
+
+commit 0bf33a360c2d921bbb3b72da8817ee815447f5ac
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:37:53 2018 +0800
+
+    v3.5-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 0b190c3..32872a0 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -71,6 +71,7 @@ int kvm_apic_match_dest(struct kvm_vcpu *vcpu, struct kvm_lapic *source,
+ 		int short_hand, int dest, int dest_mode);
+ int kvm_apic_compare_prio(struct kvm_vcpu *vcpu1, struct kvm_vcpu *vcpu2);
+ void kvm_ioapic_update_eoi(struct kvm *kvm, int vector, int trigger_mode);
++bool kvm_ioapic_handles_vector(struct kvm *kvm, int vector);
+ int kvm_ioapic_init(struct kvm *kvm);
+ void kvm_ioapic_destroy(struct kvm *kvm);
+ int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
+
+commit 534f19b13afc9ac5d5d10555380816b27670b779
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:36:15 2018 +0800
+
+    v2.6.34
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 8a751b7..0b190c3 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -45,7 +45,7 @@ struct kvm_ioapic {
+ 	struct kvm_io_device dev;
+ 	struct kvm *kvm;
+ 	void (*ack_notifier)(void *opaque, int irq);
+-	struct mutex lock;
++	spinlock_t lock;
+ 	DECLARE_BITMAP(handled_vectors, 256);
+ };
+ 
+
+commit 664f6d1a0f601cb424faecff5b3cb8488f7be831
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:36:07 2018 +0800
+
+    v2.6.34-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 419c43b..8a751b7 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -46,6 +46,7 @@ struct kvm_ioapic {
+ 	struct kvm *kvm;
+ 	void (*ack_notifier)(void *opaque, int irq);
+ 	struct mutex lock;
++	DECLARE_BITMAP(handled_vectors, 256);
+ };
+ 
+ #ifdef DEBUG
+@@ -71,6 +72,7 @@ int kvm_apic_match_dest(struct kvm_vcpu *vcpu, struct kvm_lapic *source,
+ int kvm_apic_compare_prio(struct kvm_vcpu *vcpu1, struct kvm_vcpu *vcpu2);
+ void kvm_ioapic_update_eoi(struct kvm *kvm, int vector, int trigger_mode);
+ int kvm_ioapic_init(struct kvm *kvm);
++void kvm_ioapic_destroy(struct kvm *kvm);
+ int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
+ void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
+ int kvm_irq_delivery_to_apic(struct kvm *kvm, struct kvm_lapic *src,
+
+commit c044f20f4d87f5dd156f855a3666a67e718a1663
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:35:57 2018 +0800
+
+    v2.6.33-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 7080b71..419c43b 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -41,9 +41,11 @@ struct kvm_ioapic {
+ 	u32 irr;
+ 	u32 pad;
+ 	union kvm_ioapic_redirect_entry redirtbl[IOAPIC_NUM_PINS];
++	unsigned long irq_states[IOAPIC_NUM_PINS];
+ 	struct kvm_io_device dev;
+ 	struct kvm *kvm;
+ 	void (*ack_notifier)(void *opaque, int irq);
++	struct mutex lock;
+ };
+ 
+ #ifdef DEBUG
+@@ -73,4 +75,7 @@ int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
+ void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
+ int kvm_irq_delivery_to_apic(struct kvm *kvm, struct kvm_lapic *src,
+ 		struct kvm_lapic_irq *irq);
++int kvm_get_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
++int kvm_set_ioapic(struct kvm *kvm, struct kvm_ioapic_state *state);
++
+ #endif
+
+commit 281c7ada91bbae3a38c4f0cde12fcd4081edf1a6
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:35:37 2018 +0800
+
+    v2.6.31-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index a34bd5e..7080b71 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -40,22 +40,7 @@ struct kvm_ioapic {
+ 	u32 id;
+ 	u32 irr;
+ 	u32 pad;
+-	union ioapic_redir_entry {
+-		u64 bits;
+-		struct {
+-			u8 vector;
+-			u8 delivery_mode:3;
+-			u8 dest_mode:1;
+-			u8 delivery_status:1;
+-			u8 polarity:1;
+-			u8 remote_irr:1;
+-			u8 trig_mode:1;
+-			u8 mask:1;
+-			u8 reserve:7;
+-			u8 reserved[4];
+-			u8 dest_id;
+-		} fields;
+-	} redirtbl[IOAPIC_NUM_PINS];
++	union kvm_ioapic_redirect_entry redirtbl[IOAPIC_NUM_PINS];
+ 	struct kvm_io_device dev;
+ 	struct kvm *kvm;
+ 	void (*ack_notifier)(void *opaque, int irq);
+@@ -79,13 +64,13 @@ static inline struct kvm_ioapic *ioapic_irqchip(struct kvm *kvm)
+ 	return kvm->arch.vioapic;
+ }
+ 
+-struct kvm_vcpu *kvm_get_lowest_prio_vcpu(struct kvm *kvm, u8 vector,
+-				       unsigned long bitmap);
++int kvm_apic_match_dest(struct kvm_vcpu *vcpu, struct kvm_lapic *source,
++		int short_hand, int dest, int dest_mode);
++int kvm_apic_compare_prio(struct kvm_vcpu *vcpu1, struct kvm_vcpu *vcpu2);
+ void kvm_ioapic_update_eoi(struct kvm *kvm, int vector, int trigger_mode);
+ int kvm_ioapic_init(struct kvm *kvm);
+ int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
+ void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
+-u32 kvm_ioapic_get_delivery_bitmask(struct kvm_ioapic *ioapic, u8 dest,
+-				u8 dest_mode);
+-
++int kvm_irq_delivery_to_apic(struct kvm *kvm, struct kvm_lapic *src,
++		struct kvm_lapic_irq *irq);
+ #endif
+
+commit 824a43272f6513333284fedf58ba8e3d74ebf0b8
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:35:27 2018 +0800
+
+    v2.6.30-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 49c9581..a34bd5e 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -83,7 +83,7 @@ struct kvm_vcpu *kvm_get_lowest_prio_vcpu(struct kvm *kvm, u8 vector,
+ 				       unsigned long bitmap);
+ void kvm_ioapic_update_eoi(struct kvm *kvm, int vector, int trigger_mode);
+ int kvm_ioapic_init(struct kvm *kvm);
+-void kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
++int kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
+ void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
+ u32 kvm_ioapic_get_delivery_bitmask(struct kvm_ioapic *ioapic, u8 dest,
+ 				u8 dest_mode);
+
+commit 393b30c1ab9a7caf8d9fc76d85ad31a4dd2e0bd0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:35:18 2018 +0800
+
+    v2.6.29-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index cd7ae76..49c9581 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -85,5 +85,7 @@ void kvm_ioapic_update_eoi(struct kvm *kvm, int vector, int trigger_mode);
+ int kvm_ioapic_init(struct kvm *kvm);
+ void kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
+ void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
++u32 kvm_ioapic_get_delivery_bitmask(struct kvm_ioapic *ioapic, u8 dest,
++				u8 dest_mode);
+ 
+ #endif
+
+commit 56ecbe8554f6ff3b5561e8fba387759c2b2e47db
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:35:08 2018 +0800
+
+    v2.6.28-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+index 7f16675..cd7ae76 100644
+--- a/virt/kvm/ioapic.h
++++ b/virt/kvm/ioapic.h
+@@ -58,6 +58,7 @@ struct kvm_ioapic {
+ 	} redirtbl[IOAPIC_NUM_PINS];
+ 	struct kvm_io_device dev;
+ 	struct kvm *kvm;
++	void (*ack_notifier)(void *opaque, int irq);
+ };
+ 
+ #ifdef DEBUG
+@@ -78,16 +79,9 @@ static inline struct kvm_ioapic *ioapic_irqchip(struct kvm *kvm)
+ 	return kvm->arch.vioapic;
+ }
+ 
+-#ifdef CONFIG_IA64
+-static inline int irqchip_in_kernel(struct kvm *kvm)
+-{
+-	return 1;
+-}
+-#endif
+-
+ struct kvm_vcpu *kvm_get_lowest_prio_vcpu(struct kvm *kvm, u8 vector,
+ 				       unsigned long bitmap);
+-void kvm_ioapic_update_eoi(struct kvm *kvm, int vector);
++void kvm_ioapic_update_eoi(struct kvm *kvm, int vector, int trigger_mode);
+ int kvm_ioapic_init(struct kvm *kvm);
+ void kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
+ void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
+
+commit 55a360763f3e628fc611d70a946210fef9b0f659
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:34:39 2018 +0800
+
+    v2.6.25-rc1
+
+diff --git a/virt/kvm/ioapic.h b/virt/kvm/ioapic.h
+new file mode 100644
+index 0000000..7f16675
+--- /dev/null
++++ b/virt/kvm/ioapic.h
+@@ -0,0 +1,95 @@
++#ifndef __KVM_IO_APIC_H
++#define __KVM_IO_APIC_H
++
++#include <linux/kvm_host.h>
++
++#include "iodev.h"
++
++struct kvm;
++struct kvm_vcpu;
++
++#define IOAPIC_NUM_PINS  KVM_IOAPIC_NUM_PINS
++#define IOAPIC_VERSION_ID 0x11	/* IOAPIC version */
++#define IOAPIC_EDGE_TRIG  0
++#define IOAPIC_LEVEL_TRIG 1
++
++#define IOAPIC_DEFAULT_BASE_ADDRESS  0xfec00000
++#define IOAPIC_MEM_LENGTH            0x100
++
++/* Direct registers. */
++#define IOAPIC_REG_SELECT  0x00
++#define IOAPIC_REG_WINDOW  0x10
++#define IOAPIC_REG_EOI     0x40	/* IA64 IOSAPIC only */
++
++/* Indirect registers. */
++#define IOAPIC_REG_APIC_ID 0x00	/* x86 IOAPIC only */
++#define IOAPIC_REG_VERSION 0x01
++#define IOAPIC_REG_ARB_ID  0x02	/* x86 IOAPIC only */
++
++/*ioapic delivery mode*/
++#define	IOAPIC_FIXED			0x0
++#define	IOAPIC_LOWEST_PRIORITY		0x1
++#define	IOAPIC_PMI			0x2
++#define	IOAPIC_NMI			0x4
++#define	IOAPIC_INIT			0x5
++#define	IOAPIC_EXTINT			0x7
++
++struct kvm_ioapic {
++	u64 base_address;
++	u32 ioregsel;
++	u32 id;
++	u32 irr;
++	u32 pad;
++	union ioapic_redir_entry {
++		u64 bits;
++		struct {
++			u8 vector;
++			u8 delivery_mode:3;
++			u8 dest_mode:1;
++			u8 delivery_status:1;
++			u8 polarity:1;
++			u8 remote_irr:1;
++			u8 trig_mode:1;
++			u8 mask:1;
++			u8 reserve:7;
++			u8 reserved[4];
++			u8 dest_id;
++		} fields;
++	} redirtbl[IOAPIC_NUM_PINS];
++	struct kvm_io_device dev;
++	struct kvm *kvm;
++};
++
++#ifdef DEBUG
++#define ASSERT(x)  							\
++do {									\
++	if (!(x)) {							\
++		printk(KERN_EMERG "assertion failed %s: %d: %s\n",	\
++		       __FILE__, __LINE__, #x);				\
++		BUG();							\
++	}								\
++} while (0)
++#else
++#define ASSERT(x) do { } while (0)
++#endif
++
++static inline struct kvm_ioapic *ioapic_irqchip(struct kvm *kvm)
++{
++	return kvm->arch.vioapic;
++}
++
++#ifdef CONFIG_IA64
++static inline int irqchip_in_kernel(struct kvm *kvm)
++{
++	return 1;
++}
++#endif
++
++struct kvm_vcpu *kvm_get_lowest_prio_vcpu(struct kvm *kvm, u8 vector,
++				       unsigned long bitmap);
++void kvm_ioapic_update_eoi(struct kvm *kvm, int vector);
++int kvm_ioapic_init(struct kvm *kvm);
++void kvm_ioapic_set_irq(struct kvm_ioapic *ioapic, int irq, int level);
++void kvm_ioapic_reset(struct kvm_ioapic *ioapic);
++
++#endif
+
+commit a200af667b1ebe1df61e8290493258a97cec1a09
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:33:08 2018 +0800
+
+    target source code file : virt/kvm/ioapic.h
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..a1dc319
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++virt/kvm/ioapic.h

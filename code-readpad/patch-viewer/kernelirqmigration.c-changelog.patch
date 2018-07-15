@@ -1,0 +1,1164 @@
+commit 2c6b98efe7465dea6d9cb86da686ad24508eae97
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:12:08 2018 +0800
+
+    v4.18-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 86ae0eb..def4858 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -38,17 +38,18 @@ bool irq_fixup_move_pending(struct irq_desc *desc, bool force_clear)
+ void irq_move_masked_irq(struct irq_data *idata)
+ {
+ 	struct irq_desc *desc = irq_data_to_desc(idata);
+-	struct irq_chip *chip = desc->irq_data.chip;
++	struct irq_data *data = &desc->irq_data;
++	struct irq_chip *chip = data->chip;
+ 
+-	if (likely(!irqd_is_setaffinity_pending(&desc->irq_data)))
++	if (likely(!irqd_is_setaffinity_pending(data)))
+ 		return;
+ 
+-	irqd_clr_move_pending(&desc->irq_data);
++	irqd_clr_move_pending(data);
+ 
+ 	/*
+ 	 * Paranoia: cpu-local interrupts shouldn't be calling in here anyway.
+ 	 */
+-	if (irqd_is_per_cpu(&desc->irq_data)) {
++	if (irqd_is_per_cpu(data)) {
+ 		WARN_ON(1);
+ 		return;
+ 	}
+@@ -73,13 +74,24 @@ void irq_move_masked_irq(struct irq_data *idata)
+ 	 * For correct operation this depends on the caller
+ 	 * masking the irqs.
+ 	 */
+-	if (cpumask_any_and(desc->pending_mask, cpu_online_mask) < nr_cpu_ids)
+-		irq_do_set_affinity(&desc->irq_data, desc->pending_mask, false);
+-
++	if (cpumask_any_and(desc->pending_mask, cpu_online_mask) < nr_cpu_ids) {
++		int ret;
++
++		ret = irq_do_set_affinity(data, desc->pending_mask, false);
++		/*
++		 * If the there is a cleanup pending in the underlying
++		 * vector management, reschedule the move for the next
++		 * interrupt. Leave desc->pending_mask intact.
++		 */
++		if (ret == -EBUSY) {
++			irqd_set_move_pending(data);
++			return;
++		}
++	}
+ 	cpumask_clear(desc->pending_mask);
+ }
+ 
+-void irq_move_irq(struct irq_data *idata)
++void __irq_move_irq(struct irq_data *idata)
+ {
+ 	bool masked;
+ 
+@@ -90,9 +102,6 @@ void irq_move_irq(struct irq_data *idata)
+ 	 */
+ 	idata = irq_desc_get_irq_data(irq_data_to_desc(idata));
+ 
+-	if (likely(!irqd_is_setaffinity_pending(idata)))
+-		return;
+-
+ 	if (unlikely(irqd_irq_disabled(idata)))
+ 		return;
+ 
+
+commit 5af467147a200416e1519b3da5851168f7093344
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:57 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 6ca054a..86ae0eb 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ 
+ #include <linux/irq.h>
+ #include <linux/interrupt.h>
+
+commit 795a6e5aed2e43fe53b416b49997fb986c78fb5b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:18 2018 +0800
+
+    v4.13-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 37ddb7b..6ca054a 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -4,6 +4,36 @@
+ 
+ #include "internals.h"
+ 
++/**
++ * irq_fixup_move_pending - Cleanup irq move pending from a dying CPU
++ * @desc:		Interrupt descpriptor to clean up
++ * @force_clear:	If set clear the move pending bit unconditionally.
++ *			If not set, clear it only when the dying CPU is the
++ *			last one in the pending mask.
++ *
++ * Returns true if the pending bit was set and the pending mask contains an
++ * online CPU other than the dying CPU.
++ */
++bool irq_fixup_move_pending(struct irq_desc *desc, bool force_clear)
++{
++	struct irq_data *data = irq_desc_get_irq_data(desc);
++
++	if (!irqd_is_setaffinity_pending(data))
++		return false;
++
++	/*
++	 * The outgoing CPU might be the last online target in a pending
++	 * interrupt move. If that's the case clear the pending move bit.
++	 */
++	if (cpumask_any_and(desc->pending_mask, cpu_online_mask) >= nr_cpu_ids) {
++		irqd_clr_move_pending(data);
++		return false;
++	}
++	if (force_clear)
++		irqd_clr_move_pending(data);
++	return true;
++}
++
+ void irq_move_masked_irq(struct irq_data *idata)
+ {
+ 	struct irq_desc *desc = irq_data_to_desc(idata);
+
+commit 4dcd2851739ed8fa4859ca84e91969b325010bc6
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:06:38 2018 +0800
+
+    v4.2-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index ca3f4aa..37ddb7b 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -7,21 +7,21 @@
+ void irq_move_masked_irq(struct irq_data *idata)
+ {
+ 	struct irq_desc *desc = irq_data_to_desc(idata);
+-	struct irq_chip *chip = idata->chip;
++	struct irq_chip *chip = desc->irq_data.chip;
+ 
+ 	if (likely(!irqd_is_setaffinity_pending(&desc->irq_data)))
+ 		return;
+ 
++	irqd_clr_move_pending(&desc->irq_data);
++
+ 	/*
+ 	 * Paranoia: cpu-local interrupts shouldn't be calling in here anyway.
+ 	 */
+-	if (!irqd_can_balance(&desc->irq_data)) {
++	if (irqd_is_per_cpu(&desc->irq_data)) {
+ 		WARN_ON(1);
+ 		return;
+ 	}
+ 
+-	irqd_clr_move_pending(&desc->irq_data);
+-
+ 	if (unlikely(cpumask_empty(desc->pending_mask)))
+ 		return;
+ 
+@@ -52,6 +52,13 @@ void irq_move_irq(struct irq_data *idata)
+ {
+ 	bool masked;
+ 
++	/*
++	 * Get top level irq_data when CONFIG_IRQ_DOMAIN_HIERARCHY is enabled,
++	 * and it should be optimized away when CONFIG_IRQ_DOMAIN_HIERARCHY is
++	 * disabled. So we avoid an "#ifdef CONFIG_IRQ_DOMAIN_HIERARCHY" here.
++	 */
++	idata = irq_desc_get_irq_data(irq_data_to_desc(idata));
++
+ 	if (likely(!irqd_is_setaffinity_pending(idata)))
+ 		return;
+ 
+
+commit 2580871ec5f2123697f7c46750bccf2d37320c0b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:47 2018 +0800
+
+    v3.5-rc2
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index c3c8975..ca3f4aa 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -42,17 +42,8 @@ void irq_move_masked_irq(struct irq_data *idata)
+ 	 * For correct operation this depends on the caller
+ 	 * masking the irqs.
+ 	 */
+-	if (likely(cpumask_any_and(desc->pending_mask, cpu_online_mask)
+-		   < nr_cpu_ids)) {
+-		int ret = chip->irq_set_affinity(&desc->irq_data,
+-						 desc->pending_mask, false);
+-		switch (ret) {
+-		case IRQ_SET_MASK_OK:
+-			cpumask_copy(desc->irq_data.affinity, desc->pending_mask);
+-		case IRQ_SET_MASK_OK_NOCOPY:
+-			irq_set_thread_affinity(desc);
+-		}
+-	}
++	if (cpumask_any_and(desc->pending_mask, cpu_online_mask) < nr_cpu_ids)
++		irq_do_set_affinity(&desc->irq_data, desc->pending_mask, false);
+ 
+ 	cpumask_clear(desc->pending_mask);
+ }
+
+commit 942ce72d5befac9d8ee5b2632d5f1f7ff863eb1f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:29 2018 +0800
+
+    v3.4-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 4742090..c3c8975 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -43,12 +43,16 @@ void irq_move_masked_irq(struct irq_data *idata)
+ 	 * masking the irqs.
+ 	 */
+ 	if (likely(cpumask_any_and(desc->pending_mask, cpu_online_mask)
+-		   < nr_cpu_ids))
+-		if (!chip->irq_set_affinity(&desc->irq_data,
+-					    desc->pending_mask, false)) {
++		   < nr_cpu_ids)) {
++		int ret = chip->irq_set_affinity(&desc->irq_data,
++						 desc->pending_mask, false);
++		switch (ret) {
++		case IRQ_SET_MASK_OK:
+ 			cpumask_copy(desc->irq_data.affinity, desc->pending_mask);
++		case IRQ_SET_MASK_OK_NOCOPY:
+ 			irq_set_thread_affinity(desc);
+ 		}
++	}
+ 
+ 	cpumask_clear(desc->pending_mask);
+ }
+
+commit f11aae38f6357018ec2bb849694d49608f4aa861
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:09 2018 +0800
+
+    v2.6.39-rc3
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index bc61946..4742090 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -35,7 +35,7 @@ void irq_move_masked_irq(struct irq_data *idata)
+ 	 * do the disable, re-program, enable sequence.
+ 	 * This is *not* particularly important for level triggered
+ 	 * but in a edge trigger case, we might be setting rte
+-	 * when an active trigger is comming in. This could
++	 * when an active trigger is coming in. This could
+ 	 * cause some ioapics to mal-function.
+ 	 * Being paranoid i guess!
+ 	 *
+
+commit 71f66420c023f0d7f6107cd16625035ca7b6cd80
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:05 2018 +0800
+
+    v2.6.39-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 441fd62..bc61946 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -4,23 +4,23 @@
+ 
+ #include "internals.h"
+ 
+-void move_masked_irq(int irq)
++void irq_move_masked_irq(struct irq_data *idata)
+ {
+-	struct irq_desc *desc = irq_to_desc(irq);
+-	struct irq_chip *chip = desc->irq_data.chip;
++	struct irq_desc *desc = irq_data_to_desc(idata);
++	struct irq_chip *chip = idata->chip;
+ 
+-	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
++	if (likely(!irqd_is_setaffinity_pending(&desc->irq_data)))
+ 		return;
+ 
+ 	/*
+ 	 * Paranoia: cpu-local interrupts shouldn't be calling in here anyway.
+ 	 */
+-	if (CHECK_IRQ_PER_CPU(desc->status)) {
++	if (!irqd_can_balance(&desc->irq_data)) {
+ 		WARN_ON(1);
+ 		return;
+ 	}
+ 
+-	desc->status &= ~IRQ_MOVE_PENDING;
++	irqd_clr_move_pending(&desc->irq_data);
+ 
+ 	if (unlikely(cpumask_empty(desc->pending_mask)))
+ 		return;
+@@ -53,15 +53,14 @@ void move_masked_irq(int irq)
+ 	cpumask_clear(desc->pending_mask);
+ }
+ 
+-void move_native_irq(int irq)
++void irq_move_irq(struct irq_data *idata)
+ {
+-	struct irq_desc *desc = irq_to_desc(irq);
+ 	bool masked;
+ 
+-	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
++	if (likely(!irqd_is_setaffinity_pending(idata)))
+ 		return;
+ 
+-	if (unlikely(desc->status & IRQ_DISABLED))
++	if (unlikely(irqd_irq_disabled(idata)))
+ 		return;
+ 
+ 	/*
+@@ -69,10 +68,10 @@ void move_native_irq(int irq)
+ 	 * threaded interrupt with ONESHOT set, we can end up with an
+ 	 * interrupt storm.
+ 	 */
+-	masked = desc->status & IRQ_MASKED;
++	masked = irqd_irq_masked(idata);
+ 	if (!masked)
+-		desc->irq_data.chip->irq_mask(&desc->irq_data);
+-	move_masked_irq(irq);
++		idata->chip->irq_mask(idata);
++	irq_move_masked_irq(idata);
+ 	if (!masked)
+-		desc->irq_data.chip->irq_unmask(&desc->irq_data);
++		idata->chip->irq_unmask(idata);
+ }
+
+commit 61a430c387c434916da49992744e11a3ff977771
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:52 2018 +0800
+
+    v2.6.38-rc4
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 1d25419..441fd62 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -56,6 +56,7 @@ void move_masked_irq(int irq)
+ void move_native_irq(int irq)
+ {
+ 	struct irq_desc *desc = irq_to_desc(irq);
++	bool masked;
+ 
+ 	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
+ 		return;
+@@ -63,8 +64,15 @@ void move_native_irq(int irq)
+ 	if (unlikely(desc->status & IRQ_DISABLED))
+ 		return;
+ 
+-	desc->irq_data.chip->irq_mask(&desc->irq_data);
++	/*
++	 * Be careful vs. already masked interrupts. If this is a
++	 * threaded interrupt with ONESHOT set, we can end up with an
++	 * interrupt storm.
++	 */
++	masked = desc->status & IRQ_MASKED;
++	if (!masked)
++		desc->irq_data.chip->irq_mask(&desc->irq_data);
+ 	move_masked_irq(irq);
+-	desc->irq_data.chip->irq_unmask(&desc->irq_data);
++	if (!masked)
++		desc->irq_data.chip->irq_unmask(&desc->irq_data);
+ }
+-
+
+commit 0ddf8fd8ee340284c9bf4818662d72c76461c42c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:30 2018 +0800
+
+    v2.6.37-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 2419622..1d25419 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -7,6 +7,7 @@
+ void move_masked_irq(int irq)
+ {
+ 	struct irq_desc *desc = irq_to_desc(irq);
++	struct irq_chip *chip = desc->irq_data.chip;
+ 
+ 	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
+ 		return;
+@@ -24,7 +25,7 @@ void move_masked_irq(int irq)
+ 	if (unlikely(cpumask_empty(desc->pending_mask)))
+ 		return;
+ 
+-	if (!desc->chip->set_affinity)
++	if (!chip->irq_set_affinity)
+ 		return;
+ 
+ 	assert_raw_spin_locked(&desc->lock);
+@@ -43,8 +44,9 @@ void move_masked_irq(int irq)
+ 	 */
+ 	if (likely(cpumask_any_and(desc->pending_mask, cpu_online_mask)
+ 		   < nr_cpu_ids))
+-		if (!desc->chip->set_affinity(irq, desc->pending_mask)) {
+-			cpumask_copy(desc->affinity, desc->pending_mask);
++		if (!chip->irq_set_affinity(&desc->irq_data,
++					    desc->pending_mask, false)) {
++			cpumask_copy(desc->irq_data.affinity, desc->pending_mask);
+ 			irq_set_thread_affinity(desc);
+ 		}
+ 
+@@ -61,8 +63,8 @@ void move_native_irq(int irq)
+ 	if (unlikely(desc->status & IRQ_DISABLED))
+ 		return;
+ 
+-	desc->chip->mask(irq);
++	desc->irq_data.chip->irq_mask(&desc->irq_data);
+ 	move_masked_irq(irq);
+-	desc->chip->unmask(irq);
++	desc->irq_data.chip->irq_unmask(&desc->irq_data);
+ }
+ 
+
+commit 70c85d858ad1d616ef4c39a9b0c181e3d6b478a7
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:24 2018 +0800
+
+    v2.6.33-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index fcb6c96..2419622 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -27,7 +27,7 @@ void move_masked_irq(int irq)
+ 	if (!desc->chip->set_affinity)
+ 		return;
+ 
+-	assert_spin_locked(&desc->lock);
++	assert_raw_spin_locked(&desc->lock);
+ 
+ 	/*
+ 	 * If there was a valid mask to work with, please
+
+commit 29558ac930d0e900356f02aa9b67fd8b9c121957
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:54 2018 +0800
+
+    v2.6.31-rc4
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index cfe767c..fcb6c96 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -45,7 +45,7 @@ void move_masked_irq(int irq)
+ 		   < nr_cpu_ids))
+ 		if (!desc->chip->set_affinity(irq, desc->pending_mask)) {
+ 			cpumask_copy(desc->affinity, desc->pending_mask);
+-			irq_set_thread_affinity(desc, desc->pending_mask);
++			irq_set_thread_affinity(desc);
+ 		}
+ 
+ 	cpumask_clear(desc->pending_mask);
+
+commit 4c23d9eae21b1bafd131de27d7677e69cb0a077b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:49 2018 +0800
+
+    v2.6.31-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index e05ad9b..cfe767c 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -1,5 +1,8 @@
+ 
+ #include <linux/irq.h>
++#include <linux/interrupt.h>
++
++#include "internals.h"
+ 
+ void move_masked_irq(int irq)
+ {
+@@ -39,11 +42,12 @@ void move_masked_irq(int irq)
+ 	 * masking the irqs.
+ 	 */
+ 	if (likely(cpumask_any_and(desc->pending_mask, cpu_online_mask)
+-		   < nr_cpu_ids)) {
+-		cpumask_and(desc->affinity,
+-			    desc->pending_mask, cpu_online_mask);
+-		desc->chip->set_affinity(irq, desc->affinity);
+-	}
++		   < nr_cpu_ids))
++		if (!desc->chip->set_affinity(irq, desc->pending_mask)) {
++			cpumask_copy(desc->affinity, desc->pending_mask);
++			irq_set_thread_affinity(desc, desc->pending_mask);
++		}
++
+ 	cpumask_clear(desc->pending_mask);
+ }
+ 
+
+commit 6639141d8a90861e81d446f02b1743f42935f629
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:32 2018 +0800
+
+    v2.6.30-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index bd72329..e05ad9b 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -18,7 +18,7 @@ void move_masked_irq(int irq)
+ 
+ 	desc->status &= ~IRQ_MOVE_PENDING;
+ 
+-	if (unlikely(cpumask_empty(&desc->pending_mask)))
++	if (unlikely(cpumask_empty(desc->pending_mask)))
+ 		return;
+ 
+ 	if (!desc->chip->set_affinity)
+@@ -38,13 +38,13 @@ void move_masked_irq(int irq)
+ 	 * For correct operation this depends on the caller
+ 	 * masking the irqs.
+ 	 */
+-	if (likely(cpumask_any_and(&desc->pending_mask, cpu_online_mask)
++	if (likely(cpumask_any_and(desc->pending_mask, cpu_online_mask)
+ 		   < nr_cpu_ids)) {
+-		cpumask_and(&desc->affinity,
+-			    &desc->pending_mask, cpu_online_mask);
+-		desc->chip->set_affinity(irq, &desc->affinity);
++		cpumask_and(desc->affinity,
++			    desc->pending_mask, cpu_online_mask);
++		desc->chip->set_affinity(irq, desc->affinity);
+ 	}
+-	cpumask_clear(&desc->pending_mask);
++	cpumask_clear(desc->pending_mask);
+ }
+ 
+ void move_native_irq(int irq)
+
+commit 880f34caa9f7444d8a19269b33d91c19efe1ecad
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:15 2018 +0800
+
+    v2.6.29-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 9db681d..bd72329 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -4,7 +4,6 @@
+ void move_masked_irq(int irq)
+ {
+ 	struct irq_desc *desc = irq_to_desc(irq);
+-	cpumask_t tmp;
+ 
+ 	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
+ 		return;
+@@ -19,7 +18,7 @@ void move_masked_irq(int irq)
+ 
+ 	desc->status &= ~IRQ_MOVE_PENDING;
+ 
+-	if (unlikely(cpus_empty(desc->pending_mask)))
++	if (unlikely(cpumask_empty(&desc->pending_mask)))
+ 		return;
+ 
+ 	if (!desc->chip->set_affinity)
+@@ -27,8 +26,6 @@ void move_masked_irq(int irq)
+ 
+ 	assert_spin_locked(&desc->lock);
+ 
+-	cpus_and(tmp, desc->pending_mask, cpu_online_map);
+-
+ 	/*
+ 	 * If there was a valid mask to work with, please
+ 	 * do the disable, re-program, enable sequence.
+@@ -41,10 +38,13 @@ void move_masked_irq(int irq)
+ 	 * For correct operation this depends on the caller
+ 	 * masking the irqs.
+ 	 */
+-	if (likely(!cpus_empty(tmp))) {
+-		desc->chip->set_affinity(irq,tmp);
++	if (likely(cpumask_any_and(&desc->pending_mask, cpu_online_mask)
++		   < nr_cpu_ids)) {
++		cpumask_and(&desc->affinity,
++			    &desc->pending_mask, cpu_online_mask);
++		desc->chip->set_affinity(irq, &desc->affinity);
+ 	}
+-	cpus_clear(desc->pending_mask);
++	cpumask_clear(&desc->pending_mask);
+ }
+ 
+ void move_native_irq(int irq)
+
+commit c8e1309ae8f83c44828b7dfa34ee44fd059dc967
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:07 2018 +0800
+
+    v2.6.28-rc7
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 90b920d..9db681d 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -1,17 +1,6 @@
+ 
+ #include <linux/irq.h>
+ 
+-void set_pending_irq(unsigned int irq, cpumask_t mask)
+-{
+-	struct irq_desc *desc = irq_to_desc(irq);
+-	unsigned long flags;
+-
+-	spin_lock_irqsave(&desc->lock, flags);
+-	desc->status |= IRQ_MOVE_PENDING;
+-	desc->pending_mask = mask;
+-	spin_unlock_irqrestore(&desc->lock, flags);
+-}
+-
+ void move_masked_irq(int irq)
+ {
+ 	struct irq_desc *desc = irq_to_desc(irq);
+
+commit db27f129b7ea5ed27c419db28bca22066f8f544e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:58 2018 +0800
+
+    v2.6.28-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 77b7acc..90b920d 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -3,18 +3,18 @@
+ 
+ void set_pending_irq(unsigned int irq, cpumask_t mask)
+ {
+-	struct irq_desc *desc = irq_desc + irq;
++	struct irq_desc *desc = irq_to_desc(irq);
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&desc->lock, flags);
+ 	desc->status |= IRQ_MOVE_PENDING;
+-	irq_desc[irq].pending_mask = mask;
++	desc->pending_mask = mask;
+ 	spin_unlock_irqrestore(&desc->lock, flags);
+ }
+ 
+ void move_masked_irq(int irq)
+ {
+-	struct irq_desc *desc = irq_desc + irq;
++	struct irq_desc *desc = irq_to_desc(irq);
+ 	cpumask_t tmp;
+ 
+ 	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
+@@ -30,7 +30,7 @@ void move_masked_irq(int irq)
+ 
+ 	desc->status &= ~IRQ_MOVE_PENDING;
+ 
+-	if (unlikely(cpus_empty(irq_desc[irq].pending_mask)))
++	if (unlikely(cpus_empty(desc->pending_mask)))
+ 		return;
+ 
+ 	if (!desc->chip->set_affinity)
+@@ -38,7 +38,7 @@ void move_masked_irq(int irq)
+ 
+ 	assert_spin_locked(&desc->lock);
+ 
+-	cpus_and(tmp, irq_desc[irq].pending_mask, cpu_online_map);
++	cpus_and(tmp, desc->pending_mask, cpu_online_map);
+ 
+ 	/*
+ 	 * If there was a valid mask to work with, please
+@@ -55,12 +55,12 @@ void move_masked_irq(int irq)
+ 	if (likely(!cpus_empty(tmp))) {
+ 		desc->chip->set_affinity(irq,tmp);
+ 	}
+-	cpus_clear(irq_desc[irq].pending_mask);
++	cpus_clear(desc->pending_mask);
+ }
+ 
+ void move_native_irq(int irq)
+ {
+-	struct irq_desc *desc = irq_desc + irq;
++	struct irq_desc *desc = irq_to_desc(irq);
+ 
+ 	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
+ 		return;
+
+commit 52369b74206dc751814d1e666c23ee40e57b6965
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:10 2018 +0800
+
+    v2.6.21-rc2
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 4baa3bb..77b7acc 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -65,12 +65,11 @@ void move_native_irq(int irq)
+ 	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
+ 		return;
+ 
+-	if (likely(!(desc->status & IRQ_DISABLED)))
+-		desc->chip->disable(irq);
++	if (unlikely(desc->status & IRQ_DISABLED))
++		return;
+ 
++	desc->chip->mask(irq);
+ 	move_masked_irq(irq);
+-
+-	if (likely(!(desc->status & IRQ_DISABLED)))
+-		desc->chip->enable(irq);
++	desc->chip->unmask(irq);
+ }
+ 
+
+commit 25dbce32487db0b53b8af1c347fe6d6e0470984b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:44 2018 +0800
+
+    v2.6.19-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index a57ebe9..4baa3bb 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -7,17 +7,17 @@ void set_pending_irq(unsigned int irq, cpumask_t mask)
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&desc->lock, flags);
+-	desc->move_irq = 1;
++	desc->status |= IRQ_MOVE_PENDING;
+ 	irq_desc[irq].pending_mask = mask;
+ 	spin_unlock_irqrestore(&desc->lock, flags);
+ }
+ 
+-void move_native_irq(int irq)
++void move_masked_irq(int irq)
+ {
+ 	struct irq_desc *desc = irq_desc + irq;
+ 	cpumask_t tmp;
+ 
+-	if (likely(!desc->move_irq))
++	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
+ 		return;
+ 
+ 	/*
+@@ -28,7 +28,7 @@ void move_native_irq(int irq)
+ 		return;
+ 	}
+ 
+-	desc->move_irq = 0;
++	desc->status &= ~IRQ_MOVE_PENDING;
+ 
+ 	if (unlikely(cpus_empty(irq_desc[irq].pending_mask)))
+ 		return;
+@@ -48,15 +48,29 @@ void move_native_irq(int irq)
+ 	 * when an active trigger is comming in. This could
+ 	 * cause some ioapics to mal-function.
+ 	 * Being paranoid i guess!
++	 *
++	 * For correct operation this depends on the caller
++	 * masking the irqs.
+ 	 */
+ 	if (likely(!cpus_empty(tmp))) {
+-		if (likely(!(desc->status & IRQ_DISABLED)))
+-			desc->chip->disable(irq);
+-
+ 		desc->chip->set_affinity(irq,tmp);
+-
+-		if (likely(!(desc->status & IRQ_DISABLED)))
+-			desc->chip->enable(irq);
+ 	}
+ 	cpus_clear(irq_desc[irq].pending_mask);
+ }
++
++void move_native_irq(int irq)
++{
++	struct irq_desc *desc = irq_desc + irq;
++
++	if (likely(!(desc->status & IRQ_MOVE_PENDING)))
++		return;
++
++	if (likely(!(desc->status & IRQ_DISABLED)))
++		desc->chip->disable(irq);
++
++	move_masked_irq(irq);
++
++	if (likely(!(desc->status & IRQ_DISABLED)))
++		desc->chip->enable(irq);
++}
++
+
+commit c44a0bcd8eb5175cf5f17528829687bf21a64c32
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:31 2018 +0800
+
+    v2.6.18-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 134f9f2..a57ebe9 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -3,19 +3,19 @@
+ 
+ void set_pending_irq(unsigned int irq, cpumask_t mask)
+ {
+-	irq_desc_t *desc = irq_desc + irq;
++	struct irq_desc *desc = irq_desc + irq;
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&desc->lock, flags);
+ 	desc->move_irq = 1;
+-	pending_irq_cpumask[irq] = mask;
++	irq_desc[irq].pending_mask = mask;
+ 	spin_unlock_irqrestore(&desc->lock, flags);
+ }
+ 
+ void move_native_irq(int irq)
+ {
++	struct irq_desc *desc = irq_desc + irq;
+ 	cpumask_t tmp;
+-	irq_desc_t *desc = irq_descp(irq);
+ 
+ 	if (likely(!desc->move_irq))
+ 		return;
+@@ -30,15 +30,15 @@ void move_native_irq(int irq)
+ 
+ 	desc->move_irq = 0;
+ 
+-	if (likely(cpus_empty(pending_irq_cpumask[irq])))
++	if (unlikely(cpus_empty(irq_desc[irq].pending_mask)))
+ 		return;
+ 
+-	if (!desc->handler->set_affinity)
++	if (!desc->chip->set_affinity)
+ 		return;
+ 
+ 	assert_spin_locked(&desc->lock);
+ 
+-	cpus_and(tmp, pending_irq_cpumask[irq], cpu_online_map);
++	cpus_and(tmp, irq_desc[irq].pending_mask, cpu_online_map);
+ 
+ 	/*
+ 	 * If there was a valid mask to work with, please
+@@ -49,14 +49,14 @@ void move_native_irq(int irq)
+ 	 * cause some ioapics to mal-function.
+ 	 * Being paranoid i guess!
+ 	 */
+-	if (unlikely(!cpus_empty(tmp))) {
++	if (likely(!cpus_empty(tmp))) {
+ 		if (likely(!(desc->status & IRQ_DISABLED)))
+-			desc->handler->disable(irq);
++			desc->chip->disable(irq);
+ 
+-		desc->handler->set_affinity(irq,tmp);
++		desc->chip->set_affinity(irq,tmp);
+ 
+ 		if (likely(!(desc->status & IRQ_DISABLED)))
+-			desc->handler->enable(irq);
++			desc->chip->enable(irq);
+ 	}
+-	cpus_clear(pending_irq_cpumask[irq]);
++	cpus_clear(irq_desc[irq].pending_mask);
+ }
+
+commit 812eef7fd25dd2cb2d3f12a212bc13fdedfd4279
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:21 2018 +0800
+
+    v2.6.17-rc2
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+index 52a8655..134f9f2 100644
+--- a/kernel/irq/migration.c
++++ b/kernel/irq/migration.c
+@@ -1,6 +1,5 @@
+-#include <linux/irq.h>
+ 
+-#if defined(CONFIG_GENERIC_PENDING_IRQ)
++#include <linux/irq.h>
+ 
+ void set_pending_irq(unsigned int irq, cpumask_t mask)
+ {
+@@ -61,5 +60,3 @@ void move_native_irq(int irq)
+ 	}
+ 	cpus_clear(pending_irq_cpumask[irq]);
+ }
+-
+-#endif
+
+commit 5ab5c4c7a0f83baf7356596179b2f75a091ae8fb
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:19 2018 +0800
+
+    v2.6.17-rc1
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+new file mode 100644
+index 0000000..52a8655
+--- /dev/null
++++ b/kernel/irq/migration.c
+@@ -0,0 +1,65 @@
++#include <linux/irq.h>
++
++#if defined(CONFIG_GENERIC_PENDING_IRQ)
++
++void set_pending_irq(unsigned int irq, cpumask_t mask)
++{
++	irq_desc_t *desc = irq_desc + irq;
++	unsigned long flags;
++
++	spin_lock_irqsave(&desc->lock, flags);
++	desc->move_irq = 1;
++	pending_irq_cpumask[irq] = mask;
++	spin_unlock_irqrestore(&desc->lock, flags);
++}
++
++void move_native_irq(int irq)
++{
++	cpumask_t tmp;
++	irq_desc_t *desc = irq_descp(irq);
++
++	if (likely(!desc->move_irq))
++		return;
++
++	/*
++	 * Paranoia: cpu-local interrupts shouldn't be calling in here anyway.
++	 */
++	if (CHECK_IRQ_PER_CPU(desc->status)) {
++		WARN_ON(1);
++		return;
++	}
++
++	desc->move_irq = 0;
++
++	if (likely(cpus_empty(pending_irq_cpumask[irq])))
++		return;
++
++	if (!desc->handler->set_affinity)
++		return;
++
++	assert_spin_locked(&desc->lock);
++
++	cpus_and(tmp, pending_irq_cpumask[irq], cpu_online_map);
++
++	/*
++	 * If there was a valid mask to work with, please
++	 * do the disable, re-program, enable sequence.
++	 * This is *not* particularly important for level triggered
++	 * but in a edge trigger case, we might be setting rte
++	 * when an active trigger is comming in. This could
++	 * cause some ioapics to mal-function.
++	 * Being paranoid i guess!
++	 */
++	if (unlikely(!cpus_empty(tmp))) {
++		if (likely(!(desc->status & IRQ_DISABLED)))
++			desc->handler->disable(irq);
++
++		desc->handler->set_affinity(irq,tmp);
++
++		if (likely(!(desc->status & IRQ_DISABLED)))
++			desc->handler->enable(irq);
++	}
++	cpus_clear(pending_irq_cpumask[irq]);
++}
++
++#endif
+
+commit 2f58276740445b1d04f07dd4c5a50e1af50c1b86
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:24 2018 +0800
+
+    v2.6.12
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+deleted file mode 100644
+index ca3f4aa..0000000
+--- a/kernel/irq/migration.c
++++ /dev/null
+@@ -1,72 +0,0 @@
+-
+-#include <linux/irq.h>
+-#include <linux/interrupt.h>
+-
+-#include "internals.h"
+-
+-void irq_move_masked_irq(struct irq_data *idata)
+-{
+-	struct irq_desc *desc = irq_data_to_desc(idata);
+-	struct irq_chip *chip = idata->chip;
+-
+-	if (likely(!irqd_is_setaffinity_pending(&desc->irq_data)))
+-		return;
+-
+-	/*
+-	 * Paranoia: cpu-local interrupts shouldn't be calling in here anyway.
+-	 */
+-	if (!irqd_can_balance(&desc->irq_data)) {
+-		WARN_ON(1);
+-		return;
+-	}
+-
+-	irqd_clr_move_pending(&desc->irq_data);
+-
+-	if (unlikely(cpumask_empty(desc->pending_mask)))
+-		return;
+-
+-	if (!chip->irq_set_affinity)
+-		return;
+-
+-	assert_raw_spin_locked(&desc->lock);
+-
+-	/*
+-	 * If there was a valid mask to work with, please
+-	 * do the disable, re-program, enable sequence.
+-	 * This is *not* particularly important for level triggered
+-	 * but in a edge trigger case, we might be setting rte
+-	 * when an active trigger is coming in. This could
+-	 * cause some ioapics to mal-function.
+-	 * Being paranoid i guess!
+-	 *
+-	 * For correct operation this depends on the caller
+-	 * masking the irqs.
+-	 */
+-	if (cpumask_any_and(desc->pending_mask, cpu_online_mask) < nr_cpu_ids)
+-		irq_do_set_affinity(&desc->irq_data, desc->pending_mask, false);
+-
+-	cpumask_clear(desc->pending_mask);
+-}
+-
+-void irq_move_irq(struct irq_data *idata)
+-{
+-	bool masked;
+-
+-	if (likely(!irqd_is_setaffinity_pending(idata)))
+-		return;
+-
+-	if (unlikely(irqd_irq_disabled(idata)))
+-		return;
+-
+-	/*
+-	 * Be careful vs. already masked interrupts. If this is a
+-	 * threaded interrupt with ONESHOT set, we can end up with an
+-	 * interrupt storm.
+-	 */
+-	masked = irqd_irq_masked(idata);
+-	if (!masked)
+-		idata->chip->irq_mask(idata);
+-	irq_move_masked_irq(idata);
+-	if (!masked)
+-		idata->chip->irq_unmask(idata);
+-}
+
+commit 1f92d61e7575e2c92320525c77c369d64ed1b5ef
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:15 2018 +0800
+
+    v2.6.11
+
+diff --git a/kernel/irq/migration.c b/kernel/irq/migration.c
+new file mode 100644
+index 0000000..ca3f4aa
+--- /dev/null
++++ b/kernel/irq/migration.c
+@@ -0,0 +1,72 @@
++
++#include <linux/irq.h>
++#include <linux/interrupt.h>
++
++#include "internals.h"
++
++void irq_move_masked_irq(struct irq_data *idata)
++{
++	struct irq_desc *desc = irq_data_to_desc(idata);
++	struct irq_chip *chip = idata->chip;
++
++	if (likely(!irqd_is_setaffinity_pending(&desc->irq_data)))
++		return;
++
++	/*
++	 * Paranoia: cpu-local interrupts shouldn't be calling in here anyway.
++	 */
++	if (!irqd_can_balance(&desc->irq_data)) {
++		WARN_ON(1);
++		return;
++	}
++
++	irqd_clr_move_pending(&desc->irq_data);
++
++	if (unlikely(cpumask_empty(desc->pending_mask)))
++		return;
++
++	if (!chip->irq_set_affinity)
++		return;
++
++	assert_raw_spin_locked(&desc->lock);
++
++	/*
++	 * If there was a valid mask to work with, please
++	 * do the disable, re-program, enable sequence.
++	 * This is *not* particularly important for level triggered
++	 * but in a edge trigger case, we might be setting rte
++	 * when an active trigger is coming in. This could
++	 * cause some ioapics to mal-function.
++	 * Being paranoid i guess!
++	 *
++	 * For correct operation this depends on the caller
++	 * masking the irqs.
++	 */
++	if (cpumask_any_and(desc->pending_mask, cpu_online_mask) < nr_cpu_ids)
++		irq_do_set_affinity(&desc->irq_data, desc->pending_mask, false);
++
++	cpumask_clear(desc->pending_mask);
++}
++
++void irq_move_irq(struct irq_data *idata)
++{
++	bool masked;
++
++	if (likely(!irqd_is_setaffinity_pending(idata)))
++		return;
++
++	if (unlikely(irqd_irq_disabled(idata)))
++		return;
++
++	/*
++	 * Be careful vs. already masked interrupts. If this is a
++	 * threaded interrupt with ONESHOT set, we can end up with an
++	 * interrupt storm.
++	 */
++	masked = irqd_irq_masked(idata);
++	if (!masked)
++		idata->chip->irq_mask(idata);
++	irq_move_masked_irq(idata);
++	if (!masked)
++		idata->chip->irq_unmask(idata);
++}
+
+commit ee142350a189b1a7976659cf7f62140f33a1a437
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:14 2018 +0800
+
+    target source code file : kernel/irq/migration.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..7acd632
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++kernel/irq/migration.c

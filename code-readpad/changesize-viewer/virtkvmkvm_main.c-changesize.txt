@@ -1,0 +1,222 @@
+947e5138d7f1d6c783559b9fe482163ba795334e v4.18-rc2
+ 1 file changed, 9 insertions(+), 10 deletions(-)
+cfcf1c57da7278e76b71210a532e4d2b9a0e3cec v4.18-rc1
+ 1 file changed, 43 insertions(+), 43 deletions(-)
+0c53fb75e3f65a36656ee757aac686a16d8fae08 v4.17-rc1
+ 1 file changed, 18 insertions(+), 18 deletions(-)
+0e8d343bf4883a227855c5ee31c5889e724db3bb v4.16-rc4
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+648e6e8286757688f663d37411cd6d355cfc9118 v4.16-rc1
+ 1 file changed, 49 insertions(+), 65 deletions(-)
+38a397bcb00cf49b4588e74a1579557eb8c17b67 v4.15-rc3
+ 1 file changed, 8 insertions(+)
+15928f4606051c6e589e9ea0700f175af069d7ab v4.15-rc2
+ 1 file changed, 23 insertions(+)
+72155db5150d47978a2e9c7fb8226130e204d8fa v4.15-rc1
+ 1 file changed, 6 insertions(+), 9 deletions(-)
+e41a1cb3e4da55dd081a4b180b9a43f0a608861c v4.14-rc1
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+2c4b59cfafee0148f9f7cc54c2d38b54365c9d49 v4.13
+ 1 file changed, 42 deletions(-)
+8e9f6d00f50ab6c94c42dc4ef59307f63cc7c597 v4.13-rc4
+ 1 file changed, 4 insertions(+), 7 deletions(-)
+8faca99fd4f9e716d97a189e52e02ed22d8db79e v4.13-rc3
+ 1 file changed, 12 insertions(+), 23 deletions(-)
+dce9969d622a4f9b38f8c2d5cfd337cb53b99ccd v4.13-rc1
+ 1 file changed, 118 insertions(+), 25 deletions(-)
+665343ac8ff3c622b2c08385bc23097ea9b013e2 v4.12-rc1
+ 1 file changed, 63 insertions(+), 67 deletions(-)
+58e2a7656e0052d0a28f451d554f73a4f30fa420 v4.11-rc5
+ 1 file changed, 31 insertions(+), 13 deletions(-)
+faf008d41853bfdd29cc426cbb8e96451a937d42 v4.11-rc1
+ 1 file changed, 66 insertions(+), 65 deletions(-)
+0f431b152147167280c78a64a756e46394b80c74 v4.10-rc1
+ 1 file changed, 96 insertions(+), 20 deletions(-)
+f8bd3ba9e2a82a72f7cffe9babd1489443772273 v4.9-rc8
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+26173ed3ac494429ff734fb075b90cca19c49ec5 v4.9-rc4
+ 1 file changed, 6 insertions(+)
+ba97244a88d8d4e8412710e21830caaa823c0fb5 v4.9-rc3
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+9570d3dc413e16eca06bac10d98a98a231ac534c v4.9-rc2
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+4ff614becb190c2e433763e4733102eee73098af v4.9-rc1
+ 1 file changed, 39 insertions(+), 11 deletions(-)
+66ad64172e529a456721757c59af564b239f9cd1 v4.8-rc2
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+50ebf025d1483666fa22399dfeb28095a4aed84c v4.8-rc1
+ 1 file changed, 115 insertions(+), 40 deletions(-)
+52e19e5a2e0cb9a4ce09d0a7377fbf0cad1d6364 v4.7-rc4
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+7e44e0ee868c774938aa99b81a97f782daa72e8d v4.7-rc2
+ 1 file changed, 12 insertions(+), 10 deletions(-)
+7bc9ecca893bf0c5bef36d0bc80942aceddf9d77 v4.7-rc1
+ 1 file changed, 200 insertions(+), 19 deletions(-)
+c33ce720026da4dac3f7c70e20e2551be9366ff0 v4.6-rc1
+ 1 file changed, 63 insertions(+), 44 deletions(-)
+f2602e9592b0e6eab5462c3391dfbe5551b9c09e v4.5
+ 1 file changed, 3 insertions(+)
+f2d7aca9856e34eb982c5f81b4aa01b9b1dab41f v4.5-rc1
+ 1 file changed, 36 insertions(+), 57 deletions(-)
+6a435eb7629b92ca55a7d85dd6c40bd04cfef31b v4.4-rc1
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+a3886b3a8e4070e53347aa56a48ddab0a4e326fe v4.3-rc3
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+cb7c68d8d227027e5e88e1e5c7c5bf85eebfb486 v4.3-rc2
+ 1 file changed, 20 insertions(+), 3 deletions(-)
+5cb67e6a9fcd4a8df8bf4e97a9fe970e687c0014 v4.3-rc1
+ 1 file changed, 94 insertions(+), 18 deletions(-)
+9fbb680cfe3d69d95c488f000309da4032205543 v4.2-rc1
+ 1 file changed, 290 insertions(+), 145 deletions(-)
+e71cd0fbac3e1dd7cb3e71597c1861fef1b861d8 v4.1-rc1
+ 1 file changed, 69 insertions(+), 80 deletions(-)
+33f8e0f25ddb159f1686274332affaf1f3aa6a1a v4.0-rc6
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+b801a6f51d0dfcc76e0a3ae6ca409eef3897990e v4.0-rc5
+ 1 file changed, 1 insertion(+)
+6c17dfc2174b895a2ac3dfddeddbd0ae975ba7b6 v4.0-rc1
+ 1 file changed, 135 insertions(+), 59 deletions(-)
+da8336ae62c135c8291377a1f5f9510baa5067c3 v3.19-rc2
+ 1 file changed, 20 insertions(+), 6 deletions(-)
+dae2cb42d00f5b69076fde9154c751c83627f2c8 v3.19-rc1
+ 1 file changed, 58 insertions(+), 75 deletions(-)
+aaf016203dbe90fd2c843d81e5abef63e68ad81f v3.18-rc7
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+1e772b0ca3bf3a32a3ab1ade10e159346e389ee6 v3.18-rc2
+ 1 file changed, 7 insertions(+)
+f9fa5847bcc7c58ace124d4c465f43a1011b2f9f v3.18-rc1
+ 1 file changed, 133 insertions(+), 59 deletions(-)
+3292aeabddbddba430571f18622d6223d5047fb5 v3.17-rc7
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+45f03e0192e4203e8f641949b20fd1d709c8411c v3.17-rc1
+ 1 file changed, 34 insertions(+), 28 deletions(-)
+558b45579e0ceb8abc1067e01f37a9e9478481ed v3.16-rc1
+ 1 file changed, 18 insertions(+), 11 deletions(-)
+6c4b8e768f35707d46cc030ade006141a70bcb5c v3.15-rc1
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+a2bbc6da28ddb16a12028e893d6a04e0dd5a013a v3.14-rc1
+ 1 file changed, 27 insertions(+), 54 deletions(-)
+aa3607938a563bbe57232145bac2559693fc189a v3.13-rc4
+ 1 file changed, 3 insertions(+)
+27b88caf28ce3282c0b6e8edaa3356acb8ed1527 v3.13-rc1
+ 1 file changed, 58 insertions(+), 81 deletions(-)
+a10a056f177f2ec0779ed8d2da38b620ca7cfc69 v3.12
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+e64a6310cdbc83f7d9d62f32b2dd54435b1294e7 v3.12-rc4
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+9e10f8d7ffec7ac9bd9eb9d9232bba2bbd7751b5 v3.12-rc2
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+58d06b59a6325333f17188ce33b7370e224f3593 v3.12-rc1
+ 1 file changed, 109 insertions(+), 47 deletions(-)
+c90951977b0997c25bcfb5bb67ad5189d1d5c5cc v3.11-rc1
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+b56798a92b697ce340ee436c3c5b78fe3ab35c48 v3.10-rc1
+ 1 file changed, 220 insertions(+), 48 deletions(-)
+17a34308affeacb90c50eeeb1d20d579459ab4cb v3.9-rc6
+ 1 file changed, 37 insertions(+), 10 deletions(-)
+6866bf69fa6d285169590850c5e305cae57dfcb7 v3.9-rc1
+ 1 file changed, 136 insertions(+), 65 deletions(-)
+1fc59e73677e282d9949c287b6fa5f8a8f5522c6 v3.8-rc1
+ 1 file changed, 16 insertions(+), 41 deletions(-)
+50ab140b61e30814cb9f4d9cc41d2aae59d93cbe v3.7-rc3
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+68daac0ef06e4b0d0b9e8975ce6df05f612bc186 v3.7-rc1
+ 1 file changed, 328 insertions(+), 216 deletions(-)
+6d508ee8c5244f520e404faa10f41011bbe88301 v3.6-rc4
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+75a8cac61b6785048200dc46d5fb6c796b06c98f v3.6-rc1
+ 1 file changed, 24 insertions(+), 12 deletions(-)
+c62f1f0ae42487539a3139b826eb63ecca6df788 v3.5-rc6
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+67bacf0024fa571fb9402e199a82cb86d7e16da1 v3.5-rc1
+ 1 file changed, 87 insertions(+), 45 deletions(-)
+9952caf4ccc3df1bd643f69e9c877231d125f105 v3.4-rc4
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+462a95cbd197b21f3d6bd949523b8c6ba84cfdee v3.4-rc1
+ 1 file changed, 39 insertions(+), 105 deletions(-)
+0f895563a15c73c6a83c8c72bcb063676a5159ba v3.3-rc3
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+a958f4f5a6b8c83d446e72e476523feed22f84a1 v3.3-rc1
+ 1 file changed, 133 insertions(+), 71 deletions(-)
+e5fc8afe92d8afeea6725475dac245aeca633cb2 v3.2-rc1
+ 1 file changed, 100 insertions(+), 12 deletions(-)
+ba35eccfb0fb2e1e4bf8fa30267313d8427f2e0c v3.1-rc1
+ 1 file changed, 100 insertions(+), 10 deletions(-)
+6de5bde9ed14ba5e24214fa3319f7c92a7ea3421 v3.0-rc3
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+bb46032f6107a6b129cdf397ac018233b056f1f6 v3.0-rc1
+ 1 file changed, 6 insertions(+), 20 deletions(-)
+33e129e6be93b0b6b579f5a48ceefeb23185fd71 v2.6.39-rc3
+ 1 file changed, 21 insertions(+), 2 deletions(-)
+7a02afe5e0d20605df4bd96825955edee7f689d2 v2.6.39-rc1
+ 1 file changed, 106 insertions(+), 70 deletions(-)
+e03e78e6f4f5c7beb67cceaff405d58c0fcf6bf1 v2.6.38-rc1
+ 1 file changed, 282 insertions(+), 91 deletions(-)
+106413540e7899bdbeced276d4750157fab9f466 v2.6.37-rc1
+ 1 file changed, 69 insertions(+), 18 deletions(-)
+f125f40a3c6f17c36d9259f026786fc2cca1d808 v2.6.36-rc6
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+555d840ace66d6907bba5cc3bf350d7d8ef01a64 v2.6.36-rc4
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+1ff777c78c03d99f438374c3302abdeb07eb373b v2.6.36-rc1
+ 1 file changed, 79 insertions(+), 27 deletions(-)
+579db65bae2234c926bbe8b57f68af34209c6695 v2.6.35-rc1
+ 1 file changed, 31 insertions(+), 32 deletions(-)
+64dad5e351dad0b60d26b79ded2cde263706e767 v2.6.34-rc6
+ 1 file changed, 12 insertions(+), 5 deletions(-)
+63ad9380f6076ac19caa64853802cb328ac6f386 v2.6.34-rc4
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+cab1b3d20dca2a5ca7c2fcd0ceb794386438c2c6 v2.6.34-rc1
+ 1 file changed, 257 insertions(+), 135 deletions(-)
+f27c76ec65db2abbe8c33de38a0f9713ea02df08 v2.6.33-rc3
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+57328dece0498cac4eeaf1eccb13d9a06545b839 v2.6.33-rc2
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+359eb518d7f4253db77303025f3aab3c562b6f24 v2.6.33-rc1
+ 1 file changed, 150 insertions(+), 816 deletions(-)
+76cfb8430c392006c4cd01870ecea9715394c7ae v2.6.32-rc6
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+fee780c4c6d4ad9ac77538104ea2f03e1188564c v2.6.32-rc4
+ 1 file changed, 14 insertions(+)
+52423394b1658fb1597f641e18e3b9d968707046 v2.6.32-rc3
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+dfc5d295cef3427bf9278d9166489a1cc9ce39af v2.6.32-rc1
+ 1 file changed, 209 insertions(+), 96 deletions(-)
+a3fb6ef5f8d7550a99c5e7828b026bfaa821c862 v2.6.31-rc2
+ 1 file changed, 5 insertions(+)
+8535de93b3ac91650ea8baf528201563cfe1613b v2.6.31-rc1
+ 1 file changed, 487 insertions(+), 192 deletions(-)
+e4e77765717745655229f90543ac864dcd43ca86 v2.6.30
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+3a58a19e6393c4fb03e7bb7a37f2b5a7062e8f45 v2.6.30-rc4
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+6160ab95c0407a3d633c10635959944b6a780cc4 v2.6.30-rc1
+ 1 file changed, 68 insertions(+), 73 deletions(-)
+f0c0854df712fc1a429ccc2a62f582a16a594a0a v2.6.29-rc6
+ 1 file changed, 33 insertions(+), 10 deletions(-)
+f6c4ccf5e2cf4625526a8b291c55c2531467377b v2.6.29-rc1
+ 1 file changed, 375 insertions(+), 95 deletions(-)
+2d3faef9e11325aa3c2fd84a6c7229de27955646 v2.6.28-rc3
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+ac83a659400df91e137fa1c29f7e531d1842160e v2.6.28-rc1
+ 1 file changed, 337 insertions(+), 45 deletions(-)
+a3bbf1d53a920a66cd4316954dc6be1b2b3db1da v2.6.27-rc2
+ 1 file changed, 151 insertions(+), 4 deletions(-)
+d7a913b4d69cf71290d07fde683a7762f09dfdf9 v2.6.27-rc1
+ 1 file changed, 139 insertions(+), 32 deletions(-)
+b66363d488610b40c5fb6ef6ea292e20362ca8e2 v2.6.26-rc4
+ 1 file changed, 15 insertions(+), 14 deletions(-)
+727028c88d4774dc8fd3aa6a4bf5d78bfb616285 v2.6.26-rc2
+ 1 file changed, 1 insertion(+)
+771ea288128f1b8c23584282d66c7a9578f4621a v2.6.26-rc1
+ 1 file changed, 200 insertions(+), 47 deletions(-)
+c3390b38c0e5bef89a894122a9c6c8c412fb7327 v2.6.25-rc4
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+d6593188ce55536967291d586b37c629249935eb v2.6.25-rc1
+ 1 file changed, 1400 insertions(+)
+50931229b842a4a959a5dfc6a61cba9e7e1a132c v2.6.12
+ 1 file changed, 3322 deletions(-)
+fa29d9d61c00de0585934b90f3889f572ffd4e5a v2.6.11
+ 1 file changed, 3322 insertions(+)
+23cf0f32092f4a7efc66b5f6f4c6355929d2aa9d target source code file : virt/kvm/kvm_main.c
+ 1 file changed, 1 insertion(+)

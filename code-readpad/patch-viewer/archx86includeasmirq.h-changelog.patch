@@ -1,0 +1,655 @@
+commit ee4a3113001657504419ae8a2f65e20617ecae8d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:05 2018 +0800
+
+    v4.15-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index d8632f8..2395bb7 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -26,11 +26,7 @@ extern void irq_ctx_init(int cpu);
+ 
+ struct irq_desc;
+ 
+-#ifdef CONFIG_HOTPLUG_CPU
+-#include <linux/cpumask.h>
+-extern int check_irq_vectors_for_cpu_disable(void);
+ extern void fixup_irqs(void);
+-#endif
+ 
+ #ifdef CONFIG_HAVE_KVM
+ extern void kvm_set_posted_intr_wakeup_handler(void (*handler)(void));
+
+commit 4a2463162e9cbc73c48dc929104de0433c148b2c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:56 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 9958cee..d8632f8 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -1,3 +1,4 @@
++/* SPDX-License-Identifier: GPL-2.0 */
+ #ifndef _ASM_X86_IRQ_H
+ #define _ASM_X86_IRQ_H
+ /*
+
+commit 93a7aecbd6b059686dce9ed2143d8e9e98d48b62
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:38 2018 +0800
+
+    v4.14-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 668cca5..9958cee 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -42,10 +42,6 @@ extern bool handle_irq(struct irq_desc *desc, struct pt_regs *regs);
+ 
+ extern __visible unsigned int do_IRQ(struct pt_regs *regs);
+ 
+-/* Interrupt vector management */
+-extern DECLARE_BITMAP(used_vectors, NR_VECTORS);
+-extern int vector_used_by_percpu_irq(unsigned int vector);
+-
+ extern void init_ISA_irqs(void);
+ 
+ #ifdef CONFIG_X86_LOCAL_APIC
+
+commit 934f9cf655b5a3dcf1ca20e914c87bddbdae1262
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:17 2018 +0800
+
+    v4.13-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 16d3fa2..668cca5 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -29,7 +29,6 @@ struct irq_desc;
+ #include <linux/cpumask.h>
+ extern int check_irq_vectors_for_cpu_disable(void);
+ extern void fixup_irqs(void);
+-extern void irq_force_complete_move(struct irq_desc *desc);
+ #endif
+ 
+ #ifdef CONFIG_HAVE_KVM
+
+commit 941bf821e5e504b6dd95e6f35d8205b50877afc0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:08:51 2018 +0800
+
+    v4.9-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index e7de5c9..16d3fa2 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -50,8 +50,9 @@ extern int vector_used_by_percpu_irq(unsigned int vector);
+ extern void init_ISA_irqs(void);
+ 
+ #ifdef CONFIG_X86_LOCAL_APIC
+-void arch_trigger_all_cpu_backtrace(bool);
+-#define arch_trigger_all_cpu_backtrace arch_trigger_all_cpu_backtrace
++void arch_trigger_cpumask_backtrace(const struct cpumask *mask,
++				    bool exclude_self);
++#define arch_trigger_cpumask_backtrace arch_trigger_cpumask_backtrace
+ #endif
+ 
+ #endif /* _ASM_X86_IRQ_H */
+
+commit 3ee1bc3c90c012bfc49cc64ad44495ead359b54a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:07:37 2018 +0800
+
+    v4.5-rc2
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 881b476..e7de5c9 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -23,11 +23,13 @@ extern void irq_ctx_init(int cpu);
+ 
+ #define __ARCH_HAS_DO_SOFTIRQ
+ 
++struct irq_desc;
++
+ #ifdef CONFIG_HOTPLUG_CPU
+ #include <linux/cpumask.h>
+ extern int check_irq_vectors_for_cpu_disable(void);
+ extern void fixup_irqs(void);
+-extern void irq_force_complete_move(int);
++extern void irq_force_complete_move(struct irq_desc *desc);
+ #endif
+ 
+ #ifdef CONFIG_HAVE_KVM
+@@ -37,7 +39,6 @@ extern void kvm_set_posted_intr_wakeup_handler(void (*handler)(void));
+ extern void (*x86_platform_ipi_callback)(void);
+ extern void native_init_IRQ(void);
+ 
+-struct irq_desc;
+ extern bool handle_irq(struct irq_desc *desc, struct pt_regs *regs);
+ 
+ extern __visible unsigned int do_IRQ(struct pt_regs *regs);
+
+commit 4ff420a7065b3b0c3b083916053fb5113b9e4f19
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:06:57 2018 +0800
+
+    v4.3-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 8008d06..881b476 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -36,7 +36,9 @@ extern void kvm_set_posted_intr_wakeup_handler(void (*handler)(void));
+ 
+ extern void (*x86_platform_ipi_callback)(void);
+ extern void native_init_IRQ(void);
+-extern bool handle_irq(unsigned irq, struct pt_regs *regs);
++
++struct irq_desc;
++extern bool handle_irq(struct irq_desc *desc, struct pt_regs *regs);
+ 
+ extern __visible unsigned int do_IRQ(struct pt_regs *regs);
+ 
+
+commit e20614d1524a693f31a2f8da7620c0290c58d5d2
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:06:37 2018 +0800
+
+    v4.2-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index a80cbb8..8008d06 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -30,6 +30,10 @@ extern void fixup_irqs(void);
+ extern void irq_force_complete_move(int);
+ #endif
+ 
++#ifdef CONFIG_HAVE_KVM
++extern void kvm_set_posted_intr_wakeup_handler(void (*handler)(void));
++#endif
++
+ extern void (*x86_platform_ipi_callback)(void);
+ extern void native_init_IRQ(void);
+ extern bool handle_irq(unsigned irq, struct pt_regs *regs);
+
+commit 47d1c9ca2820ad050a4d682bec619d16c18a6897
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:04:56 2018 +0800
+
+    v3.16-rc3
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index cb6cfcd..a80cbb8 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -43,7 +43,7 @@ extern int vector_used_by_percpu_irq(unsigned int vector);
+ extern void init_ISA_irqs(void);
+ 
+ #ifdef CONFIG_X86_LOCAL_APIC
+-void arch_trigger_all_cpu_backtrace(void);
++void arch_trigger_all_cpu_backtrace(bool);
+ #define arch_trigger_all_cpu_backtrace arch_trigger_all_cpu_backtrace
+ #endif
+ 
+
+commit e541fb32a294d86102d4f8e55e1a75a8d8c37a4e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:04:15 2018 +0800
+
+    v3.14-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 0ea10f2..cb6cfcd 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -25,6 +25,7 @@ extern void irq_ctx_init(int cpu);
+ 
+ #ifdef CONFIG_HOTPLUG_CPU
+ #include <linux/cpumask.h>
++extern int check_irq_vectors_for_cpu_disable(void);
+ extern void fixup_irqs(void);
+ extern void irq_force_complete_move(int);
+ #endif
+
+commit 0540eb1e0bd33b4974da885807a682dcc3f5e71f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:03:40 2018 +0800
+
+    v3.12-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 57873be..0ea10f2 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -33,7 +33,7 @@ extern void (*x86_platform_ipi_callback)(void);
+ extern void native_init_IRQ(void);
+ extern bool handle_irq(unsigned irq, struct pt_regs *regs);
+ 
+-extern unsigned int do_IRQ(struct pt_regs *regs);
++extern __visible unsigned int do_IRQ(struct pt_regs *regs);
+ 
+ /* Interrupt vector management */
+ extern DECLARE_BITMAP(used_vectors, NR_VECTORS);
+
+commit 74e2e38978273260abe106a3db0947f976f8e87e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:03:18 2018 +0800
+
+    v3.10-rc7
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index ba870bb..57873be 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -41,4 +41,9 @@ extern int vector_used_by_percpu_irq(unsigned int vector);
+ 
+ extern void init_ISA_irqs(void);
+ 
++#ifdef CONFIG_X86_LOCAL_APIC
++void arch_trigger_all_cpu_backtrace(void);
++#define arch_trigger_all_cpu_backtrace arch_trigger_all_cpu_backtrace
++#endif
++
+ #endif /* _ASM_X86_IRQ_H */
+
+commit f9206ee5256167ba59254cf108a6f980e778b77a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:04 2018 +0800
+
+    v2.6.39-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index c704b38..ba870bb 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -10,9 +10,6 @@
+ #include <asm/apicdef.h>
+ #include <asm/irq_vectors.h>
+ 
+-/* Even though we don't support this, supply it to appease OF */
+-static inline void irq_dispose_mapping(unsigned int virq) { }
+-
+ static inline int irq_canonicalize(int irq)
+ {
+ 	return ((irq == 2) ? 9 : irq);
+
+commit 6167efbb1dc3f37b7a1b096a0dd64d68dd2c3cd8
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:46 2018 +0800
+
+    v2.6.38-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 13b0eba..c704b38 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -10,15 +10,14 @@
+ #include <asm/apicdef.h>
+ #include <asm/irq_vectors.h>
+ 
++/* Even though we don't support this, supply it to appease OF */
++static inline void irq_dispose_mapping(unsigned int virq) { }
++
+ static inline int irq_canonicalize(int irq)
+ {
+ 	return ((irq == 2) ? 9 : irq);
+ }
+ 
+-#ifdef CONFIG_X86_LOCAL_APIC
+-# define ARCH_HAS_NMI_WATCHDOG
+-#endif
+-
+ #ifdef CONFIG_X86_32
+ extern void irq_ctx_init(int cpu);
+ #else
+
+commit 391efc3fc32790499216e51719162425cf3f9e2b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:29 2018 +0800
+
+    v2.6.37-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 5458380..13b0eba 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -19,18 +19,14 @@ static inline int irq_canonicalize(int irq)
+ # define ARCH_HAS_NMI_WATCHDOG
+ #endif
+ 
+-#ifdef CONFIG_4KSTACKS
+-  extern void irq_ctx_init(int cpu);
+-  extern void irq_ctx_exit(int cpu);
+-# define __ARCH_HAS_DO_SOFTIRQ
++#ifdef CONFIG_X86_32
++extern void irq_ctx_init(int cpu);
+ #else
+ # define irq_ctx_init(cpu) do { } while (0)
+-# define irq_ctx_exit(cpu) do { } while (0)
+-# ifdef CONFIG_X86_64
+-#  define __ARCH_HAS_DO_SOFTIRQ
+-# endif
+ #endif
+ 
++#define __ARCH_HAS_DO_SOFTIRQ
++
+ #ifdef CONFIG_HOTPLUG_CPU
+ #include <linux/cpumask.h>
+ extern void fixup_irqs(void);
+
+commit 01a39fa69a771292c04f68de1e9737151c793506
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:23 2018 +0800
+
+    v2.6.33-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index ddda6cb..5458380 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -34,9 +34,10 @@ static inline int irq_canonicalize(int irq)
+ #ifdef CONFIG_HOTPLUG_CPU
+ #include <linux/cpumask.h>
+ extern void fixup_irqs(void);
++extern void irq_force_complete_move(int);
+ #endif
+ 
+-extern void (*generic_interrupt_extension)(void);
++extern void (*x86_platform_ipi_callback)(void);
+ extern void native_init_IRQ(void);
+ extern bool handle_irq(unsigned irq, struct pt_regs *regs);
+ 
+
+commit 9bd9778984eac8b944e9f7a10ac3bbfcfa70307c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:06 2018 +0800
+
+    v2.6.32-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index f38481b..ddda6cb 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -37,7 +37,6 @@ extern void fixup_irqs(void);
+ #endif
+ 
+ extern void (*generic_interrupt_extension)(void);
+-extern void init_IRQ(void);
+ extern void native_init_IRQ(void);
+ extern bool handle_irq(unsigned irq, struct pt_regs *regs);
+ 
+@@ -47,4 +46,6 @@ extern unsigned int do_IRQ(struct pt_regs *regs);
+ extern DECLARE_BITMAP(used_vectors, NR_VECTORS);
+ extern int vector_used_by_percpu_irq(unsigned int vector);
+ 
++extern void init_ISA_irqs(void);
++
+ #endif /* _ASM_X86_IRQ_H */
+
+commit 92318393431b0763b9afd338552b3fa607f93bae
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:32 2018 +0800
+
+    v2.6.30-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index 592688e..f38481b 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -36,9 +36,12 @@ static inline int irq_canonicalize(int irq)
+ extern void fixup_irqs(void);
+ #endif
+ 
+-extern unsigned int do_IRQ(struct pt_regs *regs);
++extern void (*generic_interrupt_extension)(void);
+ extern void init_IRQ(void);
+ extern void native_init_IRQ(void);
++extern bool handle_irq(unsigned irq, struct pt_regs *regs);
++
++extern unsigned int do_IRQ(struct pt_regs *regs);
+ 
+ /* Interrupt vector management */
+ extern DECLARE_BITMAP(used_vectors, NR_VECTORS);
+
+commit cd1f6b763344a93e0ccbf1aa3f24dddab0e37f6b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:15 2018 +0800
+
+    v2.6.29-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+index bae0eda..592688e 100644
+--- a/arch/x86/include/asm/irq.h
++++ b/arch/x86/include/asm/irq.h
+@@ -31,13 +31,9 @@ static inline int irq_canonicalize(int irq)
+ # endif
+ #endif
+ 
+-#ifdef CONFIG_IRQBALANCE
+-extern int irqbalance_disable(char *str);
+-#endif
+-
+ #ifdef CONFIG_HOTPLUG_CPU
+ #include <linux/cpumask.h>
+-extern void fixup_irqs(cpumask_t map);
++extern void fixup_irqs(void);
+ #endif
+ 
+ extern unsigned int do_IRQ(struct pt_regs *regs);
+@@ -46,5 +42,6 @@ extern void native_init_IRQ(void);
+ 
+ /* Interrupt vector management */
+ extern DECLARE_BITMAP(used_vectors, NR_VECTORS);
++extern int vector_used_by_percpu_irq(unsigned int vector);
+ 
+ #endif /* _ASM_X86_IRQ_H */
+
+commit c644ad53371a2677cc8579f18e180a029de67310
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:57 2018 +0800
+
+    v2.6.28-rc1
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+new file mode 100644
+index 0000000..bae0eda
+--- /dev/null
++++ b/arch/x86/include/asm/irq.h
+@@ -0,0 +1,50 @@
++#ifndef _ASM_X86_IRQ_H
++#define _ASM_X86_IRQ_H
++/*
++ *	(C) 1992, 1993 Linus Torvalds, (C) 1997 Ingo Molnar
++ *
++ *	IRQ/IPI changes taken from work by Thomas Radke
++ *	<tomsoft@informatik.tu-chemnitz.de>
++ */
++
++#include <asm/apicdef.h>
++#include <asm/irq_vectors.h>
++
++static inline int irq_canonicalize(int irq)
++{
++	return ((irq == 2) ? 9 : irq);
++}
++
++#ifdef CONFIG_X86_LOCAL_APIC
++# define ARCH_HAS_NMI_WATCHDOG
++#endif
++
++#ifdef CONFIG_4KSTACKS
++  extern void irq_ctx_init(int cpu);
++  extern void irq_ctx_exit(int cpu);
++# define __ARCH_HAS_DO_SOFTIRQ
++#else
++# define irq_ctx_init(cpu) do { } while (0)
++# define irq_ctx_exit(cpu) do { } while (0)
++# ifdef CONFIG_X86_64
++#  define __ARCH_HAS_DO_SOFTIRQ
++# endif
++#endif
++
++#ifdef CONFIG_IRQBALANCE
++extern int irqbalance_disable(char *str);
++#endif
++
++#ifdef CONFIG_HOTPLUG_CPU
++#include <linux/cpumask.h>
++extern void fixup_irqs(cpumask_t map);
++#endif
++
++extern unsigned int do_IRQ(struct pt_regs *regs);
++extern void init_IRQ(void);
++extern void native_init_IRQ(void);
++
++/* Interrupt vector management */
++extern DECLARE_BITMAP(used_vectors, NR_VECTORS);
++
++#endif /* _ASM_X86_IRQ_H */
+
+commit 304e3cd20251bad558feebbd7ea5154ee0aaf0a7
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:23 2018 +0800
+
+    v2.6.12
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+deleted file mode 100644
+index a80cbb8..0000000
+--- a/arch/x86/include/asm/irq.h
++++ /dev/null
+@@ -1,50 +0,0 @@
+-#ifndef _ASM_X86_IRQ_H
+-#define _ASM_X86_IRQ_H
+-/*
+- *	(C) 1992, 1993 Linus Torvalds, (C) 1997 Ingo Molnar
+- *
+- *	IRQ/IPI changes taken from work by Thomas Radke
+- *	<tomsoft@informatik.tu-chemnitz.de>
+- */
+-
+-#include <asm/apicdef.h>
+-#include <asm/irq_vectors.h>
+-
+-static inline int irq_canonicalize(int irq)
+-{
+-	return ((irq == 2) ? 9 : irq);
+-}
+-
+-#ifdef CONFIG_X86_32
+-extern void irq_ctx_init(int cpu);
+-#else
+-# define irq_ctx_init(cpu) do { } while (0)
+-#endif
+-
+-#define __ARCH_HAS_DO_SOFTIRQ
+-
+-#ifdef CONFIG_HOTPLUG_CPU
+-#include <linux/cpumask.h>
+-extern int check_irq_vectors_for_cpu_disable(void);
+-extern void fixup_irqs(void);
+-extern void irq_force_complete_move(int);
+-#endif
+-
+-extern void (*x86_platform_ipi_callback)(void);
+-extern void native_init_IRQ(void);
+-extern bool handle_irq(unsigned irq, struct pt_regs *regs);
+-
+-extern __visible unsigned int do_IRQ(struct pt_regs *regs);
+-
+-/* Interrupt vector management */
+-extern DECLARE_BITMAP(used_vectors, NR_VECTORS);
+-extern int vector_used_by_percpu_irq(unsigned int vector);
+-
+-extern void init_ISA_irqs(void);
+-
+-#ifdef CONFIG_X86_LOCAL_APIC
+-void arch_trigger_all_cpu_backtrace(bool);
+-#define arch_trigger_all_cpu_backtrace arch_trigger_all_cpu_backtrace
+-#endif
+-
+-#endif /* _ASM_X86_IRQ_H */
+
+commit d6913d9fdf84cb30094146ec6299acdfa8e714dc
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:14 2018 +0800
+
+    v2.6.11
+
+diff --git a/arch/x86/include/asm/irq.h b/arch/x86/include/asm/irq.h
+new file mode 100644
+index 0000000..a80cbb8
+--- /dev/null
++++ b/arch/x86/include/asm/irq.h
+@@ -0,0 +1,50 @@
++#ifndef _ASM_X86_IRQ_H
++#define _ASM_X86_IRQ_H
++/*
++ *	(C) 1992, 1993 Linus Torvalds, (C) 1997 Ingo Molnar
++ *
++ *	IRQ/IPI changes taken from work by Thomas Radke
++ *	<tomsoft@informatik.tu-chemnitz.de>
++ */
++
++#include <asm/apicdef.h>
++#include <asm/irq_vectors.h>
++
++static inline int irq_canonicalize(int irq)
++{
++	return ((irq == 2) ? 9 : irq);
++}
++
++#ifdef CONFIG_X86_32
++extern void irq_ctx_init(int cpu);
++#else
++# define irq_ctx_init(cpu) do { } while (0)
++#endif
++
++#define __ARCH_HAS_DO_SOFTIRQ
++
++#ifdef CONFIG_HOTPLUG_CPU
++#include <linux/cpumask.h>
++extern int check_irq_vectors_for_cpu_disable(void);
++extern void fixup_irqs(void);
++extern void irq_force_complete_move(int);
++#endif
++
++extern void (*x86_platform_ipi_callback)(void);
++extern void native_init_IRQ(void);
++extern bool handle_irq(unsigned irq, struct pt_regs *regs);
++
++extern __visible unsigned int do_IRQ(struct pt_regs *regs);
++
++/* Interrupt vector management */
++extern DECLARE_BITMAP(used_vectors, NR_VECTORS);
++extern int vector_used_by_percpu_irq(unsigned int vector);
++
++extern void init_ISA_irqs(void);
++
++#ifdef CONFIG_X86_LOCAL_APIC
++void arch_trigger_all_cpu_backtrace(bool);
++#define arch_trigger_all_cpu_backtrace arch_trigger_all_cpu_backtrace
++#endif
++
++#endif /* _ASM_X86_IRQ_H */
+
+commit 1fb4e2b25670afbb1e3c9a676457ee5a9e87bec6
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:13 2018 +0800
+
+    target source code file : arch/x86/include/asm/irq.h
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..4df36a5
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++arch/x86/include/asm/irq.h

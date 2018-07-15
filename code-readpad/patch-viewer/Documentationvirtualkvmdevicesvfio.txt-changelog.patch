@@ -1,0 +1,153 @@
+commit bcd49e7cd34c6bc016ae9838a4f7bee9f2b0a6c4
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:09:57 2018 +0800
+
+    v4.12-rc1
+
+diff --git a/Documentation/virtual/kvm/devices/vfio.txt b/Documentation/virtual/kvm/devices/vfio.txt
+index ef51740..528c77c 100644
+--- a/Documentation/virtual/kvm/devices/vfio.txt
++++ b/Documentation/virtual/kvm/devices/vfio.txt
+@@ -16,7 +16,21 @@ Groups:
+ 
+ KVM_DEV_VFIO_GROUP attributes:
+   KVM_DEV_VFIO_GROUP_ADD: Add a VFIO group to VFIO-KVM device tracking
++	kvm_device_attr.addr points to an int32_t file descriptor
++	for the VFIO group.
+   KVM_DEV_VFIO_GROUP_DEL: Remove a VFIO group from VFIO-KVM device tracking
++	kvm_device_attr.addr points to an int32_t file descriptor
++	for the VFIO group.
++  KVM_DEV_VFIO_GROUP_SET_SPAPR_TCE: attaches a guest visible TCE table
++	allocated by sPAPR KVM.
++	kvm_device_attr.addr points to a struct:
+ 
+-For each, kvm_device_attr.addr points to an int32_t file descriptor
+-for the VFIO group.
++	struct kvm_vfio_spapr_tce {
++		__s32	groupfd;
++		__s32	tablefd;
++	};
++
++	where
++	@groupfd is a file descriptor for a VFIO group;
++	@tablefd is a file descriptor for a TCE table allocated via
++		KVM_CREATE_SPAPR_TCE.
+
+commit 9e393c85754a9bb6505acea4772ad42c0932d2b0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:03:57 2018 +0800
+
+    v3.13-rc1
+
+diff --git a/Documentation/virtual/kvm/devices/vfio.txt b/Documentation/virtual/kvm/devices/vfio.txt
+new file mode 100644
+index 0000000..ef51740
+--- /dev/null
++++ b/Documentation/virtual/kvm/devices/vfio.txt
+@@ -0,0 +1,22 @@
++VFIO virtual device
++===================
++
++Device types supported:
++  KVM_DEV_TYPE_VFIO
++
++Only one VFIO instance may be created per VM.  The created device
++tracks VFIO groups in use by the VM and features of those groups
++important to the correctness and acceleration of the VM.  As groups
++are enabled and disabled for use by the VM, KVM should be updated
++about their presence.  When registered with KVM, a reference to the
++VFIO-group is held by KVM.
++
++Groups:
++  KVM_DEV_VFIO_GROUP
++
++KVM_DEV_VFIO_GROUP attributes:
++  KVM_DEV_VFIO_GROUP_ADD: Add a VFIO group to VFIO-KVM device tracking
++  KVM_DEV_VFIO_GROUP_DEL: Remove a VFIO group from VFIO-KVM device tracking
++
++For each, kvm_device_attr.addr points to an int32_t file descriptor
++for the VFIO group.
+
+commit 1f05f56dab690a7ac26c31471cceb8ba960a4a1e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:23 2018 +0800
+
+    v2.6.12
+
+diff --git a/Documentation/virtual/kvm/devices/vfio.txt b/Documentation/virtual/kvm/devices/vfio.txt
+deleted file mode 100644
+index ef51740..0000000
+--- a/Documentation/virtual/kvm/devices/vfio.txt
++++ /dev/null
+@@ -1,22 +0,0 @@
+-VFIO virtual device
+-===================
+-
+-Device types supported:
+-  KVM_DEV_TYPE_VFIO
+-
+-Only one VFIO instance may be created per VM.  The created device
+-tracks VFIO groups in use by the VM and features of those groups
+-important to the correctness and acceleration of the VM.  As groups
+-are enabled and disabled for use by the VM, KVM should be updated
+-about their presence.  When registered with KVM, a reference to the
+-VFIO-group is held by KVM.
+-
+-Groups:
+-  KVM_DEV_VFIO_GROUP
+-
+-KVM_DEV_VFIO_GROUP attributes:
+-  KVM_DEV_VFIO_GROUP_ADD: Add a VFIO group to VFIO-KVM device tracking
+-  KVM_DEV_VFIO_GROUP_DEL: Remove a VFIO group from VFIO-KVM device tracking
+-
+-For each, kvm_device_attr.addr points to an int32_t file descriptor
+-for the VFIO group.
+
+commit 7c3442aaa27d8b21c3f7e272d29000c49a57efd9
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:14 2018 +0800
+
+    v2.6.11
+
+diff --git a/Documentation/virtual/kvm/devices/vfio.txt b/Documentation/virtual/kvm/devices/vfio.txt
+new file mode 100644
+index 0000000..ef51740
+--- /dev/null
++++ b/Documentation/virtual/kvm/devices/vfio.txt
+@@ -0,0 +1,22 @@
++VFIO virtual device
++===================
++
++Device types supported:
++  KVM_DEV_TYPE_VFIO
++
++Only one VFIO instance may be created per VM.  The created device
++tracks VFIO groups in use by the VM and features of those groups
++important to the correctness and acceleration of the VM.  As groups
++are enabled and disabled for use by the VM, KVM should be updated
++about their presence.  When registered with KVM, a reference to the
++VFIO-group is held by KVM.
++
++Groups:
++  KVM_DEV_VFIO_GROUP
++
++KVM_DEV_VFIO_GROUP attributes:
++  KVM_DEV_VFIO_GROUP_ADD: Add a VFIO group to VFIO-KVM device tracking
++  KVM_DEV_VFIO_GROUP_DEL: Remove a VFIO group from VFIO-KVM device tracking
++
++For each, kvm_device_attr.addr points to an int32_t file descriptor
++for the VFIO group.
+
+commit a32acbe51d1b3c0bce27721271446ec1dad78f3f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:13 2018 +0800
+
+    target source code file : Documentation/virtual/kvm/devices/vfio.txt
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..830c5e0
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++Documentation/virtual/kvm/devices/vfio.txt

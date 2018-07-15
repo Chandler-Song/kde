@@ -1,0 +1,16 @@
+db48435a03400cbdd385c3bf8527e72c6b3c7ea4 v4.17-rc1
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+c606f3bcb0215f13a3e97daaa0bd03d38ad853c9 v4.13-rc6
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+418afa25c966c44239dc693e65708e2131eedcc6 v4.8-rc1
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+22ce8bf7494ad6d3f6818a6e65d952fca5937aa6 v4.7-rc2
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+31edc6ca2154324f927694afedb2afcefd05a51e v4.7-rc1
+ 1 file changed, 29 insertions(+), 16 deletions(-)
+c474cc86d1ffcc476374807042e6ac570a63d8cb v4.6-rc5
+ 1 file changed, 1 insertion(+)
+b819c4f82d945c92e92c29d56ecbff492482c6ba v4.6-rc1
+ 1 file changed, 326 insertions(+)
+dbee12ce1e63fbd89b444a6aac850492103506e4 target source code file : kernel/irq/ipi.c
+ 1 file changed, 1 insertion(+)

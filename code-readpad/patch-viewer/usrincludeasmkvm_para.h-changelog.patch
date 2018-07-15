@@ -1,0 +1,13 @@
+commit 32c955e9adaf326e001c3a0cd55f1a03c196ec49
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:14 2018 +0800
+
+    target source code file : usr/include/asm/kvm_para.h
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..f1bcf11
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++usr/include/asm/kvm_para.h

@@ -1,0 +1,58 @@
+251c8f85c3365ab99a6154bf73c70c830d394934 v4.17-rc1
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+304ae6504c63d7ac9e3308d5688280c8bedf5557 v4.16-rc1
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+3127569844f107577c0641849b0ef10978b6c53f v4.14-rc8
+ 1 file changed, 1 insertion(+)
+66878afb527bc1450e8026d83044e9ad9f135cbb v4.11-rc1
+ 1 file changed, 31 insertions(+), 20 deletions(-)
+b008a33e8bc24005d0d49d4bb8f9fc38e26e89fe v4.10-rc1
+ 1 file changed, 30 insertions(+), 16 deletions(-)
+bc9b681ae8e5f9101fec03a5c75618226a393425 v4.7-rc3
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+7138c226d699bbe88ea6bf02e8988e7f0ce9017b v4.7-rc1
+ 1 file changed, 15 insertions(+), 5 deletions(-)
+437b4c3e1dcfbd542cbcc98a8559b818b1b2005c v4.6-rc1
+ 1 file changed, 8 deletions(-)
+776a0043debcc2653c1d195170d079a1242a45ca v4.5-rc1
+ 1 file changed, 42 insertions(+), 1 deletion(-)
+e73c06fa50bf9df3bce53598fe0ce53f2872f848 v4.3-rc1
+ 1 file changed, 46 insertions(+), 24 deletions(-)
+94a7d9db8954a37c1523cf87c24df39b1ccb4e94 v4.2-rc1
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+18a775e51785188a764b02aacb3792e542d85c3e v3.15-rc1
+ 1 file changed, 2 insertions(+)
+d1e3a9605636ac232de44e979998cb0040726305 v3.13-rc1
+ 1 file changed, 22 insertions(+)
+206b2ca975c0aa3b4cf9f32ccd8f1a222f2bc44d v3.10-rc1
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+0e5c29e616021334a6e894f5211e53cbf559d15d v3.8-rc1
+ 1 file changed, 1 insertion(+), 10 deletions(-)
+c2484baa99ded72eb0f3627a3ce1fd0543030fc5 v3.6-rc1
+ 1 file changed, 5 insertions(+), 41 deletions(-)
+367d5edff01c8d7849e09bcec0c189dee350d5fa v3.5-rc1
+ 1 file changed, 1 insertion(+), 8 deletions(-)
+1256ac4fecaf0d8ae496a8c9a4ff78cf1741adc7 v3.2-rc5
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+b33fcd812b4cadffa3aba2a363fbee233d325890 v2.6.36-rc1
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+cf6195b9f224341542b490c365040b92579a0f41 v2.6.33-rc2
+ 1 file changed, 14 insertions(+), 2 deletions(-)
+2edf6bd13f99e8c845f064269457e92271772ebb v2.6.33-rc1
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+ce86922d8542a3aebd8975046e64d140fb44d417 v2.6.32-rc1
+ 1 file changed, 54 insertions(+), 21 deletions(-)
+abdd5fc30f6b3793bb2b8928086f4a7ac2b940b8 v2.6.31-rc1
+ 1 file changed, 24 insertions(+), 6 deletions(-)
+9809178b265fadd22e6375c275aa4b85935cd062 v2.6.29-rc1
+ 1 file changed, 8 insertions(+), 7 deletions(-)
+41eb42f24b7fce15fa052a9bc8d37869578152dc v2.6.28-rc4
+ 1 file changed, 2 deletions(-)
+0215a0e59a1183673d39d964f4fce6250d2fc65e v2.6.28-rc1
+ 1 file changed, 247 insertions(+)
+d7b830783124284b42be746eb0936dc38d764d02 v2.6.12
+ 1 file changed, 291 deletions(-)
+030d3b65b395755d8a232cb8262b4527ae106d1e v2.6.11
+ 1 file changed, 291 insertions(+)
+d829c5e47be1d51b526c5cd53c3ca73fcd167b9e target source code file : arch/x86/include/asm/msr.h
+ 1 file changed, 1 insertion(+)

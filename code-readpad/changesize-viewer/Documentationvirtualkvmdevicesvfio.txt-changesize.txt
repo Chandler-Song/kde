@@ -1,0 +1,10 @@
+bcd49e7cd34c6bc016ae9838a4f7bee9f2b0a6c4 v4.12-rc1
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+9e393c85754a9bb6505acea4772ad42c0932d2b0 v3.13-rc1
+ 1 file changed, 22 insertions(+)
+1f05f56dab690a7ac26c31471cceb8ba960a4a1e v2.6.12
+ 1 file changed, 22 deletions(-)
+7c3442aaa27d8b21c3f7e272d29000c49a57efd9 v2.6.11
+ 1 file changed, 22 insertions(+)
+a32acbe51d1b3c0bce27721271446ec1dad78f3f target source code file : Documentation/virtual/kvm/devices/vfio.txt
+ 1 file changed, 1 insertion(+)

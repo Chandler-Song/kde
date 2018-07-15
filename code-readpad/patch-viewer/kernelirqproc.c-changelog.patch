@@ -1,0 +1,3667 @@
+commit 1df8a001fee09ef5838d3b143fca4bef40705836
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:12:08 2018 +0800
+
+    v4.18-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 7cb091d..37eda10 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -185,11 +185,6 @@ static int irq_affinity_list_proc_open(struct inode *inode, struct file *file)
+ 	return single_open(file, irq_affinity_list_proc_show, PDE_DATA(inode));
+ }
+ 
+-static int irq_affinity_hint_proc_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, irq_affinity_hint_proc_show, PDE_DATA(inode));
+-}
+-
+ static const struct file_operations irq_affinity_proc_fops = {
+ 	.open		= irq_affinity_proc_open,
+ 	.read		= seq_read,
+@@ -198,13 +193,6 @@ static const struct file_operations irq_affinity_proc_fops = {
+ 	.write		= irq_affinity_proc_write,
+ };
+ 
+-static const struct file_operations irq_affinity_hint_proc_fops = {
+-	.open		= irq_affinity_hint_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-};
+-
+ static const struct file_operations irq_affinity_list_proc_fops = {
+ 	.open		= irq_affinity_list_proc_open,
+ 	.read		= seq_read,
+@@ -223,32 +211,6 @@ static int irq_effective_aff_list_proc_show(struct seq_file *m, void *v)
+ {
+ 	return show_irq_affinity(EFFECTIVE_LIST, m);
+ }
+-
+-static int irq_effective_aff_proc_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, irq_effective_aff_proc_show, PDE_DATA(inode));
+-}
+-
+-static int irq_effective_aff_list_proc_open(struct inode *inode,
+-					    struct file *file)
+-{
+-	return single_open(file, irq_effective_aff_list_proc_show,
+-			   PDE_DATA(inode));
+-}
+-
+-static const struct file_operations irq_effective_aff_proc_fops = {
+-	.open		= irq_effective_aff_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-};
+-
+-static const struct file_operations irq_effective_aff_list_proc_fops = {
+-	.open		= irq_effective_aff_list_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-};
+ #endif
+ 
+ static int default_affinity_show(struct seq_file *m, void *v)
+@@ -313,18 +275,6 @@ static int irq_node_proc_show(struct seq_file *m, void *v)
+ 	seq_printf(m, "%d\n", irq_desc_get_node(desc));
+ 	return 0;
+ }
+-
+-static int irq_node_proc_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, irq_node_proc_show, PDE_DATA(inode));
+-}
+-
+-static const struct file_operations irq_node_proc_fops = {
+-	.open		= irq_node_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-};
+ #endif
+ 
+ static int irq_spurious_proc_show(struct seq_file *m, void *v)
+@@ -337,18 +287,6 @@ static int irq_spurious_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
+-static int irq_spurious_proc_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, irq_spurious_proc_show, PDE_DATA(inode));
+-}
+-
+-static const struct file_operations irq_spurious_proc_fops = {
+-	.open		= irq_spurious_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-};
+-
+ #define MAX_NAMELEN 128
+ 
+ static int name_unique(unsigned int irq, struct irqaction *new_action)
+@@ -421,24 +359,24 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 			 &irq_affinity_proc_fops, irqp);
+ 
+ 	/* create /proc/irq/<irq>/affinity_hint */
+-	proc_create_data("affinity_hint", 0444, desc->dir,
+-			 &irq_affinity_hint_proc_fops, irqp);
++	proc_create_single_data("affinity_hint", 0444, desc->dir,
++			irq_affinity_hint_proc_show, irqp);
+ 
+ 	/* create /proc/irq/<irq>/smp_affinity_list */
+ 	proc_create_data("smp_affinity_list", 0644, desc->dir,
+ 			 &irq_affinity_list_proc_fops, irqp);
+ 
+-	proc_create_data("node", 0444, desc->dir,
+-			 &irq_node_proc_fops, irqp);
++	proc_create_single_data("node", 0444, desc->dir, irq_node_proc_show,
++			irqp);
+ # ifdef CONFIG_GENERIC_IRQ_EFFECTIVE_AFF_MASK
+-	proc_create_data("effective_affinity", 0444, desc->dir,
+-			 &irq_effective_aff_proc_fops, irqp);
+-	proc_create_data("effective_affinity_list", 0444, desc->dir,
+-			 &irq_effective_aff_list_proc_fops, irqp);
++	proc_create_single_data("effective_affinity", 0444, desc->dir,
++			irq_effective_aff_proc_show, irqp);
++	proc_create_single_data("effective_affinity_list", 0444, desc->dir,
++			irq_effective_aff_list_proc_show, irqp);
+ # endif
+ #endif
+-	proc_create_data("spurious", 0444, desc->dir,
+-			 &irq_spurious_proc_fops, (void *)(long)irq);
++	proc_create_single_data("spurious", 0444, desc->dir,
++			irq_spurious_proc_show, (void *)(long)irq);
+ 
+ out_unlock:
+ 	mutex_unlock(&register_lock);
+
+commit 6ddb14751773f07f0d4e037c9b4f193c0d96c61f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:49 2018 +0800
+
+    v4.17-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index e8f3749..7cb091d 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -1,7 +1,5 @@
+ // SPDX-License-Identifier: GPL-2.0
+ /*
+- * linux/kernel/irq/proc.c
+- *
+  * Copyright (C) 1992, 1998-2004 Linus Torvalds, Ingo Molnar
+  *
+  * This file contains the /proc/irq/ handling code.
+
+commit 01b0c8787b9051c62602f95985288fec89e9b9b3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:06 2018 +0800
+
+    v4.15-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index c010cc0..e8f3749 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -155,8 +155,9 @@ static ssize_t write_irq_affinity(int type, struct file *file,
+ 		 */
+ 		err = irq_select_affinity_usr(irq) ? -EINVAL : count;
+ 	} else {
+-		irq_set_affinity(irq, new_value);
+-		err = count;
++		err = irq_set_affinity(irq, new_value);
++		if (!err)
++			err = count;
+ 	}
+ 
+ free_cpumask:
+
+commit 0e1f4e168be86c22c6c397449f8ca1e7ac95eab3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:57 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 6376b4a..c010cc0 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  * linux/kernel/irq/proc.c
+  *
+
+commit 5b4cdee6808a2a2917beca79f1e42aa28aee8b20
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:39 2018 +0800
+
+    v4.14-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 7f9642a..6376b4a 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -61,12 +61,12 @@ static int show_irq_affinity(int type, struct seq_file *m)
+ 	case EFFECTIVE:
+ 	case EFFECTIVE_LIST:
+ #ifdef CONFIG_GENERIC_IRQ_EFFECTIVE_AFF_MASK
+-		mask = desc->irq_common_data.effective_affinity;
++		mask = irq_data_get_effective_affinity_mask(&desc->irq_data);
+ 		break;
+-#else
+-		return -EINVAL;
+ #endif
+-	};
++	default:
++		return -EINVAL;
++	}
+ 
+ 	switch (type) {
+ 	case AFFINITY_LIST:
+
+commit 48bf00ecfecdf7f53e5a3d3bfd3423bb880a2abe
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:18 2018 +0800
+
+    v4.13-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index c53edad..7f9642a 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -37,19 +37,47 @@ static struct proc_dir_entry *root_irq_dir;
+ 
+ #ifdef CONFIG_SMP
+ 
+-static int show_irq_affinity(int type, struct seq_file *m, void *v)
++enum {
++	AFFINITY,
++	AFFINITY_LIST,
++	EFFECTIVE,
++	EFFECTIVE_LIST,
++};
++
++static int show_irq_affinity(int type, struct seq_file *m)
+ {
+ 	struct irq_desc *desc = irq_to_desc((long)m->private);
+-	const struct cpumask *mask = desc->irq_common_data.affinity;
++	const struct cpumask *mask;
+ 
++	switch (type) {
++	case AFFINITY:
++	case AFFINITY_LIST:
++		mask = desc->irq_common_data.affinity;
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+-	if (irqd_is_setaffinity_pending(&desc->irq_data))
+-		mask = desc->pending_mask;
++		if (irqd_is_setaffinity_pending(&desc->irq_data))
++			mask = desc->pending_mask;
+ #endif
+-	if (type)
++		break;
++	case EFFECTIVE:
++	case EFFECTIVE_LIST:
++#ifdef CONFIG_GENERIC_IRQ_EFFECTIVE_AFF_MASK
++		mask = desc->irq_common_data.effective_affinity;
++		break;
++#else
++		return -EINVAL;
++#endif
++	};
++
++	switch (type) {
++	case AFFINITY_LIST:
++	case EFFECTIVE_LIST:
+ 		seq_printf(m, "%*pbl\n", cpumask_pr_args(mask));
+-	else
++		break;
++	case AFFINITY:
++	case EFFECTIVE:
+ 		seq_printf(m, "%*pb\n", cpumask_pr_args(mask));
++		break;
++	}
+ 	return 0;
+ }
+ 
+@@ -80,12 +108,12 @@ static int irq_affinity_hint_proc_show(struct seq_file *m, void *v)
+ int no_irq_affinity;
+ static int irq_affinity_proc_show(struct seq_file *m, void *v)
+ {
+-	return show_irq_affinity(0, m, v);
++	return show_irq_affinity(AFFINITY, m);
+ }
+ 
+ static int irq_affinity_list_proc_show(struct seq_file *m, void *v)
+ {
+-	return show_irq_affinity(1, m, v);
++	return show_irq_affinity(AFFINITY_LIST, m);
+ }
+ 
+ 
+@@ -120,9 +148,11 @@ static ssize_t write_irq_affinity(int type, struct file *file,
+ 	 * one online CPU still has to be targeted.
+ 	 */
+ 	if (!cpumask_intersects(new_value, cpu_online_mask)) {
+-		/* Special case for empty set - allow the architecture
+-		   code to set default SMP affinity. */
+-		err = irq_select_affinity_usr(irq, new_value) ? -EINVAL : count;
++		/*
++		 * Special case for empty set - allow the architecture code
++		 * to set default SMP affinity.
++		 */
++		err = irq_select_affinity_usr(irq) ? -EINVAL : count;
+ 	} else {
+ 		irq_set_affinity(irq, new_value);
+ 		err = count;
+@@ -183,6 +213,44 @@ static const struct file_operations irq_affinity_list_proc_fops = {
+ 	.write		= irq_affinity_list_proc_write,
+ };
+ 
++#ifdef CONFIG_GENERIC_IRQ_EFFECTIVE_AFF_MASK
++static int irq_effective_aff_proc_show(struct seq_file *m, void *v)
++{
++	return show_irq_affinity(EFFECTIVE, m);
++}
++
++static int irq_effective_aff_list_proc_show(struct seq_file *m, void *v)
++{
++	return show_irq_affinity(EFFECTIVE_LIST, m);
++}
++
++static int irq_effective_aff_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_effective_aff_proc_show, PDE_DATA(inode));
++}
++
++static int irq_effective_aff_list_proc_open(struct inode *inode,
++					    struct file *file)
++{
++	return single_open(file, irq_effective_aff_list_proc_show,
++			   PDE_DATA(inode));
++}
++
++static const struct file_operations irq_effective_aff_proc_fops = {
++	.open		= irq_effective_aff_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
++static const struct file_operations irq_effective_aff_list_proc_fops = {
++	.open		= irq_effective_aff_list_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++#endif
++
+ static int default_affinity_show(struct seq_file *m, void *v)
+ {
+ 	seq_printf(m, "%*pb\n", cpumask_pr_args(irq_default_affinity));
+@@ -324,6 +392,7 @@ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ {
+ 	static DEFINE_MUTEX(register_lock);
++	void __maybe_unused *irqp = (void *)(unsigned long) irq;
+ 	char name [MAX_NAMELEN];
+ 
+ 	if (!root_irq_dir || (desc->irq_data.chip == &no_irq_chip))
+@@ -349,20 +418,25 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ #ifdef CONFIG_SMP
+ 	/* create /proc/irq/<irq>/smp_affinity */
+ 	proc_create_data("smp_affinity", 0644, desc->dir,
+-			 &irq_affinity_proc_fops, (void *)(long)irq);
++			 &irq_affinity_proc_fops, irqp);
+ 
+ 	/* create /proc/irq/<irq>/affinity_hint */
+ 	proc_create_data("affinity_hint", 0444, desc->dir,
+-			 &irq_affinity_hint_proc_fops, (void *)(long)irq);
++			 &irq_affinity_hint_proc_fops, irqp);
+ 
+ 	/* create /proc/irq/<irq>/smp_affinity_list */
+ 	proc_create_data("smp_affinity_list", 0644, desc->dir,
+-			 &irq_affinity_list_proc_fops, (void *)(long)irq);
++			 &irq_affinity_list_proc_fops, irqp);
+ 
+ 	proc_create_data("node", 0444, desc->dir,
+-			 &irq_node_proc_fops, (void *)(long)irq);
++			 &irq_node_proc_fops, irqp);
++# ifdef CONFIG_GENERIC_IRQ_EFFECTIVE_AFF_MASK
++	proc_create_data("effective_affinity", 0444, desc->dir,
++			 &irq_effective_aff_proc_fops, irqp);
++	proc_create_data("effective_affinity_list", 0444, desc->dir,
++			 &irq_effective_aff_list_proc_fops, irqp);
++# endif
+ #endif
+-
+ 	proc_create_data("spurious", 0444, desc->dir,
+ 			 &irq_spurious_proc_fops, (void *)(long)irq);
+ 
+@@ -381,6 +455,10 @@ void unregister_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 	remove_proc_entry("affinity_hint", desc->dir);
+ 	remove_proc_entry("smp_affinity_list", desc->dir);
+ 	remove_proc_entry("node", desc->dir);
++# ifdef CONFIG_GENERIC_IRQ_EFFECTIVE_AFF_MASK
++	remove_proc_entry("effective_affinity", desc->dir);
++	remove_proc_entry("effective_affinity_list", desc->dir);
++# endif
+ #endif
+ 	remove_proc_entry("spurious", desc->dir);
+ 
+
+commit 7f698c74f4324a6d76510ba93a51bdb83f8a80a9
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:09:35 2018 +0800
+
+    v4.11-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index feaa813..c53edad 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -487,6 +487,8 @@ int show_interrupts(struct seq_file *p, void *v)
+ 	}
+ 	if (desc->irq_data.domain)
+ 		seq_printf(p, " %*d", prec, (int) desc->irq_data.hwirq);
++	else
++		seq_printf(p, " %*s", prec, "");
+ #ifdef CONFIG_GENERIC_IRQ_SHOW_LEVEL
+ 	seq_printf(p, " %-8s", irqd_is_level_type(&desc->irq_data) ? "Level" : "Edge");
+ #endif
+
+commit 545a15330cc79e731705bcbcee4165802d607c2f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:08:31 2018 +0800
+
+    v4.8-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 4e1b947..feaa813 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -96,7 +96,7 @@ static ssize_t write_irq_affinity(int type, struct file *file,
+ 	cpumask_var_t new_value;
+ 	int err;
+ 
+-	if (!irq_can_set_affinity(irq) || no_irq_affinity)
++	if (!irq_can_set_affinity_usr(irq) || no_irq_affinity)
+ 		return -EIO;
+ 
+ 	if (!alloc_cpumask_var(&new_value, GFP_KERNEL))
+@@ -311,7 +311,6 @@ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ 					!name_unique(irq, action))
+ 		return;
+ 
+-	memset(name, 0, MAX_NAMELEN);
+ 	snprintf(name, MAX_NAMELEN, "%s", action->name);
+ 
+ 	/* create /proc/irq/1234/handler/ */
+@@ -340,7 +339,6 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 	if (desc->dir)
+ 		goto out_unlock;
+ 
+-	memset(name, 0, MAX_NAMELEN);
+ 	sprintf(name, "%d", irq);
+ 
+ 	/* create /proc/irq/1234 */
+@@ -386,7 +384,6 @@ void unregister_irq_proc(unsigned int irq, struct irq_desc *desc)
+ #endif
+ 	remove_proc_entry("spurious", desc->dir);
+ 
+-	memset(name, 0, MAX_NAMELEN);
+ 	sprintf(name, "%u", irq);
+ 	remove_proc_entry(name, root_irq_dir);
+ }
+@@ -421,12 +418,8 @@ void init_irq_proc(void)
+ 	/*
+ 	 * Create entries for all existing IRQs.
+ 	 */
+-	for_each_irq_desc(irq, desc) {
+-		if (!desc)
+-			continue;
+-
++	for_each_irq_desc(irq, desc)
+ 		register_irq_proc(irq, desc);
+-	}
+ }
+ 
+ #ifdef CONFIG_GENERIC_IRQ_SHOW
+
+commit 0fa3f4bbf0f0132e8619ff4783c160d8276db62d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:07:54 2018 +0800
+
+    v4.6-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index a2c02fd..4e1b947 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -291,7 +291,7 @@ static int name_unique(unsigned int irq, struct irqaction *new_action)
+ 	int ret = 1;
+ 
+ 	raw_spin_lock_irqsave(&desc->lock, flags);
+-	for (action = desc->action ; action; action = action->next) {
++	for_each_action_of_desc(desc, action) {
+ 		if ((action != new_action) && action->name &&
+ 				!strcmp(new_action->name, action->name)) {
+ 			ret = 0;
+
+commit 6ad047ea81eafb5911536afb1e4947483531559a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:07:16 2018 +0800
+
+    v4.4-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index a50ddc9..a2c02fd 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -475,7 +475,7 @@ int show_interrupts(struct seq_file *p, void *v)
+ 	for_each_online_cpu(j)
+ 		any_count |= kstat_irqs_cpu(i, j);
+ 	action = desc->action;
+-	if (!action && !any_count)
++	if ((!action || irq_desc_is_chained(desc)) && !any_count)
+ 		goto out;
+ 
+ 	seq_printf(p, "%*d: ", prec, i);
+
+commit 4575637e489b99713abe7e3ca05e0babec8ad54c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:07:03 2018 +0800
+
+    v4.3-rc4
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index e3a8c95..a50ddc9 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -12,6 +12,7 @@
+ #include <linux/seq_file.h>
+ #include <linux/interrupt.h>
+ #include <linux/kernel_stat.h>
++#include <linux/mutex.h>
+ 
+ #include "internals.h"
+ 
+@@ -323,18 +324,29 @@ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ 
+ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ {
++	static DEFINE_MUTEX(register_lock);
+ 	char name [MAX_NAMELEN];
+ 
+-	if (!root_irq_dir || (desc->irq_data.chip == &no_irq_chip) || desc->dir)
++	if (!root_irq_dir || (desc->irq_data.chip == &no_irq_chip))
+ 		return;
+ 
++	/*
++	 * irq directories are registered only when a handler is
++	 * added, not when the descriptor is created, so multiple
++	 * tasks might try to register at the same time.
++	 */
++	mutex_lock(&register_lock);
++
++	if (desc->dir)
++		goto out_unlock;
++
+ 	memset(name, 0, MAX_NAMELEN);
+ 	sprintf(name, "%d", irq);
+ 
+ 	/* create /proc/irq/1234 */
+ 	desc->dir = proc_mkdir(name, root_irq_dir);
+ 	if (!desc->dir)
+-		return;
++		goto out_unlock;
+ 
+ #ifdef CONFIG_SMP
+ 	/* create /proc/irq/<irq>/smp_affinity */
+@@ -355,6 +367,9 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 
+ 	proc_create_data("spurious", 0444, desc->dir,
+ 			 &irq_spurious_proc_fops, (void *)(long)irq);
++
++out_unlock:
++	mutex_unlock(&register_lock);
+ }
+ 
+ void unregister_irq_proc(unsigned int irq, struct irq_desc *desc)
+
+commit a080027e5290856f39e067aab45c9403b6f0961b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:07:00 2018 +0800
+
+    v4.3-rc2
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 0e97c14..e3a8c95 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -39,7 +39,7 @@ static struct proc_dir_entry *root_irq_dir;
+ static int show_irq_affinity(int type, struct seq_file *m, void *v)
+ {
+ 	struct irq_desc *desc = irq_to_desc((long)m->private);
+-	const struct cpumask *mask = desc->irq_data.affinity;
++	const struct cpumask *mask = desc->irq_common_data.affinity;
+ 
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+ 	if (irqd_is_setaffinity_pending(&desc->irq_data))
+
+commit 04c23a0e006d132877f0cfc1df05dbbcb5665888
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:06:38 2018 +0800
+
+    v4.2-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index df2f464..0e97c14 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -241,7 +241,7 @@ static int irq_node_proc_show(struct seq_file *m, void *v)
+ {
+ 	struct irq_desc *desc = irq_to_desc((long) m->private);
+ 
+-	seq_printf(m, "%d\n", desc->irq_data.node);
++	seq_printf(m, "%d\n", irq_desc_get_node(desc));
+ 	return 0;
+ }
+ 
+
+commit a8c984f97cdbc15c0bce2eee3e2c4a60f14fb86e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:06:02 2018 +0800
+
+    v4.0-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 9dc9bfd..df2f464 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -46,10 +46,9 @@ static int show_irq_affinity(int type, struct seq_file *m, void *v)
+ 		mask = desc->pending_mask;
+ #endif
+ 	if (type)
+-		seq_cpumask_list(m, mask);
++		seq_printf(m, "%*pbl\n", cpumask_pr_args(mask));
+ 	else
+-		seq_cpumask(m, mask);
+-	seq_putc(m, '\n');
++		seq_printf(m, "%*pb\n", cpumask_pr_args(mask));
+ 	return 0;
+ }
+ 
+@@ -67,8 +66,7 @@ static int irq_affinity_hint_proc_show(struct seq_file *m, void *v)
+ 		cpumask_copy(mask, desc->affinity_hint);
+ 	raw_spin_unlock_irqrestore(&desc->lock, flags);
+ 
+-	seq_cpumask(m, mask);
+-	seq_putc(m, '\n');
++	seq_printf(m, "%*pb\n", cpumask_pr_args(mask));
+ 	free_cpumask_var(mask);
+ 
+ 	return 0;
+@@ -186,8 +184,7 @@ static const struct file_operations irq_affinity_list_proc_fops = {
+ 
+ static int default_affinity_show(struct seq_file *m, void *v)
+ {
+-	seq_cpumask(m, irq_default_affinity);
+-	seq_putc(m, '\n');
++	seq_printf(m, "%*pb\n", cpumask_pr_args(irq_default_affinity));
+ 	return 0;
+ }
+ 
+
+commit 25b64944ed579761dfe54fd237974c9cd97b8f51
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:05:45 2018 +0800
+
+    v3.19-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index ac1ba2f..9dc9bfd 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -15,6 +15,23 @@
+ 
+ #include "internals.h"
+ 
++/*
++ * Access rules:
++ *
++ * procfs protects read/write of /proc/irq/N/ files against a
++ * concurrent free of the interrupt descriptor. remove_proc_entry()
++ * immediately prevents new read/writes to happen and waits for
++ * already running read/write functions to complete.
++ *
++ * We remove the proc entries first and then delete the interrupt
++ * descriptor from the radix tree and free it. So it is guaranteed
++ * that irq_to_desc(N) is valid as long as the read/writes are
++ * permitted by procfs.
++ *
++ * The read from /proc/interrupts is a different problem because there
++ * is no protection. So the lookup and the access to irqdesc
++ * information must be protected by sparse_irq_lock.
++ */
+ static struct proc_dir_entry *root_irq_dir;
+ 
+ #ifdef CONFIG_SMP
+@@ -437,9 +454,10 @@ int show_interrupts(struct seq_file *p, void *v)
+ 		seq_putc(p, '\n');
+ 	}
+ 
++	irq_lock_sparse();
+ 	desc = irq_to_desc(i);
+ 	if (!desc)
+-		return 0;
++		goto outsparse;
+ 
+ 	raw_spin_lock_irqsave(&desc->lock, flags);
+ 	for_each_online_cpu(j)
+@@ -479,6 +497,8 @@ int show_interrupts(struct seq_file *p, void *v)
+ 	seq_putc(p, '\n');
+ out:
+ 	raw_spin_unlock_irqrestore(&desc->lock, flags);
++outsparse:
++	irq_unlock_sparse();
+ 	return 0;
+ }
+ #endif
+
+commit 4c3c0a2d2bb887eb277a8f7531d54928bdd92e6a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:04:35 2018 +0800
+
+    v3.15-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 36f6ee1..ac1ba2f 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -324,15 +324,15 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 
+ #ifdef CONFIG_SMP
+ 	/* create /proc/irq/<irq>/smp_affinity */
+-	proc_create_data("smp_affinity", 0600, desc->dir,
++	proc_create_data("smp_affinity", 0644, desc->dir,
+ 			 &irq_affinity_proc_fops, (void *)(long)irq);
+ 
+ 	/* create /proc/irq/<irq>/affinity_hint */
+-	proc_create_data("affinity_hint", 0400, desc->dir,
++	proc_create_data("affinity_hint", 0444, desc->dir,
+ 			 &irq_affinity_hint_proc_fops, (void *)(long)irq);
+ 
+ 	/* create /proc/irq/<irq>/smp_affinity_list */
+-	proc_create_data("smp_affinity_list", 0600, desc->dir,
++	proc_create_data("smp_affinity_list", 0644, desc->dir,
+ 			 &irq_affinity_list_proc_fops, (void *)(long)irq);
+ 
+ 	proc_create_data("node", 0444, desc->dir,
+@@ -372,7 +372,7 @@ void unregister_handler_proc(unsigned int irq, struct irqaction *action)
+ static void register_default_affinity_proc(void)
+ {
+ #ifdef CONFIG_SMP
+-	proc_create("irq/default_smp_affinity", 0600, NULL,
++	proc_create("irq/default_smp_affinity", 0644, NULL,
+ 		    &default_affinity_proc_fops);
+ #endif
+ }
+
+commit 71f1637ea65b47032f06355694c2d2cba0ad15c2
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:03:25 2018 +0800
+
+    v3.11-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 19ed5c4..36f6ee1 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -462,6 +462,8 @@ int show_interrupts(struct seq_file *p, void *v)
+ 	} else {
+ 		seq_printf(p, " %8s", "None");
+ 	}
++	if (desc->irq_data.domain)
++		seq_printf(p, " %*d", prec, (int) desc->irq_data.hwirq);
+ #ifdef CONFIG_GENERIC_IRQ_SHOW_LEVEL
+ 	seq_printf(p, " %-8s", irqd_is_level_type(&desc->irq_data) ? "Level" : "Edge");
+ #endif
+
+commit ba1a4bbacadab65ea3f7449da0240c06336d2714
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:03:09 2018 +0800
+
+    v3.10-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 397db02..19ed5c4 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -76,7 +76,7 @@ static int irq_affinity_list_proc_show(struct seq_file *m, void *v)
+ static ssize_t write_irq_affinity(int type, struct file *file,
+ 		const char __user *buffer, size_t count, loff_t *pos)
+ {
+-	unsigned int irq = (int)(long)PDE(file_inode(file))->data;
++	unsigned int irq = (int)(long)PDE_DATA(file_inode(file));
+ 	cpumask_var_t new_value;
+ 	int err;
+ 
+@@ -131,17 +131,17 @@ static ssize_t irq_affinity_list_proc_write(struct file *file,
+ 
+ static int irq_affinity_proc_open(struct inode *inode, struct file *file)
+ {
+-	return single_open(file, irq_affinity_proc_show, PDE(inode)->data);
++	return single_open(file, irq_affinity_proc_show, PDE_DATA(inode));
+ }
+ 
+ static int irq_affinity_list_proc_open(struct inode *inode, struct file *file)
+ {
+-	return single_open(file, irq_affinity_list_proc_show, PDE(inode)->data);
++	return single_open(file, irq_affinity_list_proc_show, PDE_DATA(inode));
+ }
+ 
+ static int irq_affinity_hint_proc_open(struct inode *inode, struct file *file)
+ {
+-	return single_open(file, irq_affinity_hint_proc_show, PDE(inode)->data);
++	return single_open(file, irq_affinity_hint_proc_show, PDE_DATA(inode));
+ }
+ 
+ static const struct file_operations irq_affinity_proc_fops = {
+@@ -212,7 +212,7 @@ out:
+ 
+ static int default_affinity_open(struct inode *inode, struct file *file)
+ {
+-	return single_open(file, default_affinity_show, PDE(inode)->data);
++	return single_open(file, default_affinity_show, PDE_DATA(inode));
+ }
+ 
+ static const struct file_operations default_affinity_proc_fops = {
+@@ -233,7 +233,7 @@ static int irq_node_proc_show(struct seq_file *m, void *v)
+ 
+ static int irq_node_proc_open(struct inode *inode, struct file *file)
+ {
+-	return single_open(file, irq_node_proc_show, PDE(inode)->data);
++	return single_open(file, irq_node_proc_show, PDE_DATA(inode));
+ }
+ 
+ static const struct file_operations irq_node_proc_fops = {
+@@ -256,7 +256,7 @@ static int irq_spurious_proc_show(struct seq_file *m, void *v)
+ 
+ static int irq_spurious_proc_open(struct inode *inode, struct file *file)
+ {
+-	return single_open(file, irq_spurious_proc_show, PDE(inode)->data);
++	return single_open(file, irq_spurious_proc_show, PDE_DATA(inode));
+ }
+ 
+ static const struct file_operations irq_spurious_proc_fops = {
+@@ -366,11 +366,7 @@ void unregister_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 
+ void unregister_handler_proc(unsigned int irq, struct irqaction *action)
+ {
+-	if (action->dir) {
+-		struct irq_desc *desc = irq_to_desc(irq);
+-
+-		remove_proc_entry(action->dir->name, desc->dir);
+-	}
++	proc_remove(action->dir);
+ }
+ 
+ static void register_default_affinity_proc(void)
+
+commit 47ed2e507030bb479f40a8fe196f129d1229890b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:02:52 2018 +0800
+
+    v3.9-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 4bd4faa..397db02 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -76,7 +76,7 @@ static int irq_affinity_list_proc_show(struct seq_file *m, void *v)
+ static ssize_t write_irq_affinity(int type, struct file *file,
+ 		const char __user *buffer, size_t count, loff_t *pos)
+ {
+-	unsigned int irq = (int)(long)PDE(file->f_path.dentry->d_inode)->data;
++	unsigned int irq = (int)(long)PDE(file_inode(file))->data;
+ 	cpumask_var_t new_value;
+ 	int err;
+ 
+
+commit 29390e7826a052de7a11c25fbe31d281c07f96f1
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:21 2018 +0800
+
+    v3.0-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 834899f..4bd4faa 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -19,7 +19,7 @@ static struct proc_dir_entry *root_irq_dir;
+ 
+ #ifdef CONFIG_SMP
+ 
+-static int irq_affinity_proc_show(struct seq_file *m, void *v)
++static int show_irq_affinity(int type, struct seq_file *m, void *v)
+ {
+ 	struct irq_desc *desc = irq_to_desc((long)m->private);
+ 	const struct cpumask *mask = desc->irq_data.affinity;
+@@ -28,7 +28,10 @@ static int irq_affinity_proc_show(struct seq_file *m, void *v)
+ 	if (irqd_is_setaffinity_pending(&desc->irq_data))
+ 		mask = desc->pending_mask;
+ #endif
+-	seq_cpumask(m, mask);
++	if (type)
++		seq_cpumask_list(m, mask);
++	else
++		seq_cpumask(m, mask);
+ 	seq_putc(m, '\n');
+ 	return 0;
+ }
+@@ -59,7 +62,18 @@ static int irq_affinity_hint_proc_show(struct seq_file *m, void *v)
+ #endif
+ 
+ int no_irq_affinity;
+-static ssize_t irq_affinity_proc_write(struct file *file,
++static int irq_affinity_proc_show(struct seq_file *m, void *v)
++{
++	return show_irq_affinity(0, m, v);
++}
++
++static int irq_affinity_list_proc_show(struct seq_file *m, void *v)
++{
++	return show_irq_affinity(1, m, v);
++}
++
++
++static ssize_t write_irq_affinity(int type, struct file *file,
+ 		const char __user *buffer, size_t count, loff_t *pos)
+ {
+ 	unsigned int irq = (int)(long)PDE(file->f_path.dentry->d_inode)->data;
+@@ -72,7 +86,10 @@ static ssize_t irq_affinity_proc_write(struct file *file,
+ 	if (!alloc_cpumask_var(&new_value, GFP_KERNEL))
+ 		return -ENOMEM;
+ 
+-	err = cpumask_parse_user(buffer, count, new_value);
++	if (type)
++		err = cpumask_parselist_user(buffer, count, new_value);
++	else
++		err = cpumask_parse_user(buffer, count, new_value);
+ 	if (err)
+ 		goto free_cpumask;
+ 
+@@ -100,11 +117,28 @@ free_cpumask:
+ 	return err;
+ }
+ 
++static ssize_t irq_affinity_proc_write(struct file *file,
++		const char __user *buffer, size_t count, loff_t *pos)
++{
++	return write_irq_affinity(0, file, buffer, count, pos);
++}
++
++static ssize_t irq_affinity_list_proc_write(struct file *file,
++		const char __user *buffer, size_t count, loff_t *pos)
++{
++	return write_irq_affinity(1, file, buffer, count, pos);
++}
++
+ static int irq_affinity_proc_open(struct inode *inode, struct file *file)
+ {
+ 	return single_open(file, irq_affinity_proc_show, PDE(inode)->data);
+ }
+ 
++static int irq_affinity_list_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_affinity_list_proc_show, PDE(inode)->data);
++}
++
+ static int irq_affinity_hint_proc_open(struct inode *inode, struct file *file)
+ {
+ 	return single_open(file, irq_affinity_hint_proc_show, PDE(inode)->data);
+@@ -125,6 +159,14 @@ static const struct file_operations irq_affinity_hint_proc_fops = {
+ 	.release	= single_release,
+ };
+ 
++static const struct file_operations irq_affinity_list_proc_fops = {
++	.open		= irq_affinity_list_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++	.write		= irq_affinity_list_proc_write,
++};
++
+ static int default_affinity_show(struct seq_file *m, void *v)
+ {
+ 	seq_cpumask(m, irq_default_affinity);
+@@ -289,6 +331,10 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 	proc_create_data("affinity_hint", 0400, desc->dir,
+ 			 &irq_affinity_hint_proc_fops, (void *)(long)irq);
+ 
++	/* create /proc/irq/<irq>/smp_affinity_list */
++	proc_create_data("smp_affinity_list", 0600, desc->dir,
++			 &irq_affinity_list_proc_fops, (void *)(long)irq);
++
+ 	proc_create_data("node", 0444, desc->dir,
+ 			 &irq_node_proc_fops, (void *)(long)irq);
+ #endif
+@@ -306,6 +352,7 @@ void unregister_irq_proc(unsigned int irq, struct irq_desc *desc)
+ #ifdef CONFIG_SMP
+ 	remove_proc_entry("smp_affinity", desc->dir);
+ 	remove_proc_entry("affinity_hint", desc->dir);
++	remove_proc_entry("smp_affinity_list", desc->dir);
+ 	remove_proc_entry("node", desc->dir);
+ #endif
+ 	remove_proc_entry("spurious", desc->dir);
+
+commit 1a55a6922e10be717a7ddbcbcb0b2713dd6a96a2
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:14 2018 +0800
+
+    v2.6.39-rc6
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index dd201bd..834899f 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -419,7 +419,7 @@ int show_interrupts(struct seq_file *p, void *v)
+ 	} else {
+ 		seq_printf(p, " %8s", "None");
+ 	}
+-#ifdef CONFIG_GENIRC_IRQ_SHOW_LEVEL
++#ifdef CONFIG_GENERIC_IRQ_SHOW_LEVEL
+ 	seq_printf(p, " %-8s", irqd_is_level_type(&desc->irq_data) ? "Level" : "Edge");
+ #endif
+ 	if (desc->name)
+
+commit 014303747f828d6ef08041e0ff64c1f70f72658d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:05 2018 +0800
+
+    v2.6.39-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 6c8a2a9..dd201bd 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -11,6 +11,7 @@
+ #include <linux/proc_fs.h>
+ #include <linux/seq_file.h>
+ #include <linux/interrupt.h>
++#include <linux/kernel_stat.h>
+ 
+ #include "internals.h"
+ 
+@@ -24,7 +25,7 @@ static int irq_affinity_proc_show(struct seq_file *m, void *v)
+ 	const struct cpumask *mask = desc->irq_data.affinity;
+ 
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+-	if (desc->status & IRQ_MOVE_PENDING)
++	if (irqd_is_setaffinity_pending(&desc->irq_data))
+ 		mask = desc->pending_mask;
+ #endif
+ 	seq_cpumask(m, mask);
+@@ -65,8 +66,7 @@ static ssize_t irq_affinity_proc_write(struct file *file,
+ 	cpumask_var_t new_value;
+ 	int err;
+ 
+-	if (!irq_to_desc(irq)->irq_data.chip->irq_set_affinity || no_irq_affinity ||
+-	    irq_balancing_disabled(irq))
++	if (!irq_can_set_affinity(irq) || no_irq_affinity)
+ 		return -EIO;
+ 
+ 	if (!alloc_cpumask_var(&new_value, GFP_KERNEL))
+@@ -89,7 +89,7 @@ static ssize_t irq_affinity_proc_write(struct file *file,
+ 	if (!cpumask_intersects(new_value, cpu_online_mask)) {
+ 		/* Special case for empty set - allow the architecture
+ 		   code to set default SMP affinity. */
+-		err = irq_select_affinity_usr(irq) ? -EINVAL : count;
++		err = irq_select_affinity_usr(irq, new_value) ? -EINVAL : count;
+ 	} else {
+ 		irq_set_affinity(irq, new_value);
+ 		err = count;
+@@ -357,3 +357,83 @@ void init_irq_proc(void)
+ 	}
+ }
+ 
++#ifdef CONFIG_GENERIC_IRQ_SHOW
++
++int __weak arch_show_interrupts(struct seq_file *p, int prec)
++{
++	return 0;
++}
++
++#ifndef ACTUAL_NR_IRQS
++# define ACTUAL_NR_IRQS nr_irqs
++#endif
++
++int show_interrupts(struct seq_file *p, void *v)
++{
++	static int prec;
++
++	unsigned long flags, any_count = 0;
++	int i = *(loff_t *) v, j;
++	struct irqaction *action;
++	struct irq_desc *desc;
++
++	if (i > ACTUAL_NR_IRQS)
++		return 0;
++
++	if (i == ACTUAL_NR_IRQS)
++		return arch_show_interrupts(p, prec);
++
++	/* print header and calculate the width of the first column */
++	if (i == 0) {
++		for (prec = 3, j = 1000; prec < 10 && j <= nr_irqs; ++prec)
++			j *= 10;
++
++		seq_printf(p, "%*s", prec + 8, "");
++		for_each_online_cpu(j)
++			seq_printf(p, "CPU%-8d", j);
++		seq_putc(p, '\n');
++	}
++
++	desc = irq_to_desc(i);
++	if (!desc)
++		return 0;
++
++	raw_spin_lock_irqsave(&desc->lock, flags);
++	for_each_online_cpu(j)
++		any_count |= kstat_irqs_cpu(i, j);
++	action = desc->action;
++	if (!action && !any_count)
++		goto out;
++
++	seq_printf(p, "%*d: ", prec, i);
++	for_each_online_cpu(j)
++		seq_printf(p, "%10u ", kstat_irqs_cpu(i, j));
++
++	if (desc->irq_data.chip) {
++		if (desc->irq_data.chip->irq_print_chip)
++			desc->irq_data.chip->irq_print_chip(&desc->irq_data, p);
++		else if (desc->irq_data.chip->name)
++			seq_printf(p, " %8s", desc->irq_data.chip->name);
++		else
++			seq_printf(p, " %8s", "-");
++	} else {
++		seq_printf(p, " %8s", "None");
++	}
++#ifdef CONFIG_GENIRC_IRQ_SHOW_LEVEL
++	seq_printf(p, " %-8s", irqd_is_level_type(&desc->irq_data) ? "Level" : "Edge");
++#endif
++	if (desc->name)
++		seq_printf(p, "-%-8s", desc->name);
++
++	if (action) {
++		seq_printf(p, "  %s", action->name);
++		while ((action = action->next) != NULL)
++			seq_printf(p, ", %s", action->name);
++	}
++
++	seq_putc(p, '\n');
++out:
++	raw_spin_unlock_irqrestore(&desc->lock, flags);
++	return 0;
++}
++#endif
+
+commit 98f6ae7ebdb1d8c0e5f82e10c0e19d9e49122181
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:38 2018 +0800
+
+    v2.6.37-rc6
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 01b1d3a..6c8a2a9 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -214,7 +214,7 @@ static int irq_spurious_proc_show(struct seq_file *m, void *v)
+ 
+ static int irq_spurious_proc_open(struct inode *inode, struct file *file)
+ {
+-	return single_open(file, irq_spurious_proc_show, NULL);
++	return single_open(file, irq_spurious_proc_show, PDE(inode)->data);
+ }
+ 
+ static const struct file_operations irq_spurious_proc_fops = {
+
+commit af229808cd275906b577e6cf1c4b0016637e1f7a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:30 2018 +0800
+
+    v2.6.37-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 09a2ee5..01b1d3a 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -21,7 +21,7 @@ static struct proc_dir_entry *root_irq_dir;
+ static int irq_affinity_proc_show(struct seq_file *m, void *v)
+ {
+ 	struct irq_desc *desc = irq_to_desc((long)m->private);
+-	const struct cpumask *mask = desc->affinity;
++	const struct cpumask *mask = desc->irq_data.affinity;
+ 
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+ 	if (desc->status & IRQ_MOVE_PENDING)
+@@ -65,7 +65,7 @@ static ssize_t irq_affinity_proc_write(struct file *file,
+ 	cpumask_var_t new_value;
+ 	int err;
+ 
+-	if (!irq_to_desc(irq)->chip->set_affinity || no_irq_affinity ||
++	if (!irq_to_desc(irq)->irq_data.chip->irq_set_affinity || no_irq_affinity ||
+ 	    irq_balancing_disabled(irq))
+ 		return -EIO;
+ 
+@@ -185,7 +185,7 @@ static int irq_node_proc_show(struct seq_file *m, void *v)
+ {
+ 	struct irq_desc *desc = irq_to_desc((long) m->private);
+ 
+-	seq_printf(m, "%d\n", desc->node);
++	seq_printf(m, "%d\n", desc->irq_data.node);
+ 	return 0;
+ }
+ 
+@@ -269,7 +269,7 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ {
+ 	char name [MAX_NAMELEN];
+ 
+-	if (!root_irq_dir || (desc->chip == &no_irq_chip) || desc->dir)
++	if (!root_irq_dir || (desc->irq_data.chip == &no_irq_chip) || desc->dir)
+ 		return;
+ 
+ 	memset(name, 0, MAX_NAMELEN);
+@@ -297,6 +297,24 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 			 &irq_spurious_proc_fops, (void *)(long)irq);
+ }
+ 
++void unregister_irq_proc(unsigned int irq, struct irq_desc *desc)
++{
++	char name [MAX_NAMELEN];
++
++	if (!root_irq_dir || !desc->dir)
++		return;
++#ifdef CONFIG_SMP
++	remove_proc_entry("smp_affinity", desc->dir);
++	remove_proc_entry("affinity_hint", desc->dir);
++	remove_proc_entry("node", desc->dir);
++#endif
++	remove_proc_entry("spurious", desc->dir);
++
++	memset(name, 0, MAX_NAMELEN);
++	sprintf(name, "%u", irq);
++	remove_proc_entry(name, root_irq_dir);
++}
++
+ #undef MAX_NAMELEN
+ 
+ void unregister_handler_proc(unsigned int irq, struct irqaction *action)
+
+commit 36cbf6734f82a29438b6f3cc29bf2bba2ca5c075
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:59 2018 +0800
+
+    v2.6.35-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 7a6eb04..09a2ee5 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -32,6 +32,27 @@ static int irq_affinity_proc_show(struct seq_file *m, void *v)
+ 	return 0;
+ }
+ 
++static int irq_affinity_hint_proc_show(struct seq_file *m, void *v)
++{
++	struct irq_desc *desc = irq_to_desc((long)m->private);
++	unsigned long flags;
++	cpumask_var_t mask;
++
++	if (!zalloc_cpumask_var(&mask, GFP_KERNEL))
++		return -ENOMEM;
++
++	raw_spin_lock_irqsave(&desc->lock, flags);
++	if (desc->affinity_hint)
++		cpumask_copy(mask, desc->affinity_hint);
++	raw_spin_unlock_irqrestore(&desc->lock, flags);
++
++	seq_cpumask(m, mask);
++	seq_putc(m, '\n');
++	free_cpumask_var(mask);
++
++	return 0;
++}
++
+ #ifndef is_affinity_mask_valid
+ #define is_affinity_mask_valid(val) 1
+ #endif
+@@ -84,6 +105,11 @@ static int irq_affinity_proc_open(struct inode *inode, struct file *file)
+ 	return single_open(file, irq_affinity_proc_show, PDE(inode)->data);
+ }
+ 
++static int irq_affinity_hint_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_affinity_hint_proc_show, PDE(inode)->data);
++}
++
+ static const struct file_operations irq_affinity_proc_fops = {
+ 	.open		= irq_affinity_proc_open,
+ 	.read		= seq_read,
+@@ -92,6 +118,13 @@ static const struct file_operations irq_affinity_proc_fops = {
+ 	.write		= irq_affinity_proc_write,
+ };
+ 
++static const struct file_operations irq_affinity_hint_proc_fops = {
++	.open		= irq_affinity_hint_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
+ static int default_affinity_show(struct seq_file *m, void *v)
+ {
+ 	seq_cpumask(m, irq_default_affinity);
+@@ -147,6 +180,26 @@ static const struct file_operations default_affinity_proc_fops = {
+ 	.release	= single_release,
+ 	.write		= default_affinity_write,
+ };
++
++static int irq_node_proc_show(struct seq_file *m, void *v)
++{
++	struct irq_desc *desc = irq_to_desc((long) m->private);
++
++	seq_printf(m, "%d\n", desc->node);
++	return 0;
++}
++
++static int irq_node_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_node_proc_show, PDE(inode)->data);
++}
++
++static const struct file_operations irq_node_proc_fops = {
++	.open		= irq_node_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
+ #endif
+ 
+ static int irq_spurious_proc_show(struct seq_file *m, void *v)
+@@ -231,6 +284,13 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 	/* create /proc/irq/<irq>/smp_affinity */
+ 	proc_create_data("smp_affinity", 0600, desc->dir,
+ 			 &irq_affinity_proc_fops, (void *)(long)irq);
++
++	/* create /proc/irq/<irq>/affinity_hint */
++	proc_create_data("affinity_hint", 0400, desc->dir,
++			 &irq_affinity_hint_proc_fops, (void *)(long)irq);
++
++	proc_create_data("node", 0444, desc->dir,
++			 &irq_node_proc_fops, (void *)(long)irq);
+ #endif
+ 
+ 	proc_create_data("spurious", 0444, desc->dir,
+
+commit 967c84a7a2093ff50b160976dcc9b12fbdc46779
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:48 2018 +0800
+
+    v2.6.34-rc4
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 6f50ecc..7a6eb04 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -7,6 +7,7 @@
+  */
+ 
+ #include <linux/irq.h>
++#include <linux/gfp.h>
+ #include <linux/proc_fs.h>
+ #include <linux/seq_file.h>
+ #include <linux/interrupt.h>
+
+commit 5c84d5b7ea0f35572f7ebbc63d631ba5dbed3466
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:24 2018 +0800
+
+    v2.6.33-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 692363d..6f50ecc 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -136,7 +136,7 @@ out:
+ 
+ static int default_affinity_open(struct inode *inode, struct file *file)
+ {
+-	return single_open(file, default_affinity_show, NULL);
++	return single_open(file, default_affinity_show, PDE(inode)->data);
+ }
+ 
+ static const struct file_operations default_affinity_proc_fops = {
+@@ -148,18 +148,28 @@ static const struct file_operations default_affinity_proc_fops = {
+ };
+ #endif
+ 
+-static int irq_spurious_read(char *page, char **start, off_t off,
+-				  int count, int *eof, void *data)
++static int irq_spurious_proc_show(struct seq_file *m, void *v)
+ {
+-	struct irq_desc *desc = irq_to_desc((long) data);
+-	return sprintf(page, "count %u\n"
+-			     "unhandled %u\n"
+-			     "last_unhandled %u ms\n",
+-			desc->irq_count,
+-			desc->irqs_unhandled,
+-			jiffies_to_msecs(desc->last_unhandled));
++	struct irq_desc *desc = irq_to_desc((long) m->private);
++
++	seq_printf(m, "count %u\n" "unhandled %u\n" "last_unhandled %u ms\n",
++		   desc->irq_count, desc->irqs_unhandled,
++		   jiffies_to_msecs(desc->last_unhandled));
++	return 0;
++}
++
++static int irq_spurious_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_spurious_proc_show, NULL);
+ }
+ 
++static const struct file_operations irq_spurious_proc_fops = {
++	.open		= irq_spurious_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
+ #define MAX_NAMELEN 128
+ 
+ static int name_unique(unsigned int irq, struct irqaction *new_action)
+@@ -169,7 +179,7 @@ static int name_unique(unsigned int irq, struct irqaction *new_action)
+ 	unsigned long flags;
+ 	int ret = 1;
+ 
+-	spin_lock_irqsave(&desc->lock, flags);
++	raw_spin_lock_irqsave(&desc->lock, flags);
+ 	for (action = desc->action ; action; action = action->next) {
+ 		if ((action != new_action) && action->name &&
+ 				!strcmp(new_action->name, action->name)) {
+@@ -177,7 +187,7 @@ static int name_unique(unsigned int irq, struct irqaction *new_action)
+ 			break;
+ 		}
+ 	}
+-	spin_unlock_irqrestore(&desc->lock, flags);
++	raw_spin_unlock_irqrestore(&desc->lock, flags);
+ 	return ret;
+ }
+ 
+@@ -204,7 +214,6 @@ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ {
+ 	char name [MAX_NAMELEN];
+-	struct proc_dir_entry *entry;
+ 
+ 	if (!root_irq_dir || (desc->chip == &no_irq_chip) || desc->dir)
+ 		return;
+@@ -214,6 +223,8 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 
+ 	/* create /proc/irq/1234 */
+ 	desc->dir = proc_mkdir(name, root_irq_dir);
++	if (!desc->dir)
++		return;
+ 
+ #ifdef CONFIG_SMP
+ 	/* create /proc/irq/<irq>/smp_affinity */
+@@ -221,11 +232,8 @@ void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ 			 &irq_affinity_proc_fops, (void *)(long)irq);
+ #endif
+ 
+-	entry = create_proc_entry("spurious", 0444, desc->dir);
+-	if (entry) {
+-		entry->data = (void *)(long)irq;
+-		entry->read_proc = irq_spurious_read;
+-	}
++	proc_create_data("spurious", 0444, desc->dir,
++			 &irq_spurious_proc_fops, (void *)(long)irq);
+ }
+ 
+ #undef MAX_NAMELEN
+
+commit 066324becc326b9ed023380c78ec9e3db68ac794
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:32 2018 +0800
+
+    v2.6.30-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index aae3f74..692363d 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -20,11 +20,11 @@ static struct proc_dir_entry *root_irq_dir;
+ static int irq_affinity_proc_show(struct seq_file *m, void *v)
+ {
+ 	struct irq_desc *desc = irq_to_desc((long)m->private);
+-	const struct cpumask *mask = &desc->affinity;
++	const struct cpumask *mask = desc->affinity;
+ 
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+ 	if (desc->status & IRQ_MOVE_PENDING)
+-		mask = &desc->pending_mask;
++		mask = desc->pending_mask;
+ #endif
+ 	seq_cpumask(m, mask);
+ 	seq_putc(m, '\n');
+
+commit 71d3924febe3dee3bd9fe72dcc0186f42019ed77
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:15 2018 +0800
+
+    v2.6.29-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index d257e7d..aae3f74 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -20,7 +20,7 @@ static struct proc_dir_entry *root_irq_dir;
+ static int irq_affinity_proc_show(struct seq_file *m, void *v)
+ {
+ 	struct irq_desc *desc = irq_to_desc((long)m->private);
+-	cpumask_t *mask = &desc->affinity;
++	const struct cpumask *mask = &desc->affinity;
+ 
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+ 	if (desc->status & IRQ_MOVE_PENDING)
+@@ -40,33 +40,42 @@ static ssize_t irq_affinity_proc_write(struct file *file,
+ 		const char __user *buffer, size_t count, loff_t *pos)
+ {
+ 	unsigned int irq = (int)(long)PDE(file->f_path.dentry->d_inode)->data;
+-	cpumask_t new_value;
++	cpumask_var_t new_value;
+ 	int err;
+ 
+ 	if (!irq_to_desc(irq)->chip->set_affinity || no_irq_affinity ||
+ 	    irq_balancing_disabled(irq))
+ 		return -EIO;
+ 
++	if (!alloc_cpumask_var(&new_value, GFP_KERNEL))
++		return -ENOMEM;
++
+ 	err = cpumask_parse_user(buffer, count, new_value);
+ 	if (err)
+-		return err;
++		goto free_cpumask;
+ 
+-	if (!is_affinity_mask_valid(new_value))
+-		return -EINVAL;
++	if (!is_affinity_mask_valid(new_value)) {
++		err = -EINVAL;
++		goto free_cpumask;
++	}
+ 
+ 	/*
+ 	 * Do not allow disabling IRQs completely - it's a too easy
+ 	 * way to make the system unusable accidentally :-) At least
+ 	 * one online CPU still has to be targeted.
+ 	 */
+-	if (!cpus_intersects(new_value, cpu_online_map))
++	if (!cpumask_intersects(new_value, cpu_online_mask)) {
+ 		/* Special case for empty set - allow the architecture
+ 		   code to set default SMP affinity. */
+-		return irq_select_affinity_usr(irq) ? -EINVAL : count;
+-
+-	irq_set_affinity(irq, new_value);
++		err = irq_select_affinity_usr(irq) ? -EINVAL : count;
++	} else {
++		irq_set_affinity(irq, new_value);
++		err = count;
++	}
+ 
+-	return count;
++free_cpumask:
++	free_cpumask_var(new_value);
++	return err;
+ }
+ 
+ static int irq_affinity_proc_open(struct inode *inode, struct file *file)
+@@ -84,7 +93,7 @@ static const struct file_operations irq_affinity_proc_fops = {
+ 
+ static int default_affinity_show(struct seq_file *m, void *v)
+ {
+-	seq_cpumask(m, &irq_default_affinity);
++	seq_cpumask(m, irq_default_affinity);
+ 	seq_putc(m, '\n');
+ 	return 0;
+ }
+@@ -92,27 +101,37 @@ static int default_affinity_show(struct seq_file *m, void *v)
+ static ssize_t default_affinity_write(struct file *file,
+ 		const char __user *buffer, size_t count, loff_t *ppos)
+ {
+-	cpumask_t new_value;
++	cpumask_var_t new_value;
+ 	int err;
+ 
++	if (!alloc_cpumask_var(&new_value, GFP_KERNEL))
++		return -ENOMEM;
++
+ 	err = cpumask_parse_user(buffer, count, new_value);
+ 	if (err)
+-		return err;
++		goto out;
+ 
+-	if (!is_affinity_mask_valid(new_value))
+-		return -EINVAL;
++	if (!is_affinity_mask_valid(new_value)) {
++		err = -EINVAL;
++		goto out;
++	}
+ 
+ 	/*
+ 	 * Do not allow disabling IRQs completely - it's a too easy
+ 	 * way to make the system unusable accidentally :-) At least
+ 	 * one online CPU still has to be targeted.
+ 	 */
+-	if (!cpus_intersects(new_value, cpu_online_map))
+-		return -EINVAL;
++	if (!cpumask_intersects(new_value, cpu_online_mask)) {
++		err = -EINVAL;
++		goto out;
++	}
+ 
+-	irq_default_affinity = new_value;
++	cpumask_copy(irq_default_affinity, new_value);
++	err = count;
+ 
+-	return count;
++out:
++	free_cpumask_var(new_value);
++	return err;
+ }
+ 
+ static int default_affinity_open(struct inode *inode, struct file *file)
+@@ -243,7 +262,11 @@ void init_irq_proc(void)
+ 	/*
+ 	 * Create entries for all existing IRQs.
+ 	 */
+-	for_each_irq_desc(irq, desc)
++	for_each_irq_desc(irq, desc) {
++		if (!desc)
++			continue;
++
+ 		register_irq_proc(irq, desc);
++	}
+ }
+ 
+
+commit 51d29203d98aed27ec3d73a0c3b1562bd1a5a4dd
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:07 2018 +0800
+
+    v2.6.28-rc7
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 4d161c7..d257e7d 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -62,7 +62,7 @@ static ssize_t irq_affinity_proc_write(struct file *file,
+ 	if (!cpus_intersects(new_value, cpu_online_map))
+ 		/* Special case for empty set - allow the architecture
+ 		   code to set default SMP affinity. */
+-		return irq_select_affinity(irq) ? -EINVAL : count;
++		return irq_select_affinity_usr(irq) ? -EINVAL : count;
+ 
+ 	irq_set_affinity(irq, new_value);
+ 
+
+commit ecfec353ca1ce86226fa4aba1407ec9169c05bc4
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:01 2018 +0800
+
+    v2.6.28-rc3
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index fac014a..4d161c7 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -220,7 +220,7 @@ void unregister_handler_proc(unsigned int irq, struct irqaction *action)
+ 	}
+ }
+ 
+-void register_default_affinity_proc(void)
++static void register_default_affinity_proc(void)
+ {
+ #ifdef CONFIG_SMP
+ 	proc_create("irq/default_smp_affinity", 0600, NULL,
+
+commit 9a7885b4721c81d15d884f36f60e305998d50ccc
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:58 2018 +0800
+
+    v2.6.28-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index a09dd29..fac014a 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -19,7 +19,7 @@ static struct proc_dir_entry *root_irq_dir;
+ 
+ static int irq_affinity_proc_show(struct seq_file *m, void *v)
+ {
+-	struct irq_desc *desc = irq_desc + (long)m->private;
++	struct irq_desc *desc = irq_to_desc((long)m->private);
+ 	cpumask_t *mask = &desc->affinity;
+ 
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+@@ -43,7 +43,7 @@ static ssize_t irq_affinity_proc_write(struct file *file,
+ 	cpumask_t new_value;
+ 	int err;
+ 
+-	if (!irq_desc[irq].chip->set_affinity || no_irq_affinity ||
++	if (!irq_to_desc(irq)->chip->set_affinity || no_irq_affinity ||
+ 	    irq_balancing_disabled(irq))
+ 		return -EIO;
+ 
+@@ -132,20 +132,20 @@ static const struct file_operations default_affinity_proc_fops = {
+ static int irq_spurious_read(char *page, char **start, off_t off,
+ 				  int count, int *eof, void *data)
+ {
+-	struct irq_desc *d = &irq_desc[(long) data];
++	struct irq_desc *desc = irq_to_desc((long) data);
+ 	return sprintf(page, "count %u\n"
+ 			     "unhandled %u\n"
+ 			     "last_unhandled %u ms\n",
+-			d->irq_count,
+-			d->irqs_unhandled,
+-			jiffies_to_msecs(d->last_unhandled));
++			desc->irq_count,
++			desc->irqs_unhandled,
++			jiffies_to_msecs(desc->last_unhandled));
+ }
+ 
+ #define MAX_NAMELEN 128
+ 
+ static int name_unique(unsigned int irq, struct irqaction *new_action)
+ {
+-	struct irq_desc *desc = irq_desc + irq;
++	struct irq_desc *desc = irq_to_desc(irq);
+ 	struct irqaction *action;
+ 	unsigned long flags;
+ 	int ret = 1;
+@@ -165,8 +165,9 @@ static int name_unique(unsigned int irq, struct irqaction *new_action)
+ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ {
+ 	char name [MAX_NAMELEN];
++	struct irq_desc *desc = irq_to_desc(irq);
+ 
+-	if (!irq_desc[irq].dir || action->dir || !action->name ||
++	if (!desc->dir || action->dir || !action->name ||
+ 					!name_unique(irq, action))
+ 		return;
+ 
+@@ -174,36 +175,34 @@ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ 	snprintf(name, MAX_NAMELEN, "%s", action->name);
+ 
+ 	/* create /proc/irq/1234/handler/ */
+-	action->dir = proc_mkdir(name, irq_desc[irq].dir);
++	action->dir = proc_mkdir(name, desc->dir);
+ }
+ 
+ #undef MAX_NAMELEN
+ 
+ #define MAX_NAMELEN 10
+ 
+-void register_irq_proc(unsigned int irq)
++void register_irq_proc(unsigned int irq, struct irq_desc *desc)
+ {
+ 	char name [MAX_NAMELEN];
+ 	struct proc_dir_entry *entry;
+ 
+-	if (!root_irq_dir ||
+-		(irq_desc[irq].chip == &no_irq_chip) ||
+-			irq_desc[irq].dir)
++	if (!root_irq_dir || (desc->chip == &no_irq_chip) || desc->dir)
+ 		return;
+ 
+ 	memset(name, 0, MAX_NAMELEN);
+ 	sprintf(name, "%d", irq);
+ 
+ 	/* create /proc/irq/1234 */
+-	irq_desc[irq].dir = proc_mkdir(name, root_irq_dir);
++	desc->dir = proc_mkdir(name, root_irq_dir);
+ 
+ #ifdef CONFIG_SMP
+ 	/* create /proc/irq/<irq>/smp_affinity */
+-	proc_create_data("smp_affinity", 0600, irq_desc[irq].dir,
++	proc_create_data("smp_affinity", 0600, desc->dir,
+ 			 &irq_affinity_proc_fops, (void *)(long)irq);
+ #endif
+ 
+-	entry = create_proc_entry("spurious", 0444, irq_desc[irq].dir);
++	entry = create_proc_entry("spurious", 0444, desc->dir);
+ 	if (entry) {
+ 		entry->data = (void *)(long)irq;
+ 		entry->read_proc = irq_spurious_read;
+@@ -214,8 +213,11 @@ void register_irq_proc(unsigned int irq)
+ 
+ void unregister_handler_proc(unsigned int irq, struct irqaction *action)
+ {
+-	if (action->dir)
+-		remove_proc_entry(action->dir->name, irq_desc[irq].dir);
++	if (action->dir) {
++		struct irq_desc *desc = irq_to_desc(irq);
++
++		remove_proc_entry(action->dir->name, desc->dir);
++	}
+ }
+ 
+ void register_default_affinity_proc(void)
+@@ -228,7 +230,8 @@ void register_default_affinity_proc(void)
+ 
+ void init_irq_proc(void)
+ {
+-	int i;
++	unsigned int irq;
++	struct irq_desc *desc;
+ 
+ 	/* create /proc/irq */
+ 	root_irq_dir = proc_mkdir("irq", NULL);
+@@ -240,7 +243,7 @@ void init_irq_proc(void)
+ 	/*
+ 	 * Create entries for all existing IRQs.
+ 	 */
+-	for (i = 0; i < NR_IRQS; i++)
+-		register_irq_proc(i);
++	for_each_irq_desc(irq, desc)
++		register_irq_proc(irq, desc);
+ }
+ 
+
+commit 3eb663a57f3aa660bc20795e406ea2462ef1f121
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:44 2018 +0800
+
+    v2.6.27-rc3
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 6c6d35d..a09dd29 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -8,6 +8,7 @@
+ 
+ #include <linux/irq.h>
+ #include <linux/proc_fs.h>
++#include <linux/seq_file.h>
+ #include <linux/interrupt.h>
+ 
+ #include "internals.h"
+@@ -16,23 +17,18 @@ static struct proc_dir_entry *root_irq_dir;
+ 
+ #ifdef CONFIG_SMP
+ 
+-static int irq_affinity_read_proc(char *page, char **start, off_t off,
+-				  int count, int *eof, void *data)
++static int irq_affinity_proc_show(struct seq_file *m, void *v)
+ {
+-	struct irq_desc *desc = irq_desc + (long)data;
++	struct irq_desc *desc = irq_desc + (long)m->private;
+ 	cpumask_t *mask = &desc->affinity;
+-	int len;
+ 
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+ 	if (desc->status & IRQ_MOVE_PENDING)
+ 		mask = &desc->pending_mask;
+ #endif
+-	len = cpumask_scnprintf(page, count, *mask);
+-
+-	if (count - len < 2)
+-		return -EINVAL;
+-	len += sprintf(page + len, "\n");
+-	return len;
++	seq_cpumask(m, mask);
++	seq_putc(m, '\n');
++	return 0;
+ }
+ 
+ #ifndef is_affinity_mask_valid
+@@ -40,11 +36,12 @@ static int irq_affinity_read_proc(char *page, char **start, off_t off,
+ #endif
+ 
+ int no_irq_affinity;
+-static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+-				   unsigned long count, void *data)
++static ssize_t irq_affinity_proc_write(struct file *file,
++		const char __user *buffer, size_t count, loff_t *pos)
+ {
+-	unsigned int irq = (int)(long)data, full_count = count, err;
++	unsigned int irq = (int)(long)PDE(file->f_path.dentry->d_inode)->data;
+ 	cpumask_t new_value;
++	int err;
+ 
+ 	if (!irq_desc[irq].chip->set_affinity || no_irq_affinity ||
+ 	    irq_balancing_disabled(irq))
+@@ -65,28 +62,38 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 	if (!cpus_intersects(new_value, cpu_online_map))
+ 		/* Special case for empty set - allow the architecture
+ 		   code to set default SMP affinity. */
+-		return irq_select_affinity(irq) ? -EINVAL : full_count;
++		return irq_select_affinity(irq) ? -EINVAL : count;
+ 
+ 	irq_set_affinity(irq, new_value);
+ 
+-	return full_count;
++	return count;
+ }
+ 
+-static int default_affinity_read(char *page, char **start, off_t off,
+-				  int count, int *eof, void *data)
++static int irq_affinity_proc_open(struct inode *inode, struct file *file)
+ {
+-	int len = cpumask_scnprintf(page, count, irq_default_affinity);
+-	if (count - len < 2)
+-		return -EINVAL;
+-	len += sprintf(page + len, "\n");
+-	return len;
++	return single_open(file, irq_affinity_proc_show, PDE(inode)->data);
+ }
+ 
+-static int default_affinity_write(struct file *file, const char __user *buffer,
+-				   unsigned long count, void *data)
++static const struct file_operations irq_affinity_proc_fops = {
++	.open		= irq_affinity_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++	.write		= irq_affinity_proc_write,
++};
++
++static int default_affinity_show(struct seq_file *m, void *v)
++{
++	seq_cpumask(m, &irq_default_affinity);
++	seq_putc(m, '\n');
++	return 0;
++}
++
++static ssize_t default_affinity_write(struct file *file,
++		const char __user *buffer, size_t count, loff_t *ppos)
+ {
+-	unsigned int full_count = count, err;
+ 	cpumask_t new_value;
++	int err;
+ 
+ 	err = cpumask_parse_user(buffer, count, new_value);
+ 	if (err)
+@@ -105,8 +112,21 @@ static int default_affinity_write(struct file *file, const char __user *buffer,
+ 
+ 	irq_default_affinity = new_value;
+ 
+-	return full_count;
++	return count;
+ }
++
++static int default_affinity_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, default_affinity_show, NULL);
++}
++
++static const struct file_operations default_affinity_proc_fops = {
++	.open		= default_affinity_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++	.write		= default_affinity_write,
++};
+ #endif
+ 
+ static int irq_spurious_read(char *page, char **start, off_t off,
+@@ -178,16 +198,9 @@ void register_irq_proc(unsigned int irq)
+ 	irq_desc[irq].dir = proc_mkdir(name, root_irq_dir);
+ 
+ #ifdef CONFIG_SMP
+-	{
+-		/* create /proc/irq/<irq>/smp_affinity */
+-		entry = create_proc_entry("smp_affinity", 0600, irq_desc[irq].dir);
+-
+-		if (entry) {
+-			entry->data = (void *)(long)irq;
+-			entry->read_proc = irq_affinity_read_proc;
+-			entry->write_proc = irq_affinity_write_proc;
+-		}
+-	}
++	/* create /proc/irq/<irq>/smp_affinity */
++	proc_create_data("smp_affinity", 0600, irq_desc[irq].dir,
++			 &irq_affinity_proc_fops, (void *)(long)irq);
+ #endif
+ 
+ 	entry = create_proc_entry("spurious", 0444, irq_desc[irq].dir);
+@@ -208,15 +221,8 @@ void unregister_handler_proc(unsigned int irq, struct irqaction *action)
+ void register_default_affinity_proc(void)
+ {
+ #ifdef CONFIG_SMP
+-	struct proc_dir_entry *entry;
+-
+-	/* create /proc/irq/default_smp_affinity */
+-	entry = create_proc_entry("default_smp_affinity", 0600, root_irq_dir);
+-	if (entry) {
+-		entry->data = NULL;
+-		entry->read_proc  = default_affinity_read;
+-		entry->write_proc = default_affinity_write;
+-	}
++	proc_create("irq/default_smp_affinity", 0600, NULL,
++		    &default_affinity_proc_fops);
+ #endif
+ }
+ 
+
+commit 9f753174d9b5f7627fd84a71ac307f2d4f881856
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:40 2018 +0800
+
+    v2.6.27-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index c2f2ccb..6c6d35d 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -44,7 +44,7 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 				   unsigned long count, void *data)
+ {
+ 	unsigned int irq = (int)(long)data, full_count = count, err;
+-	cpumask_t new_value, tmp;
++	cpumask_t new_value;
+ 
+ 	if (!irq_desc[irq].chip->set_affinity || no_irq_affinity ||
+ 	    irq_balancing_disabled(irq))
+@@ -62,17 +62,51 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 	 * way to make the system unusable accidentally :-) At least
+ 	 * one online CPU still has to be targeted.
+ 	 */
+-	cpus_and(tmp, new_value, cpu_online_map);
+-	if (cpus_empty(tmp))
++	if (!cpus_intersects(new_value, cpu_online_map))
+ 		/* Special case for empty set - allow the architecture
+ 		   code to set default SMP affinity. */
+-		return select_smp_affinity(irq) ? -EINVAL : full_count;
++		return irq_select_affinity(irq) ? -EINVAL : full_count;
+ 
+ 	irq_set_affinity(irq, new_value);
+ 
+ 	return full_count;
+ }
+ 
++static int default_affinity_read(char *page, char **start, off_t off,
++				  int count, int *eof, void *data)
++{
++	int len = cpumask_scnprintf(page, count, irq_default_affinity);
++	if (count - len < 2)
++		return -EINVAL;
++	len += sprintf(page + len, "\n");
++	return len;
++}
++
++static int default_affinity_write(struct file *file, const char __user *buffer,
++				   unsigned long count, void *data)
++{
++	unsigned int full_count = count, err;
++	cpumask_t new_value;
++
++	err = cpumask_parse_user(buffer, count, new_value);
++	if (err)
++		return err;
++
++	if (!is_affinity_mask_valid(new_value))
++		return -EINVAL;
++
++	/*
++	 * Do not allow disabling IRQs completely - it's a too easy
++	 * way to make the system unusable accidentally :-) At least
++	 * one online CPU still has to be targeted.
++	 */
++	if (!cpus_intersects(new_value, cpu_online_map))
++		return -EINVAL;
++
++	irq_default_affinity = new_value;
++
++	return full_count;
++}
+ #endif
+ 
+ static int irq_spurious_read(char *page, char **start, off_t off,
+@@ -171,6 +205,21 @@ void unregister_handler_proc(unsigned int irq, struct irqaction *action)
+ 		remove_proc_entry(action->dir->name, irq_desc[irq].dir);
+ }
+ 
++void register_default_affinity_proc(void)
++{
++#ifdef CONFIG_SMP
++	struct proc_dir_entry *entry;
++
++	/* create /proc/irq/default_smp_affinity */
++	entry = create_proc_entry("default_smp_affinity", 0600, root_irq_dir);
++	if (entry) {
++		entry->data = NULL;
++		entry->read_proc  = default_affinity_read;
++		entry->write_proc = default_affinity_write;
++	}
++#endif
++}
++
+ void init_irq_proc(void)
+ {
+ 	int i;
+@@ -180,6 +229,8 @@ void init_irq_proc(void)
+ 	if (!root_irq_dir)
+ 		return;
+ 
++	register_default_affinity_proc();
++
+ 	/*
+ 	 * Create entries for all existing IRQs.
+ 	 */
+
+commit 5d84595af41a68ce6bc5754b7e26dc18bc85e6eb
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:06 2018 +0800
+
+    v2.6.25-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 50b81b9..c2f2ccb 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -75,6 +75,18 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 
+ #endif
+ 
++static int irq_spurious_read(char *page, char **start, off_t off,
++				  int count, int *eof, void *data)
++{
++	struct irq_desc *d = &irq_desc[(long) data];
++	return sprintf(page, "count %u\n"
++			     "unhandled %u\n"
++			     "last_unhandled %u ms\n",
++			d->irq_count,
++			d->irqs_unhandled,
++			jiffies_to_msecs(d->last_unhandled));
++}
++
+ #define MAX_NAMELEN 128
+ 
+ static int name_unique(unsigned int irq, struct irqaction *new_action)
+@@ -118,6 +130,7 @@ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ void register_irq_proc(unsigned int irq)
+ {
+ 	char name [MAX_NAMELEN];
++	struct proc_dir_entry *entry;
+ 
+ 	if (!root_irq_dir ||
+ 		(irq_desc[irq].chip == &no_irq_chip) ||
+@@ -132,8 +145,6 @@ void register_irq_proc(unsigned int irq)
+ 
+ #ifdef CONFIG_SMP
+ 	{
+-		struct proc_dir_entry *entry;
+-
+ 		/* create /proc/irq/<irq>/smp_affinity */
+ 		entry = create_proc_entry("smp_affinity", 0600, irq_desc[irq].dir);
+ 
+@@ -144,6 +155,12 @@ void register_irq_proc(unsigned int irq)
+ 		}
+ 	}
+ #endif
++
++	entry = create_proc_entry("spurious", 0444, irq_desc[irq].dir);
++	if (entry) {
++		entry->data = (void *)(long)irq;
++		entry->read_proc = irq_spurious_read;
++	}
+ }
+ 
+ #undef MAX_NAMELEN
+
+commit e38983f68f3efe363d0f52162c5e09fcf00c8ed3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:34 2018 +0800
+
+    v2.6.23-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index b4f1674..50b81b9 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -19,7 +19,15 @@ static struct proc_dir_entry *root_irq_dir;
+ static int irq_affinity_read_proc(char *page, char **start, off_t off,
+ 				  int count, int *eof, void *data)
+ {
+-	int len = cpumask_scnprintf(page, count, irq_desc[(long)data].affinity);
++	struct irq_desc *desc = irq_desc + (long)data;
++	cpumask_t *mask = &desc->affinity;
++	int len;
++
++#ifdef CONFIG_GENERIC_PENDING_IRQ
++	if (desc->status & IRQ_MOVE_PENDING)
++		mask = &desc->pending_mask;
++#endif
++	len = cpumask_scnprintf(page, count, *mask);
+ 
+ 	if (count - len < 2)
+ 		return -EINVAL;
+
+commit 97f7903b2f3bd082d40d243e70aa04746cf63f35
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:22 2018 +0800
+
+    v2.6.22-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 2db91eb..b4f1674 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -27,6 +27,10 @@ static int irq_affinity_read_proc(char *page, char **start, off_t off,
+ 	return len;
+ }
+ 
++#ifndef is_affinity_mask_valid
++#define is_affinity_mask_valid(val) 1
++#endif
++
+ int no_irq_affinity;
+ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 				   unsigned long count, void *data)
+@@ -42,6 +46,9 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 	if (err)
+ 		return err;
+ 
++	if (!is_affinity_mask_valid(new_value))
++		return -EINVAL;
++
+ 	/*
+ 	 * Do not allow disabling IRQs completely - it's a too easy
+ 	 * way to make the system unusable accidentally :-) At least
+@@ -66,12 +73,19 @@ static int name_unique(unsigned int irq, struct irqaction *new_action)
+ {
+ 	struct irq_desc *desc = irq_desc + irq;
+ 	struct irqaction *action;
++	unsigned long flags;
++	int ret = 1;
+ 
+-	for (action = desc->action ; action; action = action->next)
++	spin_lock_irqsave(&desc->lock, flags);
++	for (action = desc->action ; action; action = action->next) {
+ 		if ((action != new_action) && action->name &&
+-				!strcmp(new_action->name, action->name))
+-			return 0;
+-	return 1;
++				!strcmp(new_action->name, action->name)) {
++			ret = 0;
++			break;
++		}
++	}
++	spin_unlock_irqrestore(&desc->lock, flags);
++	return ret;
+ }
+ 
+ void register_handler_proc(unsigned int irq, struct irqaction *action)
+
+commit 2380dc2aa88e7393d36289491f54507f43b8277b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:09 2018 +0800
+
+    v2.6.21-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 61f5c71..2db91eb 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -16,26 +16,6 @@ static struct proc_dir_entry *root_irq_dir;
+ 
+ #ifdef CONFIG_SMP
+ 
+-#ifdef CONFIG_GENERIC_PENDING_IRQ
+-void proc_set_irq_affinity(unsigned int irq, cpumask_t mask_val)
+-{
+-	set_balance_irq_affinity(irq, mask_val);
+-
+-	/*
+-	 * Save these away for later use. Re-progam when the
+-	 * interrupt is pending
+-	 */
+-	set_pending_irq(irq, mask_val);
+-}
+-#else
+-void proc_set_irq_affinity(unsigned int irq, cpumask_t mask_val)
+-{
+-	set_balance_irq_affinity(irq, mask_val);
+-	irq_desc[irq].affinity = mask_val;
+-	irq_desc[irq].chip->set_affinity(irq, mask_val);
+-}
+-#endif
+-
+ static int irq_affinity_read_proc(char *page, char **start, off_t off,
+ 				  int count, int *eof, void *data)
+ {
+@@ -55,7 +35,7 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 	cpumask_t new_value, tmp;
+ 
+ 	if (!irq_desc[irq].chip->set_affinity || no_irq_affinity ||
+-				CHECK_IRQ_PER_CPU(irq_desc[irq].status))
++	    irq_balancing_disabled(irq))
+ 		return -EIO;
+ 
+ 	err = cpumask_parse_user(buffer, count, new_value);
+@@ -73,7 +53,7 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 		   code to set default SMP affinity. */
+ 		return select_smp_affinity(irq) ? -EINVAL : full_count;
+ 
+-	proc_set_irq_affinity(irq, new_value);
++	irq_set_affinity(irq, new_value);
+ 
+ 	return full_count;
+ }
+@@ -136,7 +116,6 @@ void register_irq_proc(unsigned int irq)
+ 		entry = create_proc_entry("smp_affinity", 0600, irq_desc[irq].dir);
+ 
+ 		if (entry) {
+-			entry->nlink = 1;
+ 			entry->data = (void *)(long)irq;
+ 			entry->read_proc = irq_affinity_read_proc;
+ 			entry->write_proc = irq_affinity_write_proc;
+
+commit c751327be0cc1902c0489535b65757a2fd3d8b59
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:56 2018 +0800
+
+    v2.6.20-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 9a35266..61f5c71 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -54,7 +54,8 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 	unsigned int irq = (int)(long)data, full_count = count, err;
+ 	cpumask_t new_value, tmp;
+ 
+-	if (!irq_desc[irq].chip->set_affinity || no_irq_affinity)
++	if (!irq_desc[irq].chip->set_affinity || no_irq_affinity ||
++				CHECK_IRQ_PER_CPU(irq_desc[irq].status))
+ 		return -EIO;
+ 
+ 	err = cpumask_parse_user(buffer, count, new_value);
+
+commit 5fb2c4616e46df7666a299d5f17aaf9da13f6bc5
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:47 2018 +0800
+
+    v2.6.19-rc2
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 607c780..9a35266 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -57,7 +57,7 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 	if (!irq_desc[irq].chip->set_affinity || no_irq_affinity)
+ 		return -EIO;
+ 
+-	err = cpumask_parse(buffer, count, new_value);
++	err = cpumask_parse_user(buffer, count, new_value);
+ 	if (err)
+ 		return err;
+ 
+
+commit 6ea2592d4e78f16d1c1a3590ded2c520542c1492
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:31 2018 +0800
+
+    v2.6.18-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index d03b5ee..607c780 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -12,18 +12,15 @@
+ 
+ #include "internals.h"
+ 
+-static struct proc_dir_entry *root_irq_dir, *irq_dir[NR_IRQS];
++static struct proc_dir_entry *root_irq_dir;
+ 
+ #ifdef CONFIG_SMP
+ 
+-/*
+- * The /proc/irq/<irq>/smp_affinity values:
+- */
+-static struct proc_dir_entry *smp_affinity_entry[NR_IRQS];
+-
+ #ifdef CONFIG_GENERIC_PENDING_IRQ
+ void proc_set_irq_affinity(unsigned int irq, cpumask_t mask_val)
+ {
++	set_balance_irq_affinity(irq, mask_val);
++
+ 	/*
+ 	 * Save these away for later use. Re-progam when the
+ 	 * interrupt is pending
+@@ -33,15 +30,16 @@ void proc_set_irq_affinity(unsigned int irq, cpumask_t mask_val)
+ #else
+ void proc_set_irq_affinity(unsigned int irq, cpumask_t mask_val)
+ {
+-	irq_affinity[irq] = mask_val;
+-	irq_desc[irq].handler->set_affinity(irq, mask_val);
++	set_balance_irq_affinity(irq, mask_val);
++	irq_desc[irq].affinity = mask_val;
++	irq_desc[irq].chip->set_affinity(irq, mask_val);
+ }
+ #endif
+ 
+ static int irq_affinity_read_proc(char *page, char **start, off_t off,
+ 				  int count, int *eof, void *data)
+ {
+-	int len = cpumask_scnprintf(page, count, irq_affinity[(long)data]);
++	int len = cpumask_scnprintf(page, count, irq_desc[(long)data].affinity);
+ 
+ 	if (count - len < 2)
+ 		return -EINVAL;
+@@ -56,7 +54,7 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 	unsigned int irq = (int)(long)data, full_count = count, err;
+ 	cpumask_t new_value, tmp;
+ 
+-	if (!irq_desc[irq].handler->set_affinity || no_irq_affinity)
++	if (!irq_desc[irq].chip->set_affinity || no_irq_affinity)
+ 		return -EIO;
+ 
+ 	err = cpumask_parse(buffer, count, new_value);
+@@ -99,7 +97,7 @@ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ {
+ 	char name [MAX_NAMELEN];
+ 
+-	if (!irq_dir[irq] || action->dir || !action->name ||
++	if (!irq_desc[irq].dir || action->dir || !action->name ||
+ 					!name_unique(irq, action))
+ 		return;
+ 
+@@ -107,7 +105,7 @@ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ 	snprintf(name, MAX_NAMELEN, "%s", action->name);
+ 
+ 	/* create /proc/irq/1234/handler/ */
+-	action->dir = proc_mkdir(name, irq_dir[irq]);
++	action->dir = proc_mkdir(name, irq_desc[irq].dir);
+ }
+ 
+ #undef MAX_NAMELEN
+@@ -119,22 +117,22 @@ void register_irq_proc(unsigned int irq)
+ 	char name [MAX_NAMELEN];
+ 
+ 	if (!root_irq_dir ||
+-		(irq_desc[irq].handler == &no_irq_type) ||
+-			irq_dir[irq])
++		(irq_desc[irq].chip == &no_irq_chip) ||
++			irq_desc[irq].dir)
+ 		return;
+ 
+ 	memset(name, 0, MAX_NAMELEN);
+ 	sprintf(name, "%d", irq);
+ 
+ 	/* create /proc/irq/1234 */
+-	irq_dir[irq] = proc_mkdir(name, root_irq_dir);
++	irq_desc[irq].dir = proc_mkdir(name, root_irq_dir);
+ 
+ #ifdef CONFIG_SMP
+ 	{
+ 		struct proc_dir_entry *entry;
+ 
+ 		/* create /proc/irq/<irq>/smp_affinity */
+-		entry = create_proc_entry("smp_affinity", 0600, irq_dir[irq]);
++		entry = create_proc_entry("smp_affinity", 0600, irq_desc[irq].dir);
+ 
+ 		if (entry) {
+ 			entry->nlink = 1;
+@@ -142,7 +140,6 @@ void register_irq_proc(unsigned int irq)
+ 			entry->read_proc = irq_affinity_read_proc;
+ 			entry->write_proc = irq_affinity_write_proc;
+ 		}
+-		smp_affinity_entry[irq] = entry;
+ 	}
+ #endif
+ }
+@@ -152,7 +149,7 @@ void register_irq_proc(unsigned int irq)
+ void unregister_handler_proc(unsigned int irq, struct irqaction *action)
+ {
+ 	if (action->dir)
+-		remove_proc_entry(action->dir->name, irq_dir[irq]);
++		remove_proc_entry(action->dir->name, irq_desc[irq].dir);
+ }
+ 
+ void init_irq_proc(void)
+
+commit 903b3561b9826a49aea774b3092425d49ac96092
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:08 2018 +0800
+
+    v2.6.16-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index f26e534..d03b5ee 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -10,6 +10,8 @@
+ #include <linux/proc_fs.h>
+ #include <linux/interrupt.h>
+ 
++#include "internals.h"
++
+ static struct proc_dir_entry *root_irq_dir, *irq_dir[NR_IRQS];
+ 
+ #ifdef CONFIG_SMP
+@@ -68,7 +70,9 @@ static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
+ 	 */
+ 	cpus_and(tmp, new_value, cpu_online_map);
+ 	if (cpus_empty(tmp))
+-		return -EINVAL;
++		/* Special case for empty set - allow the architecture
++		   code to set default SMP affinity. */
++		return select_smp_affinity(irq) ? -EINVAL : full_count;
+ 
+ 	proc_set_irq_affinity(irq, new_value);
+ 
+
+commit 908c1cea83dac5f9e8b7c49dcd87ae6791009dbb
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:46 2018 +0800
+
+    v2.6.14-rc1
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 85d08da..f26e534 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -19,12 +19,22 @@ static struct proc_dir_entry *root_irq_dir, *irq_dir[NR_IRQS];
+  */
+ static struct proc_dir_entry *smp_affinity_entry[NR_IRQS];
+ 
+-void __attribute__((weak))
+-proc_set_irq_affinity(unsigned int irq, cpumask_t mask_val)
++#ifdef CONFIG_GENERIC_PENDING_IRQ
++void proc_set_irq_affinity(unsigned int irq, cpumask_t mask_val)
++{
++	/*
++	 * Save these away for later use. Re-progam when the
++	 * interrupt is pending
++	 */
++	set_pending_irq(irq, mask_val);
++}
++#else
++void proc_set_irq_affinity(unsigned int irq, cpumask_t mask_val)
+ {
+ 	irq_affinity[irq] = mask_val;
+ 	irq_desc[irq].handler->set_affinity(irq, mask_val);
+ }
++#endif
+ 
+ static int irq_affinity_read_proc(char *page, char **start, off_t off,
+ 				  int count, int *eof, void *data)
+
+commit 9b9234446f26dabc8603a81861fb2c1d8ff1a98b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:24 2018 +0800
+
+    v2.6.12
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+index 9dc9bfd..85d08da 100644
+--- a/kernel/irq/proc.c
++++ b/kernel/irq/proc.c
+@@ -7,309 +7,85 @@
+  */
+ 
+ #include <linux/irq.h>
+-#include <linux/gfp.h>
+ #include <linux/proc_fs.h>
+-#include <linux/seq_file.h>
+ #include <linux/interrupt.h>
+-#include <linux/kernel_stat.h>
+ 
+-#include "internals.h"
++static struct proc_dir_entry *root_irq_dir, *irq_dir[NR_IRQS];
++
++#ifdef CONFIG_SMP
+ 
+ /*
+- * Access rules:
+- *
+- * procfs protects read/write of /proc/irq/N/ files against a
+- * concurrent free of the interrupt descriptor. remove_proc_entry()
+- * immediately prevents new read/writes to happen and waits for
+- * already running read/write functions to complete.
+- *
+- * We remove the proc entries first and then delete the interrupt
+- * descriptor from the radix tree and free it. So it is guaranteed
+- * that irq_to_desc(N) is valid as long as the read/writes are
+- * permitted by procfs.
+- *
+- * The read from /proc/interrupts is a different problem because there
+- * is no protection. So the lookup and the access to irqdesc
+- * information must be protected by sparse_irq_lock.
++ * The /proc/irq/<irq>/smp_affinity values:
+  */
+-static struct proc_dir_entry *root_irq_dir;
+-
+-#ifdef CONFIG_SMP
++static struct proc_dir_entry *smp_affinity_entry[NR_IRQS];
+ 
+-static int show_irq_affinity(int type, struct seq_file *m, void *v)
++void __attribute__((weak))
++proc_set_irq_affinity(unsigned int irq, cpumask_t mask_val)
+ {
+-	struct irq_desc *desc = irq_to_desc((long)m->private);
+-	const struct cpumask *mask = desc->irq_data.affinity;
+-
+-#ifdef CONFIG_GENERIC_PENDING_IRQ
+-	if (irqd_is_setaffinity_pending(&desc->irq_data))
+-		mask = desc->pending_mask;
+-#endif
+-	if (type)
+-		seq_cpumask_list(m, mask);
+-	else
+-		seq_cpumask(m, mask);
+-	seq_putc(m, '\n');
+-	return 0;
++	irq_affinity[irq] = mask_val;
++	irq_desc[irq].handler->set_affinity(irq, mask_val);
+ }
+ 
+-static int irq_affinity_hint_proc_show(struct seq_file *m, void *v)
++static int irq_affinity_read_proc(char *page, char **start, off_t off,
++				  int count, int *eof, void *data)
+ {
+-	struct irq_desc *desc = irq_to_desc((long)m->private);
+-	unsigned long flags;
+-	cpumask_var_t mask;
+-
+-	if (!zalloc_cpumask_var(&mask, GFP_KERNEL))
+-		return -ENOMEM;
+-
+-	raw_spin_lock_irqsave(&desc->lock, flags);
+-	if (desc->affinity_hint)
+-		cpumask_copy(mask, desc->affinity_hint);
+-	raw_spin_unlock_irqrestore(&desc->lock, flags);
+-
+-	seq_cpumask(m, mask);
+-	seq_putc(m, '\n');
+-	free_cpumask_var(mask);
++	int len = cpumask_scnprintf(page, count, irq_affinity[(long)data]);
+ 
+-	return 0;
++	if (count - len < 2)
++		return -EINVAL;
++	len += sprintf(page + len, "\n");
++	return len;
+ }
+ 
+-#ifndef is_affinity_mask_valid
+-#define is_affinity_mask_valid(val) 1
+-#endif
+-
+ int no_irq_affinity;
+-static int irq_affinity_proc_show(struct seq_file *m, void *v)
+-{
+-	return show_irq_affinity(0, m, v);
+-}
+-
+-static int irq_affinity_list_proc_show(struct seq_file *m, void *v)
+-{
+-	return show_irq_affinity(1, m, v);
+-}
+-
+-
+-static ssize_t write_irq_affinity(int type, struct file *file,
+-		const char __user *buffer, size_t count, loff_t *pos)
++static int irq_affinity_write_proc(struct file *file, const char __user *buffer,
++				   unsigned long count, void *data)
+ {
+-	unsigned int irq = (int)(long)PDE_DATA(file_inode(file));
+-	cpumask_var_t new_value;
+-	int err;
++	unsigned int irq = (int)(long)data, full_count = count, err;
++	cpumask_t new_value, tmp;
+ 
+-	if (!irq_can_set_affinity(irq) || no_irq_affinity)
++	if (!irq_desc[irq].handler->set_affinity || no_irq_affinity)
+ 		return -EIO;
+ 
+-	if (!alloc_cpumask_var(&new_value, GFP_KERNEL))
+-		return -ENOMEM;
+-
+-	if (type)
+-		err = cpumask_parselist_user(buffer, count, new_value);
+-	else
+-		err = cpumask_parse_user(buffer, count, new_value);
++	err = cpumask_parse(buffer, count, new_value);
+ 	if (err)
+-		goto free_cpumask;
+-
+-	if (!is_affinity_mask_valid(new_value)) {
+-		err = -EINVAL;
+-		goto free_cpumask;
+-	}
++		return err;
+ 
+ 	/*
+ 	 * Do not allow disabling IRQs completely - it's a too easy
+ 	 * way to make the system unusable accidentally :-) At least
+ 	 * one online CPU still has to be targeted.
+ 	 */
+-	if (!cpumask_intersects(new_value, cpu_online_mask)) {
+-		/* Special case for empty set - allow the architecture
+-		   code to set default SMP affinity. */
+-		err = irq_select_affinity_usr(irq, new_value) ? -EINVAL : count;
+-	} else {
+-		irq_set_affinity(irq, new_value);
+-		err = count;
+-	}
+-
+-free_cpumask:
+-	free_cpumask_var(new_value);
+-	return err;
+-}
++	cpus_and(tmp, new_value, cpu_online_map);
++	if (cpus_empty(tmp))
++		return -EINVAL;
+ 
+-static ssize_t irq_affinity_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *pos)
+-{
+-	return write_irq_affinity(0, file, buffer, count, pos);
+-}
++	proc_set_irq_affinity(irq, new_value);
+ 
+-static ssize_t irq_affinity_list_proc_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *pos)
+-{
+-	return write_irq_affinity(1, file, buffer, count, pos);
++	return full_count;
+ }
+ 
+-static int irq_affinity_proc_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, irq_affinity_proc_show, PDE_DATA(inode));
+-}
+-
+-static int irq_affinity_list_proc_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, irq_affinity_list_proc_show, PDE_DATA(inode));
+-}
+-
+-static int irq_affinity_hint_proc_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, irq_affinity_hint_proc_show, PDE_DATA(inode));
+-}
+-
+-static const struct file_operations irq_affinity_proc_fops = {
+-	.open		= irq_affinity_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-	.write		= irq_affinity_proc_write,
+-};
+-
+-static const struct file_operations irq_affinity_hint_proc_fops = {
+-	.open		= irq_affinity_hint_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-};
+-
+-static const struct file_operations irq_affinity_list_proc_fops = {
+-	.open		= irq_affinity_list_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-	.write		= irq_affinity_list_proc_write,
+-};
+-
+-static int default_affinity_show(struct seq_file *m, void *v)
+-{
+-	seq_cpumask(m, irq_default_affinity);
+-	seq_putc(m, '\n');
+-	return 0;
+-}
+-
+-static ssize_t default_affinity_write(struct file *file,
+-		const char __user *buffer, size_t count, loff_t *ppos)
+-{
+-	cpumask_var_t new_value;
+-	int err;
+-
+-	if (!alloc_cpumask_var(&new_value, GFP_KERNEL))
+-		return -ENOMEM;
+-
+-	err = cpumask_parse_user(buffer, count, new_value);
+-	if (err)
+-		goto out;
+-
+-	if (!is_affinity_mask_valid(new_value)) {
+-		err = -EINVAL;
+-		goto out;
+-	}
+-
+-	/*
+-	 * Do not allow disabling IRQs completely - it's a too easy
+-	 * way to make the system unusable accidentally :-) At least
+-	 * one online CPU still has to be targeted.
+-	 */
+-	if (!cpumask_intersects(new_value, cpu_online_mask)) {
+-		err = -EINVAL;
+-		goto out;
+-	}
+-
+-	cpumask_copy(irq_default_affinity, new_value);
+-	err = count;
+-
+-out:
+-	free_cpumask_var(new_value);
+-	return err;
+-}
+-
+-static int default_affinity_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, default_affinity_show, PDE_DATA(inode));
+-}
+-
+-static const struct file_operations default_affinity_proc_fops = {
+-	.open		= default_affinity_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-	.write		= default_affinity_write,
+-};
+-
+-static int irq_node_proc_show(struct seq_file *m, void *v)
+-{
+-	struct irq_desc *desc = irq_to_desc((long) m->private);
+-
+-	seq_printf(m, "%d\n", desc->irq_data.node);
+-	return 0;
+-}
+-
+-static int irq_node_proc_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, irq_node_proc_show, PDE_DATA(inode));
+-}
+-
+-static const struct file_operations irq_node_proc_fops = {
+-	.open		= irq_node_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-};
+ #endif
+ 
+-static int irq_spurious_proc_show(struct seq_file *m, void *v)
+-{
+-	struct irq_desc *desc = irq_to_desc((long) m->private);
+-
+-	seq_printf(m, "count %u\n" "unhandled %u\n" "last_unhandled %u ms\n",
+-		   desc->irq_count, desc->irqs_unhandled,
+-		   jiffies_to_msecs(desc->last_unhandled));
+-	return 0;
+-}
+-
+-static int irq_spurious_proc_open(struct inode *inode, struct file *file)
+-{
+-	return single_open(file, irq_spurious_proc_show, PDE_DATA(inode));
+-}
+-
+-static const struct file_operations irq_spurious_proc_fops = {
+-	.open		= irq_spurious_proc_open,
+-	.read		= seq_read,
+-	.llseek		= seq_lseek,
+-	.release	= single_release,
+-};
+-
+ #define MAX_NAMELEN 128
+ 
+ static int name_unique(unsigned int irq, struct irqaction *new_action)
+ {
+-	struct irq_desc *desc = irq_to_desc(irq);
++	struct irq_desc *desc = irq_desc + irq;
+ 	struct irqaction *action;
+-	unsigned long flags;
+-	int ret = 1;
+ 
+-	raw_spin_lock_irqsave(&desc->lock, flags);
+-	for (action = desc->action ; action; action = action->next) {
++	for (action = desc->action ; action; action = action->next)
+ 		if ((action != new_action) && action->name &&
+-				!strcmp(new_action->name, action->name)) {
+-			ret = 0;
+-			break;
+-		}
+-	}
+-	raw_spin_unlock_irqrestore(&desc->lock, flags);
+-	return ret;
++				!strcmp(new_action->name, action->name))
++			return 0;
++	return 1;
+ }
+ 
+ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ {
+ 	char name [MAX_NAMELEN];
+-	struct irq_desc *desc = irq_to_desc(irq);
+ 
+-	if (!desc->dir || action->dir || !action->name ||
++	if (!irq_dir[irq] || action->dir || !action->name ||
+ 					!name_unique(irq, action))
+ 		return;
+ 
+@@ -317,188 +93,67 @@ void register_handler_proc(unsigned int irq, struct irqaction *action)
+ 	snprintf(name, MAX_NAMELEN, "%s", action->name);
+ 
+ 	/* create /proc/irq/1234/handler/ */
+-	action->dir = proc_mkdir(name, desc->dir);
++	action->dir = proc_mkdir(name, irq_dir[irq]);
+ }
+ 
+ #undef MAX_NAMELEN
+ 
+ #define MAX_NAMELEN 10
+ 
+-void register_irq_proc(unsigned int irq, struct irq_desc *desc)
++void register_irq_proc(unsigned int irq)
+ {
+ 	char name [MAX_NAMELEN];
+ 
+-	if (!root_irq_dir || (desc->irq_data.chip == &no_irq_chip) || desc->dir)
++	if (!root_irq_dir ||
++		(irq_desc[irq].handler == &no_irq_type) ||
++			irq_dir[irq])
+ 		return;
+ 
+ 	memset(name, 0, MAX_NAMELEN);
+ 	sprintf(name, "%d", irq);
+ 
+ 	/* create /proc/irq/1234 */
+-	desc->dir = proc_mkdir(name, root_irq_dir);
+-	if (!desc->dir)
+-		return;
++	irq_dir[irq] = proc_mkdir(name, root_irq_dir);
+ 
+ #ifdef CONFIG_SMP
+-	/* create /proc/irq/<irq>/smp_affinity */
+-	proc_create_data("smp_affinity", 0644, desc->dir,
+-			 &irq_affinity_proc_fops, (void *)(long)irq);
+-
+-	/* create /proc/irq/<irq>/affinity_hint */
+-	proc_create_data("affinity_hint", 0444, desc->dir,
+-			 &irq_affinity_hint_proc_fops, (void *)(long)irq);
+-
+-	/* create /proc/irq/<irq>/smp_affinity_list */
+-	proc_create_data("smp_affinity_list", 0644, desc->dir,
+-			 &irq_affinity_list_proc_fops, (void *)(long)irq);
++	{
++		struct proc_dir_entry *entry;
+ 
+-	proc_create_data("node", 0444, desc->dir,
+-			 &irq_node_proc_fops, (void *)(long)irq);
+-#endif
+-
+-	proc_create_data("spurious", 0444, desc->dir,
+-			 &irq_spurious_proc_fops, (void *)(long)irq);
+-}
++		/* create /proc/irq/<irq>/smp_affinity */
++		entry = create_proc_entry("smp_affinity", 0600, irq_dir[irq]);
+ 
+-void unregister_irq_proc(unsigned int irq, struct irq_desc *desc)
+-{
+-	char name [MAX_NAMELEN];
+-
+-	if (!root_irq_dir || !desc->dir)
+-		return;
+-#ifdef CONFIG_SMP
+-	remove_proc_entry("smp_affinity", desc->dir);
+-	remove_proc_entry("affinity_hint", desc->dir);
+-	remove_proc_entry("smp_affinity_list", desc->dir);
+-	remove_proc_entry("node", desc->dir);
++		if (entry) {
++			entry->nlink = 1;
++			entry->data = (void *)(long)irq;
++			entry->read_proc = irq_affinity_read_proc;
++			entry->write_proc = irq_affinity_write_proc;
++		}
++		smp_affinity_entry[irq] = entry;
++	}
+ #endif
+-	remove_proc_entry("spurious", desc->dir);
+-
+-	memset(name, 0, MAX_NAMELEN);
+-	sprintf(name, "%u", irq);
+-	remove_proc_entry(name, root_irq_dir);
+ }
+ 
+ #undef MAX_NAMELEN
+ 
+ void unregister_handler_proc(unsigned int irq, struct irqaction *action)
+ {
+-	proc_remove(action->dir);
+-}
+-
+-static void register_default_affinity_proc(void)
+-{
+-#ifdef CONFIG_SMP
+-	proc_create("irq/default_smp_affinity", 0644, NULL,
+-		    &default_affinity_proc_fops);
+-#endif
++	if (action->dir)
++		remove_proc_entry(action->dir->name, irq_dir[irq]);
+ }
+ 
+ void init_irq_proc(void)
+ {
+-	unsigned int irq;
+-	struct irq_desc *desc;
++	int i;
+ 
+ 	/* create /proc/irq */
+ 	root_irq_dir = proc_mkdir("irq", NULL);
+ 	if (!root_irq_dir)
+ 		return;
+ 
+-	register_default_affinity_proc();
+-
+ 	/*
+ 	 * Create entries for all existing IRQs.
+ 	 */
+-	for_each_irq_desc(irq, desc) {
+-		if (!desc)
+-			continue;
+-
+-		register_irq_proc(irq, desc);
+-	}
+-}
+-
+-#ifdef CONFIG_GENERIC_IRQ_SHOW
+-
+-int __weak arch_show_interrupts(struct seq_file *p, int prec)
+-{
+-	return 0;
++	for (i = 0; i < NR_IRQS; i++)
++		register_irq_proc(i);
+ }
+ 
+-#ifndef ACTUAL_NR_IRQS
+-# define ACTUAL_NR_IRQS nr_irqs
+-#endif
+-
+-int show_interrupts(struct seq_file *p, void *v)
+-{
+-	static int prec;
+-
+-	unsigned long flags, any_count = 0;
+-	int i = *(loff_t *) v, j;
+-	struct irqaction *action;
+-	struct irq_desc *desc;
+-
+-	if (i > ACTUAL_NR_IRQS)
+-		return 0;
+-
+-	if (i == ACTUAL_NR_IRQS)
+-		return arch_show_interrupts(p, prec);
+-
+-	/* print header and calculate the width of the first column */
+-	if (i == 0) {
+-		for (prec = 3, j = 1000; prec < 10 && j <= nr_irqs; ++prec)
+-			j *= 10;
+-
+-		seq_printf(p, "%*s", prec + 8, "");
+-		for_each_online_cpu(j)
+-			seq_printf(p, "CPU%-8d", j);
+-		seq_putc(p, '\n');
+-	}
+-
+-	irq_lock_sparse();
+-	desc = irq_to_desc(i);
+-	if (!desc)
+-		goto outsparse;
+-
+-	raw_spin_lock_irqsave(&desc->lock, flags);
+-	for_each_online_cpu(j)
+-		any_count |= kstat_irqs_cpu(i, j);
+-	action = desc->action;
+-	if (!action && !any_count)
+-		goto out;
+-
+-	seq_printf(p, "%*d: ", prec, i);
+-	for_each_online_cpu(j)
+-		seq_printf(p, "%10u ", kstat_irqs_cpu(i, j));
+-
+-	if (desc->irq_data.chip) {
+-		if (desc->irq_data.chip->irq_print_chip)
+-			desc->irq_data.chip->irq_print_chip(&desc->irq_data, p);
+-		else if (desc->irq_data.chip->name)
+-			seq_printf(p, " %8s", desc->irq_data.chip->name);
+-		else
+-			seq_printf(p, " %8s", "-");
+-	} else {
+-		seq_printf(p, " %8s", "None");
+-	}
+-	if (desc->irq_data.domain)
+-		seq_printf(p, " %*d", prec, (int) desc->irq_data.hwirq);
+-#ifdef CONFIG_GENERIC_IRQ_SHOW_LEVEL
+-	seq_printf(p, " %-8s", irqd_is_level_type(&desc->irq_data) ? "Level" : "Edge");
+-#endif
+-	if (desc->name)
+-		seq_printf(p, "-%-8s", desc->name);
+-
+-	if (action) {
+-		seq_printf(p, "  %s", action->name);
+-		while ((action = action->next) != NULL)
+-			seq_printf(p, ", %s", action->name);
+-	}
+-
+-	seq_putc(p, '\n');
+-out:
+-	raw_spin_unlock_irqrestore(&desc->lock, flags);
+-outsparse:
+-	irq_unlock_sparse();
+-	return 0;
+-}
+-#endif
+
+commit 2964ec66a7c0426cf6b23fbb9d5020c1bff68958
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:15 2018 +0800
+
+    v2.6.11
+
+diff --git a/kernel/irq/proc.c b/kernel/irq/proc.c
+new file mode 100644
+index 0000000..9dc9bfd
+--- /dev/null
++++ b/kernel/irq/proc.c
+@@ -0,0 +1,504 @@
++/*
++ * linux/kernel/irq/proc.c
++ *
++ * Copyright (C) 1992, 1998-2004 Linus Torvalds, Ingo Molnar
++ *
++ * This file contains the /proc/irq/ handling code.
++ */
++
++#include <linux/irq.h>
++#include <linux/gfp.h>
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++#include <linux/interrupt.h>
++#include <linux/kernel_stat.h>
++
++#include "internals.h"
++
++/*
++ * Access rules:
++ *
++ * procfs protects read/write of /proc/irq/N/ files against a
++ * concurrent free of the interrupt descriptor. remove_proc_entry()
++ * immediately prevents new read/writes to happen and waits for
++ * already running read/write functions to complete.
++ *
++ * We remove the proc entries first and then delete the interrupt
++ * descriptor from the radix tree and free it. So it is guaranteed
++ * that irq_to_desc(N) is valid as long as the read/writes are
++ * permitted by procfs.
++ *
++ * The read from /proc/interrupts is a different problem because there
++ * is no protection. So the lookup and the access to irqdesc
++ * information must be protected by sparse_irq_lock.
++ */
++static struct proc_dir_entry *root_irq_dir;
++
++#ifdef CONFIG_SMP
++
++static int show_irq_affinity(int type, struct seq_file *m, void *v)
++{
++	struct irq_desc *desc = irq_to_desc((long)m->private);
++	const struct cpumask *mask = desc->irq_data.affinity;
++
++#ifdef CONFIG_GENERIC_PENDING_IRQ
++	if (irqd_is_setaffinity_pending(&desc->irq_data))
++		mask = desc->pending_mask;
++#endif
++	if (type)
++		seq_cpumask_list(m, mask);
++	else
++		seq_cpumask(m, mask);
++	seq_putc(m, '\n');
++	return 0;
++}
++
++static int irq_affinity_hint_proc_show(struct seq_file *m, void *v)
++{
++	struct irq_desc *desc = irq_to_desc((long)m->private);
++	unsigned long flags;
++	cpumask_var_t mask;
++
++	if (!zalloc_cpumask_var(&mask, GFP_KERNEL))
++		return -ENOMEM;
++
++	raw_spin_lock_irqsave(&desc->lock, flags);
++	if (desc->affinity_hint)
++		cpumask_copy(mask, desc->affinity_hint);
++	raw_spin_unlock_irqrestore(&desc->lock, flags);
++
++	seq_cpumask(m, mask);
++	seq_putc(m, '\n');
++	free_cpumask_var(mask);
++
++	return 0;
++}
++
++#ifndef is_affinity_mask_valid
++#define is_affinity_mask_valid(val) 1
++#endif
++
++int no_irq_affinity;
++static int irq_affinity_proc_show(struct seq_file *m, void *v)
++{
++	return show_irq_affinity(0, m, v);
++}
++
++static int irq_affinity_list_proc_show(struct seq_file *m, void *v)
++{
++	return show_irq_affinity(1, m, v);
++}
++
++
++static ssize_t write_irq_affinity(int type, struct file *file,
++		const char __user *buffer, size_t count, loff_t *pos)
++{
++	unsigned int irq = (int)(long)PDE_DATA(file_inode(file));
++	cpumask_var_t new_value;
++	int err;
++
++	if (!irq_can_set_affinity(irq) || no_irq_affinity)
++		return -EIO;
++
++	if (!alloc_cpumask_var(&new_value, GFP_KERNEL))
++		return -ENOMEM;
++
++	if (type)
++		err = cpumask_parselist_user(buffer, count, new_value);
++	else
++		err = cpumask_parse_user(buffer, count, new_value);
++	if (err)
++		goto free_cpumask;
++
++	if (!is_affinity_mask_valid(new_value)) {
++		err = -EINVAL;
++		goto free_cpumask;
++	}
++
++	/*
++	 * Do not allow disabling IRQs completely - it's a too easy
++	 * way to make the system unusable accidentally :-) At least
++	 * one online CPU still has to be targeted.
++	 */
++	if (!cpumask_intersects(new_value, cpu_online_mask)) {
++		/* Special case for empty set - allow the architecture
++		   code to set default SMP affinity. */
++		err = irq_select_affinity_usr(irq, new_value) ? -EINVAL : count;
++	} else {
++		irq_set_affinity(irq, new_value);
++		err = count;
++	}
++
++free_cpumask:
++	free_cpumask_var(new_value);
++	return err;
++}
++
++static ssize_t irq_affinity_proc_write(struct file *file,
++		const char __user *buffer, size_t count, loff_t *pos)
++{
++	return write_irq_affinity(0, file, buffer, count, pos);
++}
++
++static ssize_t irq_affinity_list_proc_write(struct file *file,
++		const char __user *buffer, size_t count, loff_t *pos)
++{
++	return write_irq_affinity(1, file, buffer, count, pos);
++}
++
++static int irq_affinity_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_affinity_proc_show, PDE_DATA(inode));
++}
++
++static int irq_affinity_list_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_affinity_list_proc_show, PDE_DATA(inode));
++}
++
++static int irq_affinity_hint_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_affinity_hint_proc_show, PDE_DATA(inode));
++}
++
++static const struct file_operations irq_affinity_proc_fops = {
++	.open		= irq_affinity_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++	.write		= irq_affinity_proc_write,
++};
++
++static const struct file_operations irq_affinity_hint_proc_fops = {
++	.open		= irq_affinity_hint_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
++static const struct file_operations irq_affinity_list_proc_fops = {
++	.open		= irq_affinity_list_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++	.write		= irq_affinity_list_proc_write,
++};
++
++static int default_affinity_show(struct seq_file *m, void *v)
++{
++	seq_cpumask(m, irq_default_affinity);
++	seq_putc(m, '\n');
++	return 0;
++}
++
++static ssize_t default_affinity_write(struct file *file,
++		const char __user *buffer, size_t count, loff_t *ppos)
++{
++	cpumask_var_t new_value;
++	int err;
++
++	if (!alloc_cpumask_var(&new_value, GFP_KERNEL))
++		return -ENOMEM;
++
++	err = cpumask_parse_user(buffer, count, new_value);
++	if (err)
++		goto out;
++
++	if (!is_affinity_mask_valid(new_value)) {
++		err = -EINVAL;
++		goto out;
++	}
++
++	/*
++	 * Do not allow disabling IRQs completely - it's a too easy
++	 * way to make the system unusable accidentally :-) At least
++	 * one online CPU still has to be targeted.
++	 */
++	if (!cpumask_intersects(new_value, cpu_online_mask)) {
++		err = -EINVAL;
++		goto out;
++	}
++
++	cpumask_copy(irq_default_affinity, new_value);
++	err = count;
++
++out:
++	free_cpumask_var(new_value);
++	return err;
++}
++
++static int default_affinity_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, default_affinity_show, PDE_DATA(inode));
++}
++
++static const struct file_operations default_affinity_proc_fops = {
++	.open		= default_affinity_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++	.write		= default_affinity_write,
++};
++
++static int irq_node_proc_show(struct seq_file *m, void *v)
++{
++	struct irq_desc *desc = irq_to_desc((long) m->private);
++
++	seq_printf(m, "%d\n", desc->irq_data.node);
++	return 0;
++}
++
++static int irq_node_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_node_proc_show, PDE_DATA(inode));
++}
++
++static const struct file_operations irq_node_proc_fops = {
++	.open		= irq_node_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++#endif
++
++static int irq_spurious_proc_show(struct seq_file *m, void *v)
++{
++	struct irq_desc *desc = irq_to_desc((long) m->private);
++
++	seq_printf(m, "count %u\n" "unhandled %u\n" "last_unhandled %u ms\n",
++		   desc->irq_count, desc->irqs_unhandled,
++		   jiffies_to_msecs(desc->last_unhandled));
++	return 0;
++}
++
++static int irq_spurious_proc_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, irq_spurious_proc_show, PDE_DATA(inode));
++}
++
++static const struct file_operations irq_spurious_proc_fops = {
++	.open		= irq_spurious_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
++#define MAX_NAMELEN 128
++
++static int name_unique(unsigned int irq, struct irqaction *new_action)
++{
++	struct irq_desc *desc = irq_to_desc(irq);
++	struct irqaction *action;
++	unsigned long flags;
++	int ret = 1;
++
++	raw_spin_lock_irqsave(&desc->lock, flags);
++	for (action = desc->action ; action; action = action->next) {
++		if ((action != new_action) && action->name &&
++				!strcmp(new_action->name, action->name)) {
++			ret = 0;
++			break;
++		}
++	}
++	raw_spin_unlock_irqrestore(&desc->lock, flags);
++	return ret;
++}
++
++void register_handler_proc(unsigned int irq, struct irqaction *action)
++{
++	char name [MAX_NAMELEN];
++	struct irq_desc *desc = irq_to_desc(irq);
++
++	if (!desc->dir || action->dir || !action->name ||
++					!name_unique(irq, action))
++		return;
++
++	memset(name, 0, MAX_NAMELEN);
++	snprintf(name, MAX_NAMELEN, "%s", action->name);
++
++	/* create /proc/irq/1234/handler/ */
++	action->dir = proc_mkdir(name, desc->dir);
++}
++
++#undef MAX_NAMELEN
++
++#define MAX_NAMELEN 10
++
++void register_irq_proc(unsigned int irq, struct irq_desc *desc)
++{
++	char name [MAX_NAMELEN];
++
++	if (!root_irq_dir || (desc->irq_data.chip == &no_irq_chip) || desc->dir)
++		return;
++
++	memset(name, 0, MAX_NAMELEN);
++	sprintf(name, "%d", irq);
++
++	/* create /proc/irq/1234 */
++	desc->dir = proc_mkdir(name, root_irq_dir);
++	if (!desc->dir)
++		return;
++
++#ifdef CONFIG_SMP
++	/* create /proc/irq/<irq>/smp_affinity */
++	proc_create_data("smp_affinity", 0644, desc->dir,
++			 &irq_affinity_proc_fops, (void *)(long)irq);
++
++	/* create /proc/irq/<irq>/affinity_hint */
++	proc_create_data("affinity_hint", 0444, desc->dir,
++			 &irq_affinity_hint_proc_fops, (void *)(long)irq);
++
++	/* create /proc/irq/<irq>/smp_affinity_list */
++	proc_create_data("smp_affinity_list", 0644, desc->dir,
++			 &irq_affinity_list_proc_fops, (void *)(long)irq);
++
++	proc_create_data("node", 0444, desc->dir,
++			 &irq_node_proc_fops, (void *)(long)irq);
++#endif
++
++	proc_create_data("spurious", 0444, desc->dir,
++			 &irq_spurious_proc_fops, (void *)(long)irq);
++}
++
++void unregister_irq_proc(unsigned int irq, struct irq_desc *desc)
++{
++	char name [MAX_NAMELEN];
++
++	if (!root_irq_dir || !desc->dir)
++		return;
++#ifdef CONFIG_SMP
++	remove_proc_entry("smp_affinity", desc->dir);
++	remove_proc_entry("affinity_hint", desc->dir);
++	remove_proc_entry("smp_affinity_list", desc->dir);
++	remove_proc_entry("node", desc->dir);
++#endif
++	remove_proc_entry("spurious", desc->dir);
++
++	memset(name, 0, MAX_NAMELEN);
++	sprintf(name, "%u", irq);
++	remove_proc_entry(name, root_irq_dir);
++}
++
++#undef MAX_NAMELEN
++
++void unregister_handler_proc(unsigned int irq, struct irqaction *action)
++{
++	proc_remove(action->dir);
++}
++
++static void register_default_affinity_proc(void)
++{
++#ifdef CONFIG_SMP
++	proc_create("irq/default_smp_affinity", 0644, NULL,
++		    &default_affinity_proc_fops);
++#endif
++}
++
++void init_irq_proc(void)
++{
++	unsigned int irq;
++	struct irq_desc *desc;
++
++	/* create /proc/irq */
++	root_irq_dir = proc_mkdir("irq", NULL);
++	if (!root_irq_dir)
++		return;
++
++	register_default_affinity_proc();
++
++	/*
++	 * Create entries for all existing IRQs.
++	 */
++	for_each_irq_desc(irq, desc) {
++		if (!desc)
++			continue;
++
++		register_irq_proc(irq, desc);
++	}
++}
++
++#ifdef CONFIG_GENERIC_IRQ_SHOW
++
++int __weak arch_show_interrupts(struct seq_file *p, int prec)
++{
++	return 0;
++}
++
++#ifndef ACTUAL_NR_IRQS
++# define ACTUAL_NR_IRQS nr_irqs
++#endif
++
++int show_interrupts(struct seq_file *p, void *v)
++{
++	static int prec;
++
++	unsigned long flags, any_count = 0;
++	int i = *(loff_t *) v, j;
++	struct irqaction *action;
++	struct irq_desc *desc;
++
++	if (i > ACTUAL_NR_IRQS)
++		return 0;
++
++	if (i == ACTUAL_NR_IRQS)
++		return arch_show_interrupts(p, prec);
++
++	/* print header and calculate the width of the first column */
++	if (i == 0) {
++		for (prec = 3, j = 1000; prec < 10 && j <= nr_irqs; ++prec)
++			j *= 10;
++
++		seq_printf(p, "%*s", prec + 8, "");
++		for_each_online_cpu(j)
++			seq_printf(p, "CPU%-8d", j);
++		seq_putc(p, '\n');
++	}
++
++	irq_lock_sparse();
++	desc = irq_to_desc(i);
++	if (!desc)
++		goto outsparse;
++
++	raw_spin_lock_irqsave(&desc->lock, flags);
++	for_each_online_cpu(j)
++		any_count |= kstat_irqs_cpu(i, j);
++	action = desc->action;
++	if (!action && !any_count)
++		goto out;
++
++	seq_printf(p, "%*d: ", prec, i);
++	for_each_online_cpu(j)
++		seq_printf(p, "%10u ", kstat_irqs_cpu(i, j));
++
++	if (desc->irq_data.chip) {
++		if (desc->irq_data.chip->irq_print_chip)
++			desc->irq_data.chip->irq_print_chip(&desc->irq_data, p);
++		else if (desc->irq_data.chip->name)
++			seq_printf(p, " %8s", desc->irq_data.chip->name);
++		else
++			seq_printf(p, " %8s", "-");
++	} else {
++		seq_printf(p, " %8s", "None");
++	}
++	if (desc->irq_data.domain)
++		seq_printf(p, " %*d", prec, (int) desc->irq_data.hwirq);
++#ifdef CONFIG_GENERIC_IRQ_SHOW_LEVEL
++	seq_printf(p, " %-8s", irqd_is_level_type(&desc->irq_data) ? "Level" : "Edge");
++#endif
++	if (desc->name)
++		seq_printf(p, "-%-8s", desc->name);
++
++	if (action) {
++		seq_printf(p, "  %s", action->name);
++		while ((action = action->next) != NULL)
++			seq_printf(p, ", %s", action->name);
++	}
++
++	seq_putc(p, '\n');
++out:
++	raw_spin_unlock_irqrestore(&desc->lock, flags);
++outsparse:
++	irq_unlock_sparse();
++	return 0;
++}
++#endif
+
+commit 2d23cfafb3e64cb37179aa49f91a4c6165a2d5f3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:14 2018 +0800
+
+    target source code file : kernel/irq/proc.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..d404c5f
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++kernel/irq/proc.c

@@ -1,0 +1,52 @@
+ca90769ce94db92c721839258fa238480605892e v4.16-rc4
+ 1 file changed, 16 insertions(+), 13 deletions(-)
+add95e3d5f35c1541bd907b561d0a45968738fbc v4.15-rc1
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+e30a5f3df051ea927123b2c752671d2824db82a8 v4.14-rc8
+ 1 file changed, 1 insertion(+)
+0a0815e73243fba9332085bf630de39731c13b4c v4.10-rc2
+ 1 file changed, 13 insertions(+)
+47f36e3a1f06d49ddd9e5b33714f082824500e05 v4.8-rc1
+ 1 file changed, 25 insertions(+), 25 deletions(-)
+7b25a5ca3e44a6df077330407223a8dfdfe75e14 v4.6-rc1
+ 1 file changed, 18 insertions(+), 18 deletions(-)
+febc3ff3b62f8541f716a74e76c56aeaa62792f9 v3.17-rc5
+ 1 file changed, 2 deletions(-)
+0df6764ed20870120bd3093dd07c6336c80d75ad v3.16-rc1
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+39e79195c1b27780b655a5811944730f03e39875 v3.13-rc3
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+4879db9b4e644411291015ccb0a6d94454cd24c9 v3.13-rc1
+ 1 file changed, 4 insertions(+), 20 deletions(-)
+f4328fc6cbd97462bf9601b3c242a37e516cafd4 v3.12-rc1
+ 1 file changed, 27 insertions(+), 19 deletions(-)
+f627b2d39f54c2e7917237028039b7c385056438 v3.7-rc1
+ 1 file changed, 6 insertions(+), 8 deletions(-)
+77f8e7462770988bd8495ae4c2763d06f9c2a4d4 v3.6-rc1
+ 1 file changed, 7 insertions(+)
+b51a31ab3531d3167790ffab4403ff9862bbaa0d v3.5-rc1
+ 1 file changed, 2 insertions(+)
+f611e607a3ebfa74696b2dca184a07315a728fca v3.3-rc1
+ 1 file changed, 63 insertions(+), 13 deletions(-)
+36fac430093e9b4fc292b28863b93aa270032ca5 v3.1-rc1
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+d29aff97c276b57dd10f97974a012abffe164a77 v2.6.39-rc1
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+b222e1d29dc169a0d3f83d6849ed92ff4ab0e2d4 v2.6.37-rc1
+ 1 file changed, 2 insertions(+)
+40b541da66505f01e876b45d12c6ea09507b7b3f v2.6.36-rc6
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+52438da2289363fc0ebb21c7f01199f82b15eaa9 v2.6.35-rc1
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+c02d1addc1f726bd0c810964c6c5ffb12e8de6c7 v2.6.29-rc3
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+01f22fc94daa49192cf813439d7dd6e6b792b141 v2.6.29-rc1
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+241a4d73b1a5903603f846bfcc049ac6f5b7f18c v2.6.28-rc1
+ 1 file changed, 451 insertions(+)
+c7f5f77c00fd5cff8dd895e5bbf398b8559aced7 v2.6.12
+ 1 file changed, 509 deletions(-)
+ad24c5b1820795a72bf92a78d45d726bf5464906 v2.6.11
+ 1 file changed, 509 insertions(+)
+80a149d477c71efaf6c2403421275599d20673a5 target source code file : arch/x86/include/asm/bitops.h
+ 1 file changed, 1 insertion(+)

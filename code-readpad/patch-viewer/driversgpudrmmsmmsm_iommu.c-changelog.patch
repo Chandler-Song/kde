@@ -1,0 +1,877 @@
+commit a9c96d937fdfada22dc25e5f212190f95e21cc61
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:37:58 2018 +0800
+
+    v4.12-rc1
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+index 7f5779d..b23d336 100644
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -38,78 +38,47 @@ static int msm_iommu_attach(struct msm_mmu *mmu, const char * const *names,
+ 			    int cnt)
+ {
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-	return iommu_attach_device(iommu->domain, mmu->dev);
++	int ret;
++
++	pm_runtime_get_sync(mmu->dev);
++	ret = iommu_attach_device(iommu->domain, mmu->dev);
++	pm_runtime_put_sync(mmu->dev);
++
++	return ret;
+ }
+ 
+ static void msm_iommu_detach(struct msm_mmu *mmu, const char * const *names,
+ 			     int cnt)
+ {
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
++
++	pm_runtime_get_sync(mmu->dev);
+ 	iommu_detach_device(iommu->domain, mmu->dev);
++	pm_runtime_put_sync(mmu->dev);
+ }
+ 
+ static int msm_iommu_map(struct msm_mmu *mmu, uint64_t iova,
+ 		struct sg_table *sgt, unsigned len, int prot)
+ {
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-	struct iommu_domain *domain = iommu->domain;
+-	struct scatterlist *sg;
+-	unsigned long da = iova;
+-	unsigned int i, j;
+-	int ret;
+-
+-	if (!domain || !sgt)
+-		return -EINVAL;
+-
+-	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
+-		dma_addr_t pa = sg_phys(sg) - sg->offset;
+-		size_t bytes = sg->length + sg->offset;
+-
+-		VERB("map[%d]: %08lx %08lx(%zx)", i, da, (unsigned long)pa, bytes);
++	size_t ret;
+ 
+-		ret = iommu_map(domain, da, pa, bytes, prot);
+-		if (ret)
+-			goto fail;
++//	pm_runtime_get_sync(mmu->dev);
++	ret = iommu_map_sg(iommu->domain, iova, sgt->sgl, sgt->nents, prot);
++//	pm_runtime_put_sync(mmu->dev);
++	WARN_ON(ret < 0);
+ 
+-		da += bytes;
+-	}
+-
+-	return 0;
+-
+-fail:
+-	da = iova;
+-
+-	for_each_sg(sgt->sgl, sg, i, j) {
+-		size_t bytes = sg->length + sg->offset;
+-		iommu_unmap(domain, da, bytes);
+-		da += bytes;
+-	}
+-	return ret;
++	return (ret == len) ? 0 : -EINVAL;
+ }
+ 
+ static int msm_iommu_unmap(struct msm_mmu *mmu, uint64_t iova,
+ 		struct sg_table *sgt, unsigned len)
+ {
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-	struct iommu_domain *domain = iommu->domain;
+-	struct scatterlist *sg;
+-	unsigned long da = iova;
+-	int i;
+-
+-	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
+-		size_t bytes = sg->length + sg->offset;
+-		size_t unmapped;
+-
+-		unmapped = iommu_unmap(domain, da, bytes);
+-		if (unmapped < bytes)
+-			return unmapped;
+-
+-		VERB("unmap[%d]: %08lx(%zx)", i, da, bytes);
+-
+-		BUG_ON(!PAGE_ALIGNED(bytes));
+ 
+-		da += bytes;
+-	}
++	pm_runtime_get_sync(mmu->dev);
++	iommu_unmap(iommu->domain, iova, len);
++	pm_runtime_put_sync(mmu->dev);
+ 
+ 	return 0;
+ }
+
+commit 3b1da5dc26997c8ae2656052c28ad6a996ebd50e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:37:39 2018 +0800
+
+    v4.11-rc1
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+index 61aaaa1..7f5779d 100644
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -24,9 +24,12 @@ struct msm_iommu {
+ };
+ #define to_msm_iommu(x) container_of(x, struct msm_iommu, base)
+ 
+-static int msm_fault_handler(struct iommu_domain *iommu, struct device *dev,
++static int msm_fault_handler(struct iommu_domain *domain, struct device *dev,
+ 		unsigned long iova, int flags, void *arg)
+ {
++	struct msm_iommu *iommu = arg;
++	if (iommu->base.handler)
++		return iommu->base.handler(iommu->base.arg, iova, flags);
+ 	pr_warn_ratelimited("*** fault: iova=%08lx, flags=%d\n", iova, flags);
+ 	return 0;
+ }
+@@ -136,7 +139,7 @@ struct msm_mmu *msm_iommu_new(struct device *dev, struct iommu_domain *domain)
+ 
+ 	iommu->domain = domain;
+ 	msm_mmu_init(&iommu->base, dev, &funcs);
+-	iommu_set_fault_handler(domain, msm_fault_handler, dev);
++	iommu_set_fault_handler(domain, msm_fault_handler, iommu);
+ 
+ 	return &iommu->base;
+ }
+
+commit a4ddc6eba950f4efccf479823017f6668cdef698
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:37:21 2018 +0800
+
+    v4.10-rc1
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+index 3a294d0..61aaaa1 100644
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -45,13 +45,13 @@ static void msm_iommu_detach(struct msm_mmu *mmu, const char * const *names,
+ 	iommu_detach_device(iommu->domain, mmu->dev);
+ }
+ 
+-static int msm_iommu_map(struct msm_mmu *mmu, uint32_t iova,
++static int msm_iommu_map(struct msm_mmu *mmu, uint64_t iova,
+ 		struct sg_table *sgt, unsigned len, int prot)
+ {
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+ 	struct iommu_domain *domain = iommu->domain;
+ 	struct scatterlist *sg;
+-	unsigned int da = iova;
++	unsigned long da = iova;
+ 	unsigned int i, j;
+ 	int ret;
+ 
+@@ -62,7 +62,7 @@ static int msm_iommu_map(struct msm_mmu *mmu, uint32_t iova,
+ 		dma_addr_t pa = sg_phys(sg) - sg->offset;
+ 		size_t bytes = sg->length + sg->offset;
+ 
+-		VERB("map[%d]: %08x %08lx(%zx)", i, da, (unsigned long)pa, bytes);
++		VERB("map[%d]: %08lx %08lx(%zx)", i, da, (unsigned long)pa, bytes);
+ 
+ 		ret = iommu_map(domain, da, pa, bytes, prot);
+ 		if (ret)
+@@ -84,13 +84,13 @@ fail:
+ 	return ret;
+ }
+ 
+-static int msm_iommu_unmap(struct msm_mmu *mmu, uint32_t iova,
++static int msm_iommu_unmap(struct msm_mmu *mmu, uint64_t iova,
+ 		struct sg_table *sgt, unsigned len)
+ {
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+ 	struct iommu_domain *domain = iommu->domain;
+ 	struct scatterlist *sg;
+-	unsigned int da = iova;
++	unsigned long da = iova;
+ 	int i;
+ 
+ 	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
+@@ -101,7 +101,7 @@ static int msm_iommu_unmap(struct msm_mmu *mmu, uint32_t iova,
+ 		if (unmapped < bytes)
+ 			return unmapped;
+ 
+-		VERB("unmap[%d]: %08x(%zx)", i, da, bytes);
++		VERB("unmap[%d]: %08lx(%zx)", i, da, bytes);
+ 
+ 		BUG_ON(!PAGE_ALIGNED(bytes));
+ 
+
+commit d7ca423bc4ec878984c5e9ae096aa91e66db0597
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:36:45 2018 +0800
+
+    v4.8-rc1
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+index a7a0b6d..3a294d0 100644
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -59,10 +59,10 @@ static int msm_iommu_map(struct msm_mmu *mmu, uint32_t iova,
+ 		return -EINVAL;
+ 
+ 	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
+-		u32 pa = sg_phys(sg) - sg->offset;
++		dma_addr_t pa = sg_phys(sg) - sg->offset;
+ 		size_t bytes = sg->length + sg->offset;
+ 
+-		VERB("map[%d]: %08x %08x(%zx)", i, iova, pa, bytes);
++		VERB("map[%d]: %08x %08lx(%zx)", i, da, (unsigned long)pa, bytes);
+ 
+ 		ret = iommu_map(domain, da, pa, bytes, prot);
+ 		if (ret)
+@@ -101,7 +101,7 @@ static int msm_iommu_unmap(struct msm_mmu *mmu, uint32_t iova,
+ 		if (unmapped < bytes)
+ 			return unmapped;
+ 
+-		VERB("unmap[%d]: %08x(%zx)", i, iova, bytes);
++		VERB("unmap[%d]: %08x(%zx)", i, da, bytes);
+ 
+ 		BUG_ON(!PAGE_ALIGNED(bytes));
+ 
+
+commit 1fb298f59723e50daf56edf39fa41054c78f6b03
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:36:13 2018 +0800
+
+    v4.6-rc1
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+index 7ac2f19..a7a0b6d 100644
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -31,13 +31,15 @@ static int msm_fault_handler(struct iommu_domain *iommu, struct device *dev,
+ 	return 0;
+ }
+ 
+-static int msm_iommu_attach(struct msm_mmu *mmu, const char **names, int cnt)
++static int msm_iommu_attach(struct msm_mmu *mmu, const char * const *names,
++			    int cnt)
+ {
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+ 	return iommu_attach_device(iommu->domain, mmu->dev);
+ }
+ 
+-static void msm_iommu_detach(struct msm_mmu *mmu, const char **names, int cnt)
++static void msm_iommu_detach(struct msm_mmu *mmu, const char * const *names,
++			     int cnt)
+ {
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+ 	iommu_detach_device(iommu->domain, mmu->dev);
+
+commit b304ac1dcc4c105d1b213cd5303dfa7d50fef643
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:35:00 2018 +0800
+
+    v4.1-rc5
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+index 7acdaa5..7ac2f19 100644
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -60,7 +60,7 @@ static int msm_iommu_map(struct msm_mmu *mmu, uint32_t iova,
+ 		u32 pa = sg_phys(sg) - sg->offset;
+ 		size_t bytes = sg->length + sg->offset;
+ 
+-		VERB("map[%d]: %08x %08x(%x)", i, iova, pa, bytes);
++		VERB("map[%d]: %08x %08x(%zx)", i, iova, pa, bytes);
+ 
+ 		ret = iommu_map(domain, da, pa, bytes, prot);
+ 		if (ret)
+@@ -99,7 +99,7 @@ static int msm_iommu_unmap(struct msm_mmu *mmu, uint32_t iova,
+ 		if (unmapped < bytes)
+ 			return unmapped;
+ 
+-		VERB("unmap[%d]: %08x(%x)", i, iova, bytes);
++		VERB("unmap[%d]: %08x(%zx)", i, iova, bytes);
+ 
+ 		BUG_ON(!PAGE_ALIGNED(bytes));
+ 
+
+commit 82c97e47d9616c635e3f1f81bd0053a9192713f2
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:34:01 2018 +0800
+
+    v3.17-rc3
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+index 099af48..7acdaa5 100644
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -27,8 +27,8 @@ struct msm_iommu {
+ static int msm_fault_handler(struct iommu_domain *iommu, struct device *dev,
+ 		unsigned long iova, int flags, void *arg)
+ {
+-	DBG("*** fault: iova=%08lx, flags=%d", iova, flags);
+-	return -ENOSYS;
++	pr_warn_ratelimited("*** fault: iova=%08lx, flags=%d\n", iova, flags);
++	return 0;
+ }
+ 
+ static int msm_iommu_attach(struct msm_mmu *mmu, const char **names, int cnt)
+
+commit 8d38a30bf296d0a38ece4049de099fbb16a86fa0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:33:58 2018 +0800
+
+    v3.17-rc1
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+index 4b2ad91..099af48 100644
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -33,39 +33,14 @@ static int msm_fault_handler(struct iommu_domain *iommu, struct device *dev,
+ 
+ static int msm_iommu_attach(struct msm_mmu *mmu, const char **names, int cnt)
+ {
+-	struct drm_device *dev = mmu->dev;
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-	int i, ret;
+-
+-	for (i = 0; i < cnt; i++) {
+-		struct device *msm_iommu_get_ctx(const char *ctx_name);
+-		struct device *ctx = msm_iommu_get_ctx(names[i]);
+-		if (IS_ERR_OR_NULL(ctx)) {
+-			dev_warn(dev->dev, "couldn't get %s context", names[i]);
+-			continue;
+-		}
+-		ret = iommu_attach_device(iommu->domain, ctx);
+-		if (ret) {
+-			dev_warn(dev->dev, "could not attach iommu to %s", names[i]);
+-			return ret;
+-		}
+-	}
+-
+-	return 0;
++	return iommu_attach_device(iommu->domain, mmu->dev);
+ }
+ 
+ static void msm_iommu_detach(struct msm_mmu *mmu, const char **names, int cnt)
+ {
+ 	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-	int i;
+-
+-	for (i = 0; i < cnt; i++) {
+-		struct device *msm_iommu_get_ctx(const char *ctx_name);
+-		struct device *ctx = msm_iommu_get_ctx(names[i]);
+-		if (IS_ERR_OR_NULL(ctx))
+-			continue;
+-		iommu_detach_device(iommu->domain, ctx);
+-	}
++	iommu_detach_device(iommu->domain, mmu->dev);
+ }
+ 
+ static int msm_iommu_map(struct msm_mmu *mmu, uint32_t iova,
+@@ -149,7 +124,7 @@ static const struct msm_mmu_funcs funcs = {
+ 		.destroy = msm_iommu_destroy,
+ };
+ 
+-struct msm_mmu *msm_iommu_new(struct drm_device *dev, struct iommu_domain *domain)
++struct msm_mmu *msm_iommu_new(struct device *dev, struct iommu_domain *domain)
+ {
+ 	struct msm_iommu *iommu;
+ 
+
+commit f0e68c0f9b6d7f9a70cdaf2cafb99285576a2ce5
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:33:47 2018 +0800
+
+    v3.16-rc3
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+index 92b7459..4b2ad91 100644
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -28,7 +28,7 @@ static int msm_fault_handler(struct iommu_domain *iommu, struct device *dev,
+ 		unsigned long iova, int flags, void *arg)
+ {
+ 	DBG("*** fault: iova=%08lx, flags=%d", iova, flags);
+-	return 0;
++	return -ENOSYS;
+ }
+ 
+ static int msm_iommu_attach(struct msm_mmu *mmu, const char **names, int cnt)
+@@ -40,8 +40,10 @@ static int msm_iommu_attach(struct msm_mmu *mmu, const char **names, int cnt)
+ 	for (i = 0; i < cnt; i++) {
+ 		struct device *msm_iommu_get_ctx(const char *ctx_name);
+ 		struct device *ctx = msm_iommu_get_ctx(names[i]);
+-		if (IS_ERR_OR_NULL(ctx))
++		if (IS_ERR_OR_NULL(ctx)) {
++			dev_warn(dev->dev, "couldn't get %s context", names[i]);
+ 			continue;
++		}
+ 		ret = iommu_attach_device(iommu->domain, ctx);
+ 		if (ret) {
+ 			dev_warn(dev->dev, "could not attach iommu to %s", names[i]);
+@@ -52,6 +54,20 @@ static int msm_iommu_attach(struct msm_mmu *mmu, const char **names, int cnt)
+ 	return 0;
+ }
+ 
++static void msm_iommu_detach(struct msm_mmu *mmu, const char **names, int cnt)
++{
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++	int i;
++
++	for (i = 0; i < cnt; i++) {
++		struct device *msm_iommu_get_ctx(const char *ctx_name);
++		struct device *ctx = msm_iommu_get_ctx(names[i]);
++		if (IS_ERR_OR_NULL(ctx))
++			continue;
++		iommu_detach_device(iommu->domain, ctx);
++	}
++}
++
+ static int msm_iommu_map(struct msm_mmu *mmu, uint32_t iova,
+ 		struct sg_table *sgt, unsigned len, int prot)
+ {
+@@ -110,7 +126,7 @@ static int msm_iommu_unmap(struct msm_mmu *mmu, uint32_t iova,
+ 
+ 		VERB("unmap[%d]: %08x(%x)", i, iova, bytes);
+ 
+-		BUG_ON(!IS_ALIGNED(bytes, PAGE_SIZE));
++		BUG_ON(!PAGE_ALIGNED(bytes));
+ 
+ 		da += bytes;
+ 	}
+@@ -127,6 +143,7 @@ static void msm_iommu_destroy(struct msm_mmu *mmu)
+ 
+ static const struct msm_mmu_funcs funcs = {
+ 		.attach = msm_iommu_attach,
++		.detach = msm_iommu_detach,
+ 		.map = msm_iommu_map,
+ 		.unmap = msm_iommu_unmap,
+ 		.destroy = msm_iommu_destroy,
+
+commit 35c4d23c2360fea5f79f2bbfc1922abcae525327
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:33:14 2018 +0800
+
+    v3.14-rc1
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+new file mode 100644
+index 0000000..92b7459
+--- /dev/null
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -0,0 +1,148 @@
++/*
++ * Copyright (C) 2013 Red Hat
++ * Author: Rob Clark <robdclark@gmail.com>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 as published by
++ * the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along with
++ * this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "msm_drv.h"
++#include "msm_mmu.h"
++
++struct msm_iommu {
++	struct msm_mmu base;
++	struct iommu_domain *domain;
++};
++#define to_msm_iommu(x) container_of(x, struct msm_iommu, base)
++
++static int msm_fault_handler(struct iommu_domain *iommu, struct device *dev,
++		unsigned long iova, int flags, void *arg)
++{
++	DBG("*** fault: iova=%08lx, flags=%d", iova, flags);
++	return 0;
++}
++
++static int msm_iommu_attach(struct msm_mmu *mmu, const char **names, int cnt)
++{
++	struct drm_device *dev = mmu->dev;
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++	int i, ret;
++
++	for (i = 0; i < cnt; i++) {
++		struct device *msm_iommu_get_ctx(const char *ctx_name);
++		struct device *ctx = msm_iommu_get_ctx(names[i]);
++		if (IS_ERR_OR_NULL(ctx))
++			continue;
++		ret = iommu_attach_device(iommu->domain, ctx);
++		if (ret) {
++			dev_warn(dev->dev, "could not attach iommu to %s", names[i]);
++			return ret;
++		}
++	}
++
++	return 0;
++}
++
++static int msm_iommu_map(struct msm_mmu *mmu, uint32_t iova,
++		struct sg_table *sgt, unsigned len, int prot)
++{
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++	struct iommu_domain *domain = iommu->domain;
++	struct scatterlist *sg;
++	unsigned int da = iova;
++	unsigned int i, j;
++	int ret;
++
++	if (!domain || !sgt)
++		return -EINVAL;
++
++	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
++		u32 pa = sg_phys(sg) - sg->offset;
++		size_t bytes = sg->length + sg->offset;
++
++		VERB("map[%d]: %08x %08x(%x)", i, iova, pa, bytes);
++
++		ret = iommu_map(domain, da, pa, bytes, prot);
++		if (ret)
++			goto fail;
++
++		da += bytes;
++	}
++
++	return 0;
++
++fail:
++	da = iova;
++
++	for_each_sg(sgt->sgl, sg, i, j) {
++		size_t bytes = sg->length + sg->offset;
++		iommu_unmap(domain, da, bytes);
++		da += bytes;
++	}
++	return ret;
++}
++
++static int msm_iommu_unmap(struct msm_mmu *mmu, uint32_t iova,
++		struct sg_table *sgt, unsigned len)
++{
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++	struct iommu_domain *domain = iommu->domain;
++	struct scatterlist *sg;
++	unsigned int da = iova;
++	int i;
++
++	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
++		size_t bytes = sg->length + sg->offset;
++		size_t unmapped;
++
++		unmapped = iommu_unmap(domain, da, bytes);
++		if (unmapped < bytes)
++			return unmapped;
++
++		VERB("unmap[%d]: %08x(%x)", i, iova, bytes);
++
++		BUG_ON(!IS_ALIGNED(bytes, PAGE_SIZE));
++
++		da += bytes;
++	}
++
++	return 0;
++}
++
++static void msm_iommu_destroy(struct msm_mmu *mmu)
++{
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++	iommu_domain_free(iommu->domain);
++	kfree(iommu);
++}
++
++static const struct msm_mmu_funcs funcs = {
++		.attach = msm_iommu_attach,
++		.map = msm_iommu_map,
++		.unmap = msm_iommu_unmap,
++		.destroy = msm_iommu_destroy,
++};
++
++struct msm_mmu *msm_iommu_new(struct drm_device *dev, struct iommu_domain *domain)
++{
++	struct msm_iommu *iommu;
++
++	iommu = kzalloc(sizeof(*iommu), GFP_KERNEL);
++	if (!iommu)
++		return ERR_PTR(-ENOMEM);
++
++	iommu->domain = domain;
++	msm_mmu_init(&iommu->base, dev, &funcs);
++	iommu_set_fault_handler(domain, msm_fault_handler, dev);
++
++	return &iommu->base;
++}
+
+commit ad281d5a275d7433cfd4513fcf2abf072f6a7819
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:24:30 2018 +0800
+
+    v2.6.12
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+deleted file mode 100644
+index b23d336..0000000
+--- a/drivers/gpu/drm/msm/msm_iommu.c
++++ /dev/null
+@@ -1,114 +0,0 @@
+-/*
+- * Copyright (C) 2013 Red Hat
+- * Author: Rob Clark <robdclark@gmail.com>
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License version 2 as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along with
+- * this program.  If not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-#include "msm_drv.h"
+-#include "msm_mmu.h"
+-
+-struct msm_iommu {
+-	struct msm_mmu base;
+-	struct iommu_domain *domain;
+-};
+-#define to_msm_iommu(x) container_of(x, struct msm_iommu, base)
+-
+-static int msm_fault_handler(struct iommu_domain *domain, struct device *dev,
+-		unsigned long iova, int flags, void *arg)
+-{
+-	struct msm_iommu *iommu = arg;
+-	if (iommu->base.handler)
+-		return iommu->base.handler(iommu->base.arg, iova, flags);
+-	pr_warn_ratelimited("*** fault: iova=%08lx, flags=%d\n", iova, flags);
+-	return 0;
+-}
+-
+-static int msm_iommu_attach(struct msm_mmu *mmu, const char * const *names,
+-			    int cnt)
+-{
+-	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-	int ret;
+-
+-	pm_runtime_get_sync(mmu->dev);
+-	ret = iommu_attach_device(iommu->domain, mmu->dev);
+-	pm_runtime_put_sync(mmu->dev);
+-
+-	return ret;
+-}
+-
+-static void msm_iommu_detach(struct msm_mmu *mmu, const char * const *names,
+-			     int cnt)
+-{
+-	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-
+-	pm_runtime_get_sync(mmu->dev);
+-	iommu_detach_device(iommu->domain, mmu->dev);
+-	pm_runtime_put_sync(mmu->dev);
+-}
+-
+-static int msm_iommu_map(struct msm_mmu *mmu, uint64_t iova,
+-		struct sg_table *sgt, unsigned len, int prot)
+-{
+-	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-	size_t ret;
+-
+-//	pm_runtime_get_sync(mmu->dev);
+-	ret = iommu_map_sg(iommu->domain, iova, sgt->sgl, sgt->nents, prot);
+-//	pm_runtime_put_sync(mmu->dev);
+-	WARN_ON(ret < 0);
+-
+-	return (ret == len) ? 0 : -EINVAL;
+-}
+-
+-static int msm_iommu_unmap(struct msm_mmu *mmu, uint64_t iova,
+-		struct sg_table *sgt, unsigned len)
+-{
+-	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-
+-	pm_runtime_get_sync(mmu->dev);
+-	iommu_unmap(iommu->domain, iova, len);
+-	pm_runtime_put_sync(mmu->dev);
+-
+-	return 0;
+-}
+-
+-static void msm_iommu_destroy(struct msm_mmu *mmu)
+-{
+-	struct msm_iommu *iommu = to_msm_iommu(mmu);
+-	iommu_domain_free(iommu->domain);
+-	kfree(iommu);
+-}
+-
+-static const struct msm_mmu_funcs funcs = {
+-		.attach = msm_iommu_attach,
+-		.detach = msm_iommu_detach,
+-		.map = msm_iommu_map,
+-		.unmap = msm_iommu_unmap,
+-		.destroy = msm_iommu_destroy,
+-};
+-
+-struct msm_mmu *msm_iommu_new(struct device *dev, struct iommu_domain *domain)
+-{
+-	struct msm_iommu *iommu;
+-
+-	iommu = kzalloc(sizeof(*iommu), GFP_KERNEL);
+-	if (!iommu)
+-		return ERR_PTR(-ENOMEM);
+-
+-	iommu->domain = domain;
+-	msm_mmu_init(&iommu->base, dev, &funcs);
+-	iommu_set_fault_handler(domain, msm_fault_handler, iommu);
+-
+-	return &iommu->base;
+-}
+
+commit 51f4e1db9ee5bb2516336971b9d1c1491f03b465
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:24:21 2018 +0800
+
+    v2.6.11
+
+diff --git a/drivers/gpu/drm/msm/msm_iommu.c b/drivers/gpu/drm/msm/msm_iommu.c
+new file mode 100644
+index 0000000..b23d336
+--- /dev/null
++++ b/drivers/gpu/drm/msm/msm_iommu.c
+@@ -0,0 +1,114 @@
++/*
++ * Copyright (C) 2013 Red Hat
++ * Author: Rob Clark <robdclark@gmail.com>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 as published by
++ * the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along with
++ * this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "msm_drv.h"
++#include "msm_mmu.h"
++
++struct msm_iommu {
++	struct msm_mmu base;
++	struct iommu_domain *domain;
++};
++#define to_msm_iommu(x) container_of(x, struct msm_iommu, base)
++
++static int msm_fault_handler(struct iommu_domain *domain, struct device *dev,
++		unsigned long iova, int flags, void *arg)
++{
++	struct msm_iommu *iommu = arg;
++	if (iommu->base.handler)
++		return iommu->base.handler(iommu->base.arg, iova, flags);
++	pr_warn_ratelimited("*** fault: iova=%08lx, flags=%d\n", iova, flags);
++	return 0;
++}
++
++static int msm_iommu_attach(struct msm_mmu *mmu, const char * const *names,
++			    int cnt)
++{
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++	int ret;
++
++	pm_runtime_get_sync(mmu->dev);
++	ret = iommu_attach_device(iommu->domain, mmu->dev);
++	pm_runtime_put_sync(mmu->dev);
++
++	return ret;
++}
++
++static void msm_iommu_detach(struct msm_mmu *mmu, const char * const *names,
++			     int cnt)
++{
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++
++	pm_runtime_get_sync(mmu->dev);
++	iommu_detach_device(iommu->domain, mmu->dev);
++	pm_runtime_put_sync(mmu->dev);
++}
++
++static int msm_iommu_map(struct msm_mmu *mmu, uint64_t iova,
++		struct sg_table *sgt, unsigned len, int prot)
++{
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++	size_t ret;
++
++//	pm_runtime_get_sync(mmu->dev);
++	ret = iommu_map_sg(iommu->domain, iova, sgt->sgl, sgt->nents, prot);
++//	pm_runtime_put_sync(mmu->dev);
++	WARN_ON(ret < 0);
++
++	return (ret == len) ? 0 : -EINVAL;
++}
++
++static int msm_iommu_unmap(struct msm_mmu *mmu, uint64_t iova,
++		struct sg_table *sgt, unsigned len)
++{
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++
++	pm_runtime_get_sync(mmu->dev);
++	iommu_unmap(iommu->domain, iova, len);
++	pm_runtime_put_sync(mmu->dev);
++
++	return 0;
++}
++
++static void msm_iommu_destroy(struct msm_mmu *mmu)
++{
++	struct msm_iommu *iommu = to_msm_iommu(mmu);
++	iommu_domain_free(iommu->domain);
++	kfree(iommu);
++}
++
++static const struct msm_mmu_funcs funcs = {
++		.attach = msm_iommu_attach,
++		.detach = msm_iommu_detach,
++		.map = msm_iommu_map,
++		.unmap = msm_iommu_unmap,
++		.destroy = msm_iommu_destroy,
++};
++
++struct msm_mmu *msm_iommu_new(struct device *dev, struct iommu_domain *domain)
++{
++	struct msm_iommu *iommu;
++
++	iommu = kzalloc(sizeof(*iommu), GFP_KERNEL);
++	if (!iommu)
++		return ERR_PTR(-ENOMEM);
++
++	iommu->domain = domain;
++	msm_mmu_init(&iommu->base, dev, &funcs);
++	iommu_set_fault_handler(domain, msm_fault_handler, iommu);
++
++	return &iommu->base;
++}
+
+commit 06bc915c2940b5940cf03f1f6ce1b47e239aae28
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:24:20 2018 +0800
+
+    target source code file : drivers/gpu/drm/msm/msm_iommu.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..0a41ed4
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++drivers/gpu/drm/msm/msm_iommu.c

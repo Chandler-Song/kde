@@ -1,0 +1,653 @@
+commit 66151cf747ec21bc9fd03e446b13325d6efe6501
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:12 2018 +0800
+
+    v4.15-rc4
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+index 73548eb..24b4e6f 100644
+--- a/include/linux/spinlock_types.h
++++ b/include/linux/spinlock_types.h
+@@ -19,9 +19,6 @@
+ 
+ typedef struct raw_spinlock {
+ 	arch_spinlock_t raw_lock;
+-#ifdef CONFIG_GENERIC_LOCKBREAK
+-	unsigned int break_lock;
+-#endif
+ #ifdef CONFIG_DEBUG_SPINLOCK
+ 	unsigned int magic, owner_cpu;
+ 	void *owner;
+
+commit 94dcd37d7fb6f069eeb008fd17fcad4213ec7462
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:04 2018 +0800
+
+    v2.6.39-rc1
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+index 851b778..73548eb 100644
+--- a/include/linux/spinlock_types.h
++++ b/include/linux/spinlock_types.h
+@@ -81,14 +81,6 @@ typedef struct spinlock {
+ #define __SPIN_LOCK_UNLOCKED(lockname) \
+ 	(spinlock_t ) __SPIN_LOCK_INITIALIZER(lockname)
+ 
+-/*
+- * SPIN_LOCK_UNLOCKED defeats lockdep state tracking and is hence
+- * deprecated.
+- * Please use DEFINE_SPINLOCK() or __SPIN_LOCK_UNLOCKED() as
+- * appropriate.
+- */
+-#define SPIN_LOCK_UNLOCKED	__SPIN_LOCK_UNLOCKED(old_style_spin_init)
+-
+ #define DEFINE_SPINLOCK(x)	spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
+ 
+ #include <linux/rwlock_types.h>
+
+commit d83605781d6809f7913b60357f772bbc4e0f58cc
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:24 2018 +0800
+
+    v2.6.33-rc1
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+index 68d88f7..851b778 100644
+--- a/include/linux/spinlock_types.h
++++ b/include/linux/spinlock_types.h
+@@ -17,8 +17,8 @@
+ 
+ #include <linux/lockdep.h>
+ 
+-typedef struct {
+-	raw_spinlock_t raw_lock;
++typedef struct raw_spinlock {
++	arch_spinlock_t raw_lock;
+ #ifdef CONFIG_GENERIC_LOCKBREAK
+ 	unsigned int break_lock;
+ #endif
+@@ -29,26 +29,10 @@ typedef struct {
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ 	struct lockdep_map dep_map;
+ #endif
+-} spinlock_t;
++} raw_spinlock_t;
+ 
+ #define SPINLOCK_MAGIC		0xdead4ead
+ 
+-typedef struct {
+-	raw_rwlock_t raw_lock;
+-#ifdef CONFIG_GENERIC_LOCKBREAK
+-	unsigned int break_lock;
+-#endif
+-#ifdef CONFIG_DEBUG_SPINLOCK
+-	unsigned int magic, owner_cpu;
+-	void *owner;
+-#endif
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-	struct lockdep_map dep_map;
+-#endif
+-} rwlock_t;
+-
+-#define RWLOCK_MAGIC		0xdeaf1eed
+-
+ #define SPINLOCK_OWNER_INIT	((void *)-1L)
+ 
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+@@ -57,44 +41,56 @@ typedef struct {
+ # define SPIN_DEP_MAP_INIT(lockname)
+ #endif
+ 
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-# define RW_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname }
++#ifdef CONFIG_DEBUG_SPINLOCK
++# define SPIN_DEBUG_INIT(lockname)		\
++	.magic = SPINLOCK_MAGIC,		\
++	.owner_cpu = -1,			\
++	.owner = SPINLOCK_OWNER_INIT,
+ #else
+-# define RW_DEP_MAP_INIT(lockname)
++# define SPIN_DEBUG_INIT(lockname)
+ #endif
+ 
+-#ifdef CONFIG_DEBUG_SPINLOCK
+-# define __SPIN_LOCK_UNLOCKED(lockname)					\
+-	(spinlock_t)	{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED,	\
+-				.magic = SPINLOCK_MAGIC,		\
+-				.owner = SPINLOCK_OWNER_INIT,		\
+-				.owner_cpu = -1,			\
+-				SPIN_DEP_MAP_INIT(lockname) }
+-#define __RW_LOCK_UNLOCKED(lockname)					\
+-	(rwlock_t)	{	.raw_lock = __RAW_RW_LOCK_UNLOCKED,	\
+-				.magic = RWLOCK_MAGIC,			\
+-				.owner = SPINLOCK_OWNER_INIT,		\
+-				.owner_cpu = -1,			\
+-				RW_DEP_MAP_INIT(lockname) }
+-#else
+-# define __SPIN_LOCK_UNLOCKED(lockname) \
+-	(spinlock_t)	{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED,	\
+-				SPIN_DEP_MAP_INIT(lockname) }
+-#define __RW_LOCK_UNLOCKED(lockname) \
+-	(rwlock_t)	{	.raw_lock = __RAW_RW_LOCK_UNLOCKED,	\
+-				RW_DEP_MAP_INIT(lockname) }
++#define __RAW_SPIN_LOCK_INITIALIZER(lockname)	\
++	{					\
++	.raw_lock = __ARCH_SPIN_LOCK_UNLOCKED,	\
++	SPIN_DEBUG_INIT(lockname)		\
++	SPIN_DEP_MAP_INIT(lockname) }
++
++#define __RAW_SPIN_LOCK_UNLOCKED(lockname)	\
++	(raw_spinlock_t) __RAW_SPIN_LOCK_INITIALIZER(lockname)
++
++#define DEFINE_RAW_SPINLOCK(x)	raw_spinlock_t x = __RAW_SPIN_LOCK_UNLOCKED(x)
++
++typedef struct spinlock {
++	union {
++		struct raw_spinlock rlock;
++
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++# define LOCK_PADSIZE (offsetof(struct raw_spinlock, dep_map))
++		struct {
++			u8 __padding[LOCK_PADSIZE];
++			struct lockdep_map dep_map;
++		};
+ #endif
++	};
++} spinlock_t;
++
++#define __SPIN_LOCK_INITIALIZER(lockname) \
++	{ { .rlock = __RAW_SPIN_LOCK_INITIALIZER(lockname) } }
++
++#define __SPIN_LOCK_UNLOCKED(lockname) \
++	(spinlock_t ) __SPIN_LOCK_INITIALIZER(lockname)
+ 
+ /*
+- * SPIN_LOCK_UNLOCKED and RW_LOCK_UNLOCKED defeat lockdep state tracking and
+- * are hence deprecated.
+- * Please use DEFINE_SPINLOCK()/DEFINE_RWLOCK() or
+- * __SPIN_LOCK_UNLOCKED()/__RW_LOCK_UNLOCKED() as appropriate.
++ * SPIN_LOCK_UNLOCKED defeats lockdep state tracking and is hence
++ * deprecated.
++ * Please use DEFINE_SPINLOCK() or __SPIN_LOCK_UNLOCKED() as
++ * appropriate.
+  */
+ #define SPIN_LOCK_UNLOCKED	__SPIN_LOCK_UNLOCKED(old_style_spin_init)
+-#define RW_LOCK_UNLOCKED	__RW_LOCK_UNLOCKED(old_style_rw_init)
+ 
+ #define DEFINE_SPINLOCK(x)	spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
+-#define DEFINE_RWLOCK(x)	rwlock_t x = __RW_LOCK_UNLOCKED(x)
++
++#include <linux/rwlock_types.h>
+ 
+ #endif /* __LINUX_SPINLOCK_TYPES_H */
+
+commit ea1d993b31a84f43a761533e0a212711035c008a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:06 2018 +0800
+
+    v2.6.25-rc1
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+index f6a3a95..68d88f7 100644
+--- a/include/linux/spinlock_types.h
++++ b/include/linux/spinlock_types.h
+@@ -19,7 +19,7 @@
+ 
+ typedef struct {
+ 	raw_spinlock_t raw_lock;
+-#if defined(CONFIG_PREEMPT) && defined(CONFIG_SMP)
++#ifdef CONFIG_GENERIC_LOCKBREAK
+ 	unsigned int break_lock;
+ #endif
+ #ifdef CONFIG_DEBUG_SPINLOCK
+@@ -35,7 +35,7 @@ typedef struct {
+ 
+ typedef struct {
+ 	raw_rwlock_t raw_lock;
+-#if defined(CONFIG_PREEMPT) && defined(CONFIG_SMP)
++#ifdef CONFIG_GENERIC_LOCKBREAK
+ 	unsigned int break_lock;
+ #endif
+ #ifdef CONFIG_DEBUG_SPINLOCK
+
+commit 1c6c013668323f6b3fa22f4f99dc7f7e6e528ad1
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:34 2018 +0800
+
+    v2.6.23-rc1
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+index 210549b..f6a3a95 100644
+--- a/include/linux/spinlock_types.h
++++ b/include/linux/spinlock_types.h
+@@ -9,14 +9,14 @@
+  * Released under the General Public License (GPL).
+  */
+ 
+-#include <linux/lockdep.h>
+-
+ #if defined(CONFIG_SMP)
+ # include <asm/spinlock_types.h>
+ #else
+ # include <linux/spinlock_types_up.h>
+ #endif
+ 
++#include <linux/lockdep.h>
++
+ typedef struct {
+ 	raw_spinlock_t raw_lock;
+ #if defined(CONFIG_PREEMPT) && defined(CONFIG_SMP)
+
+commit 319f11fd1b35ebc4f7a4a1bfe7e4bcde531fe85f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:21 2018 +0800
+
+    v2.6.22-rc1
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+index dc5fb69..210549b 100644
+--- a/include/linux/spinlock_types.h
++++ b/include/linux/spinlock_types.h
+@@ -85,6 +85,12 @@ typedef struct {
+ 				RW_DEP_MAP_INIT(lockname) }
+ #endif
+ 
++/*
++ * SPIN_LOCK_UNLOCKED and RW_LOCK_UNLOCKED defeat lockdep state tracking and
++ * are hence deprecated.
++ * Please use DEFINE_SPINLOCK()/DEFINE_RWLOCK() or
++ * __SPIN_LOCK_UNLOCKED()/__RW_LOCK_UNLOCKED() as appropriate.
++ */
+ #define SPIN_LOCK_UNLOCKED	__SPIN_LOCK_UNLOCKED(old_style_spin_init)
+ #define RW_LOCK_UNLOCKED	__RW_LOCK_UNLOCKED(old_style_rw_init)
+ 
+
+commit 46776b92a9db7bc774abe68b557f6abbea99f96f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:31 2018 +0800
+
+    v2.6.18-rc1
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+index 9cb51e0..dc5fb69 100644
+--- a/include/linux/spinlock_types.h
++++ b/include/linux/spinlock_types.h
+@@ -9,6 +9,8 @@
+  * Released under the General Public License (GPL).
+  */
+ 
++#include <linux/lockdep.h>
++
+ #if defined(CONFIG_SMP)
+ # include <asm/spinlock_types.h>
+ #else
+@@ -24,6 +26,9 @@ typedef struct {
+ 	unsigned int magic, owner_cpu;
+ 	void *owner;
+ #endif
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++	struct lockdep_map dep_map;
++#endif
+ } spinlock_t;
+ 
+ #define SPINLOCK_MAGIC		0xdead4ead
+@@ -37,31 +42,53 @@ typedef struct {
+ 	unsigned int magic, owner_cpu;
+ 	void *owner;
+ #endif
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++	struct lockdep_map dep_map;
++#endif
+ } rwlock_t;
+ 
+ #define RWLOCK_MAGIC		0xdeaf1eed
+ 
+ #define SPINLOCK_OWNER_INIT	((void *)-1L)
+ 
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++# define SPIN_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname }
++#else
++# define SPIN_DEP_MAP_INIT(lockname)
++#endif
++
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++# define RW_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname }
++#else
++# define RW_DEP_MAP_INIT(lockname)
++#endif
++
+ #ifdef CONFIG_DEBUG_SPINLOCK
+-# define SPIN_LOCK_UNLOCKED						\
++# define __SPIN_LOCK_UNLOCKED(lockname)					\
+ 	(spinlock_t)	{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED,	\
+ 				.magic = SPINLOCK_MAGIC,		\
+ 				.owner = SPINLOCK_OWNER_INIT,		\
+-				.owner_cpu = -1 }
+-#define RW_LOCK_UNLOCKED						\
++				.owner_cpu = -1,			\
++				SPIN_DEP_MAP_INIT(lockname) }
++#define __RW_LOCK_UNLOCKED(lockname)					\
+ 	(rwlock_t)	{	.raw_lock = __RAW_RW_LOCK_UNLOCKED,	\
+ 				.magic = RWLOCK_MAGIC,			\
+ 				.owner = SPINLOCK_OWNER_INIT,		\
+-				.owner_cpu = -1 }
++				.owner_cpu = -1,			\
++				RW_DEP_MAP_INIT(lockname) }
+ #else
+-# define SPIN_LOCK_UNLOCKED \
+-	(spinlock_t)	{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED }
+-#define RW_LOCK_UNLOCKED \
+-	(rwlock_t)	{	.raw_lock = __RAW_RW_LOCK_UNLOCKED }
++# define __SPIN_LOCK_UNLOCKED(lockname) \
++	(spinlock_t)	{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED,	\
++				SPIN_DEP_MAP_INIT(lockname) }
++#define __RW_LOCK_UNLOCKED(lockname) \
++	(rwlock_t)	{	.raw_lock = __RAW_RW_LOCK_UNLOCKED,	\
++				RW_DEP_MAP_INIT(lockname) }
+ #endif
+ 
+-#define DEFINE_SPINLOCK(x)	spinlock_t x = SPIN_LOCK_UNLOCKED
+-#define DEFINE_RWLOCK(x)	rwlock_t x = RW_LOCK_UNLOCKED
++#define SPIN_LOCK_UNLOCKED	__SPIN_LOCK_UNLOCKED(old_style_spin_init)
++#define RW_LOCK_UNLOCKED	__RW_LOCK_UNLOCKED(old_style_rw_init)
++
++#define DEFINE_SPINLOCK(x)	spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
++#define DEFINE_RWLOCK(x)	rwlock_t x = __RW_LOCK_UNLOCKED(x)
+ 
+ #endif /* __LINUX_SPINLOCK_TYPES_H */
+
+commit 4c3b41340923ee6885753604eda45dfbcf7d408c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:46 2018 +0800
+
+    v2.6.14-rc1
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+new file mode 100644
+index 0000000..9cb51e0
+--- /dev/null
++++ b/include/linux/spinlock_types.h
+@@ -0,0 +1,67 @@
++#ifndef __LINUX_SPINLOCK_TYPES_H
++#define __LINUX_SPINLOCK_TYPES_H
++
++/*
++ * include/linux/spinlock_types.h - generic spinlock type definitions
++ *                                  and initializers
++ *
++ * portions Copyright 2005, Red Hat, Inc., Ingo Molnar
++ * Released under the General Public License (GPL).
++ */
++
++#if defined(CONFIG_SMP)
++# include <asm/spinlock_types.h>
++#else
++# include <linux/spinlock_types_up.h>
++#endif
++
++typedef struct {
++	raw_spinlock_t raw_lock;
++#if defined(CONFIG_PREEMPT) && defined(CONFIG_SMP)
++	unsigned int break_lock;
++#endif
++#ifdef CONFIG_DEBUG_SPINLOCK
++	unsigned int magic, owner_cpu;
++	void *owner;
++#endif
++} spinlock_t;
++
++#define SPINLOCK_MAGIC		0xdead4ead
++
++typedef struct {
++	raw_rwlock_t raw_lock;
++#if defined(CONFIG_PREEMPT) && defined(CONFIG_SMP)
++	unsigned int break_lock;
++#endif
++#ifdef CONFIG_DEBUG_SPINLOCK
++	unsigned int magic, owner_cpu;
++	void *owner;
++#endif
++} rwlock_t;
++
++#define RWLOCK_MAGIC		0xdeaf1eed
++
++#define SPINLOCK_OWNER_INIT	((void *)-1L)
++
++#ifdef CONFIG_DEBUG_SPINLOCK
++# define SPIN_LOCK_UNLOCKED						\
++	(spinlock_t)	{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED,	\
++				.magic = SPINLOCK_MAGIC,		\
++				.owner = SPINLOCK_OWNER_INIT,		\
++				.owner_cpu = -1 }
++#define RW_LOCK_UNLOCKED						\
++	(rwlock_t)	{	.raw_lock = __RAW_RW_LOCK_UNLOCKED,	\
++				.magic = RWLOCK_MAGIC,			\
++				.owner = SPINLOCK_OWNER_INIT,		\
++				.owner_cpu = -1 }
++#else
++# define SPIN_LOCK_UNLOCKED \
++	(spinlock_t)	{	.raw_lock = __RAW_SPIN_LOCK_UNLOCKED }
++#define RW_LOCK_UNLOCKED \
++	(rwlock_t)	{	.raw_lock = __RAW_RW_LOCK_UNLOCKED }
++#endif
++
++#define DEFINE_SPINLOCK(x)	spinlock_t x = SPIN_LOCK_UNLOCKED
++#define DEFINE_RWLOCK(x)	rwlock_t x = RW_LOCK_UNLOCKED
++
++#endif /* __LINUX_SPINLOCK_TYPES_H */
+
+commit 2bc2dad8fb71fcdff66ba7adec8364985e5c65f1
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:23 2018 +0800
+
+    v2.6.12
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+deleted file mode 100644
+index 73548eb..0000000
+--- a/include/linux/spinlock_types.h
++++ /dev/null
+@@ -1,88 +0,0 @@
+-#ifndef __LINUX_SPINLOCK_TYPES_H
+-#define __LINUX_SPINLOCK_TYPES_H
+-
+-/*
+- * include/linux/spinlock_types.h - generic spinlock type definitions
+- *                                  and initializers
+- *
+- * portions Copyright 2005, Red Hat, Inc., Ingo Molnar
+- * Released under the General Public License (GPL).
+- */
+-
+-#if defined(CONFIG_SMP)
+-# include <asm/spinlock_types.h>
+-#else
+-# include <linux/spinlock_types_up.h>
+-#endif
+-
+-#include <linux/lockdep.h>
+-
+-typedef struct raw_spinlock {
+-	arch_spinlock_t raw_lock;
+-#ifdef CONFIG_GENERIC_LOCKBREAK
+-	unsigned int break_lock;
+-#endif
+-#ifdef CONFIG_DEBUG_SPINLOCK
+-	unsigned int magic, owner_cpu;
+-	void *owner;
+-#endif
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-	struct lockdep_map dep_map;
+-#endif
+-} raw_spinlock_t;
+-
+-#define SPINLOCK_MAGIC		0xdead4ead
+-
+-#define SPINLOCK_OWNER_INIT	((void *)-1L)
+-
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-# define SPIN_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname }
+-#else
+-# define SPIN_DEP_MAP_INIT(lockname)
+-#endif
+-
+-#ifdef CONFIG_DEBUG_SPINLOCK
+-# define SPIN_DEBUG_INIT(lockname)		\
+-	.magic = SPINLOCK_MAGIC,		\
+-	.owner_cpu = -1,			\
+-	.owner = SPINLOCK_OWNER_INIT,
+-#else
+-# define SPIN_DEBUG_INIT(lockname)
+-#endif
+-
+-#define __RAW_SPIN_LOCK_INITIALIZER(lockname)	\
+-	{					\
+-	.raw_lock = __ARCH_SPIN_LOCK_UNLOCKED,	\
+-	SPIN_DEBUG_INIT(lockname)		\
+-	SPIN_DEP_MAP_INIT(lockname) }
+-
+-#define __RAW_SPIN_LOCK_UNLOCKED(lockname)	\
+-	(raw_spinlock_t) __RAW_SPIN_LOCK_INITIALIZER(lockname)
+-
+-#define DEFINE_RAW_SPINLOCK(x)	raw_spinlock_t x = __RAW_SPIN_LOCK_UNLOCKED(x)
+-
+-typedef struct spinlock {
+-	union {
+-		struct raw_spinlock rlock;
+-
+-#ifdef CONFIG_DEBUG_LOCK_ALLOC
+-# define LOCK_PADSIZE (offsetof(struct raw_spinlock, dep_map))
+-		struct {
+-			u8 __padding[LOCK_PADSIZE];
+-			struct lockdep_map dep_map;
+-		};
+-#endif
+-	};
+-} spinlock_t;
+-
+-#define __SPIN_LOCK_INITIALIZER(lockname) \
+-	{ { .rlock = __RAW_SPIN_LOCK_INITIALIZER(lockname) } }
+-
+-#define __SPIN_LOCK_UNLOCKED(lockname) \
+-	(spinlock_t ) __SPIN_LOCK_INITIALIZER(lockname)
+-
+-#define DEFINE_SPINLOCK(x)	spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
+-
+-#include <linux/rwlock_types.h>
+-
+-#endif /* __LINUX_SPINLOCK_TYPES_H */
+
+commit ee79332c1cda66fae6923fd189eb00a76c5ed91c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:15 2018 +0800
+
+    v2.6.11
+
+diff --git a/include/linux/spinlock_types.h b/include/linux/spinlock_types.h
+new file mode 100644
+index 0000000..73548eb
+--- /dev/null
++++ b/include/linux/spinlock_types.h
+@@ -0,0 +1,88 @@
++#ifndef __LINUX_SPINLOCK_TYPES_H
++#define __LINUX_SPINLOCK_TYPES_H
++
++/*
++ * include/linux/spinlock_types.h - generic spinlock type definitions
++ *                                  and initializers
++ *
++ * portions Copyright 2005, Red Hat, Inc., Ingo Molnar
++ * Released under the General Public License (GPL).
++ */
++
++#if defined(CONFIG_SMP)
++# include <asm/spinlock_types.h>
++#else
++# include <linux/spinlock_types_up.h>
++#endif
++
++#include <linux/lockdep.h>
++
++typedef struct raw_spinlock {
++	arch_spinlock_t raw_lock;
++#ifdef CONFIG_GENERIC_LOCKBREAK
++	unsigned int break_lock;
++#endif
++#ifdef CONFIG_DEBUG_SPINLOCK
++	unsigned int magic, owner_cpu;
++	void *owner;
++#endif
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++	struct lockdep_map dep_map;
++#endif
++} raw_spinlock_t;
++
++#define SPINLOCK_MAGIC		0xdead4ead
++
++#define SPINLOCK_OWNER_INIT	((void *)-1L)
++
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++# define SPIN_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname }
++#else
++# define SPIN_DEP_MAP_INIT(lockname)
++#endif
++
++#ifdef CONFIG_DEBUG_SPINLOCK
++# define SPIN_DEBUG_INIT(lockname)		\
++	.magic = SPINLOCK_MAGIC,		\
++	.owner_cpu = -1,			\
++	.owner = SPINLOCK_OWNER_INIT,
++#else
++# define SPIN_DEBUG_INIT(lockname)
++#endif
++
++#define __RAW_SPIN_LOCK_INITIALIZER(lockname)	\
++	{					\
++	.raw_lock = __ARCH_SPIN_LOCK_UNLOCKED,	\
++	SPIN_DEBUG_INIT(lockname)		\
++	SPIN_DEP_MAP_INIT(lockname) }
++
++#define __RAW_SPIN_LOCK_UNLOCKED(lockname)	\
++	(raw_spinlock_t) __RAW_SPIN_LOCK_INITIALIZER(lockname)
++
++#define DEFINE_RAW_SPINLOCK(x)	raw_spinlock_t x = __RAW_SPIN_LOCK_UNLOCKED(x)
++
++typedef struct spinlock {
++	union {
++		struct raw_spinlock rlock;
++
++#ifdef CONFIG_DEBUG_LOCK_ALLOC
++# define LOCK_PADSIZE (offsetof(struct raw_spinlock, dep_map))
++		struct {
++			u8 __padding[LOCK_PADSIZE];
++			struct lockdep_map dep_map;
++		};
++#endif
++	};
++} spinlock_t;
++
++#define __SPIN_LOCK_INITIALIZER(lockname) \
++	{ { .rlock = __RAW_SPIN_LOCK_INITIALIZER(lockname) } }
++
++#define __SPIN_LOCK_UNLOCKED(lockname) \
++	(spinlock_t ) __SPIN_LOCK_INITIALIZER(lockname)
++
++#define DEFINE_SPINLOCK(x)	spinlock_t x = __SPIN_LOCK_UNLOCKED(x)
++
++#include <linux/rwlock_types.h>
++
++#endif /* __LINUX_SPINLOCK_TYPES_H */
+
+commit 4661b17c9d6c3e397088187f9d440b04c25a8a51
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:13 2018 +0800
+
+    target source code file : include/linux/spinlock_types.h
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..20cc0fd
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++include/linux/spinlock_types.h

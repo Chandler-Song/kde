@@ -1,0 +1,2670 @@
+commit 0e292306019ec709c78ae14e7f2a17bb4d32566b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:56 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index f353061..12f5408 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -1,3 +1,4 @@
++/* SPDX-License-Identifier: GPL-2.0 */
+ #ifndef _ASM_X86_PERF_EVENT_H
+ #define _ASM_X86_PERF_EVENT_H
+ 
+
+commit aefdd0bbb111cf83b14027a321cdc6cd9313c8e1
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:08:02 2018 +0800
+
+    v4.6-rc6
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 5a2ed3e..f353061 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -285,6 +285,10 @@ static inline void perf_events_lapic_init(void)	{ }
+ static inline void perf_check_microcode(void) { }
+ #endif
+ 
++#ifdef CONFIG_CPU_SUP_INTEL
++ extern void intel_pt_handle_vmx(int on);
++#endif
++
+ #if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_AMD)
+  extern void amd_pmu_enable_virt(void);
+  extern void amd_pmu_disable_virt(void);
+
+commit 3b922468749931a7d67967fc4b4c6f39690a62b8
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:07:53 2018 +0800
+
+    v4.6-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 7bcb861..5a2ed3e 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -165,6 +165,7 @@ struct x86_pmu_capability {
+ #define GLOBAL_STATUS_ASIF				BIT_ULL(60)
+ #define GLOBAL_STATUS_COUNTERS_FROZEN			BIT_ULL(59)
+ #define GLOBAL_STATUS_LBRS_FROZEN			BIT_ULL(58)
++#define GLOBAL_STATUS_TRACE_TOPAPMI			BIT_ULL(55)
+ 
+ /*
+  * IBS cpuid feature detection
+
+commit fb8b42836ea35a568f011ed94933b999d92bc898
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:06:57 2018 +0800
+
+    v4.3-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index dc0f6ed..7bcb861 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -159,6 +159,13 @@ struct x86_pmu_capability {
+  */
+ #define INTEL_PMC_IDX_FIXED_BTS				(INTEL_PMC_IDX_FIXED + 16)
+ 
++#define GLOBAL_STATUS_COND_CHG				BIT_ULL(63)
++#define GLOBAL_STATUS_BUFFER_OVF			BIT_ULL(62)
++#define GLOBAL_STATUS_UNC_OVF				BIT_ULL(61)
++#define GLOBAL_STATUS_ASIF				BIT_ULL(60)
++#define GLOBAL_STATUS_COUNTERS_FROZEN			BIT_ULL(59)
++#define GLOBAL_STATUS_LBRS_FROZEN			BIT_ULL(58)
++
+ /*
+  * IBS cpuid feature detection
+  */
+
+commit 83bfbd5c4e6188cd3dfad7a25c7988e58c0f1ea9
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:05:44 2018 +0800
+
+    v3.19-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 8dfc9fd..dc0f6ed 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -177,6 +177,9 @@ struct x86_pmu_capability {
+ #define IBS_CAPS_BRNTRGT		(1U<<5)
+ #define IBS_CAPS_OPCNTEXT		(1U<<6)
+ #define IBS_CAPS_RIPINVALIDCHK		(1U<<7)
++#define IBS_CAPS_OPBRNFUSE		(1U<<8)
++#define IBS_CAPS_FETCHCTLEXTD		(1U<<9)
++#define IBS_CAPS_OPDATA4		(1U<<10)
+ 
+ #define IBS_CAPS_DEFAULT		(IBS_CAPS_AVAIL		\
+ 					 | IBS_CAPS_FETCHSAM	\
+
+commit 93419a19328f281c41d865831c7514f673ae0ff7
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:05:27 2018 +0800
+
+    v3.18-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 8249df4..8dfc9fd 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -51,6 +51,14 @@
+ 	 ARCH_PERFMON_EVENTSEL_EDGE  |	\
+ 	 ARCH_PERFMON_EVENTSEL_INV   |	\
+ 	 ARCH_PERFMON_EVENTSEL_CMASK)
++#define X86_ALL_EVENT_FLAGS  			\
++	(ARCH_PERFMON_EVENTSEL_EDGE |  		\
++	 ARCH_PERFMON_EVENTSEL_INV | 		\
++	 ARCH_PERFMON_EVENTSEL_CMASK | 		\
++	 ARCH_PERFMON_EVENTSEL_ANY | 		\
++	 ARCH_PERFMON_EVENTSEL_PIN_CONTROL | 	\
++	 HSW_IN_TX | 				\
++	 HSW_IN_TX_CHECKPOINTED)
+ #define AMD64_RAW_EVENT_MASK		\
+ 	(X86_RAW_EVENT_MASK          |  \
+ 	 AMD64_EVENTSEL_EVENT)
+
+commit 874f25c3a0f64b83331973ae3ab2938ff6763f71
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:03:24 2018 +0800
+
+    v3.11-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 57cb634..8249df4 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -29,6 +29,9 @@
+ #define ARCH_PERFMON_EVENTSEL_INV			(1ULL << 23)
+ #define ARCH_PERFMON_EVENTSEL_CMASK			0xFF000000ULL
+ 
++#define HSW_IN_TX					(1ULL << 32)
++#define HSW_IN_TX_CHECKPOINTED				(1ULL << 33)
++
+ #define AMD64_EVENTSEL_INT_CORE_ENABLE			(1ULL << 36)
+ #define AMD64_EVENTSEL_GUESTONLY			(1ULL << 40)
+ #define AMD64_EVENTSEL_HOSTONLY				(1ULL << 41)
+
+commit 48688fd6beb09a2ca3cdd817b4c5e6181b95d142
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:02:51 2018 +0800
+
+    v3.9-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 4fabcdf..57cb634 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -29,8 +29,13 @@
+ #define ARCH_PERFMON_EVENTSEL_INV			(1ULL << 23)
+ #define ARCH_PERFMON_EVENTSEL_CMASK			0xFF000000ULL
+ 
+-#define AMD_PERFMON_EVENTSEL_GUESTONLY			(1ULL << 40)
+-#define AMD_PERFMON_EVENTSEL_HOSTONLY			(1ULL << 41)
++#define AMD64_EVENTSEL_INT_CORE_ENABLE			(1ULL << 36)
++#define AMD64_EVENTSEL_GUESTONLY			(1ULL << 40)
++#define AMD64_EVENTSEL_HOSTONLY				(1ULL << 41)
++
++#define AMD64_EVENTSEL_INT_CORE_SEL_SHIFT		37
++#define AMD64_EVENTSEL_INT_CORE_SEL_MASK		\
++	(0xFULL << AMD64_EVENTSEL_INT_CORE_SEL_SHIFT)
+ 
+ #define AMD64_EVENTSEL_EVENT	\
+ 	(ARCH_PERFMON_EVENTSEL_EVENT | (0x0FULL << 32))
+@@ -46,8 +51,12 @@
+ #define AMD64_RAW_EVENT_MASK		\
+ 	(X86_RAW_EVENT_MASK          |  \
+ 	 AMD64_EVENTSEL_EVENT)
++#define AMD64_RAW_EVENT_MASK_NB		\
++	(AMD64_EVENTSEL_EVENT        |  \
++	 ARCH_PERFMON_EVENTSEL_UMASK)
+ #define AMD64_NUM_COUNTERS				4
+ #define AMD64_NUM_COUNTERS_CORE				6
++#define AMD64_NUM_COUNTERS_NB				4
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+
+commit 2f7b2a3836a07fa6fd37029c08a71ded9c352373
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:02:16 2018 +0800
+
+    v3.7-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index cb4e43b..4fabcdf 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -262,4 +262,6 @@ static inline void perf_check_microcode(void) { }
+  static inline void amd_pmu_disable_virt(void) { }
+ #endif
+ 
++#define arch_perf_out_copy_user copy_from_user_nmi
++
+ #endif /* _ASM_X86_PERF_EVENT_H */
+
+commit 709688386105e2dccbf422ceaf7387c0a552bdbc
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:02:02 2018 +0800
+
+    v3.6-rc2
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index dab3935..cb4e43b 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -196,11 +196,16 @@ static inline u32 get_ibs_caps(void) { return 0; }
+ extern void perf_events_lapic_init(void);
+ 
+ /*
+- * Abuse bit 3 of the cpu eflags register to indicate proper PEBS IP fixups.
+- * This flag is otherwise unused and ABI specified to be 0, so nobody should
+- * care what we do with it.
++ * Abuse bits {3,5} of the cpu eflags register. These flags are otherwise
++ * unused and ABI specified to be 0, so nobody should care what we do with
++ * them.
++ *
++ * EXACT - the IP points to the exact instruction that triggered the
++ *         event (HW bugs exempt).
++ * VM    - original X86_VM_MASK; see set_linear_ip().
+  */
+ #define PERF_EFLAGS_EXACT	(1UL << 3)
++#define PERF_EFLAGS_VM		(1UL << 5)
+ 
+ struct pt_regs;
+ extern unsigned long perf_instruction_pointer(struct pt_regs *regs);
+
+commit 907a9e3a7bdc2b65c079ba10f87b1dd60e0ecba8
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:02:00 2018 +0800
+
+    v3.6-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 588f52e..dab3935 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -5,11 +5,10 @@
+  * Performance event hw details:
+  */
+ 
+-#define X86_PMC_MAX_GENERIC				       32
+-#define X86_PMC_MAX_FIXED					3
++#define INTEL_PMC_MAX_GENERIC				       32
++#define INTEL_PMC_MAX_FIXED					3
++#define INTEL_PMC_IDX_FIXED				       32
+ 
+-#define X86_PMC_IDX_GENERIC				        0
+-#define X86_PMC_IDX_FIXED				       32
+ #define X86_PMC_IDX_MAX					       64
+ 
+ #define MSR_ARCH_PERFMON_PERFCTR0			      0xc1
+@@ -48,8 +47,7 @@
+ 	(X86_RAW_EVENT_MASK          |  \
+ 	 AMD64_EVENTSEL_EVENT)
+ #define AMD64_NUM_COUNTERS				4
+-#define AMD64_NUM_COUNTERS_F15H				6
+-#define AMD64_NUM_COUNTERS_MAX				AMD64_NUM_COUNTERS_F15H
++#define AMD64_NUM_COUNTERS_CORE				6
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+@@ -121,16 +119,16 @@ struct x86_pmu_capability {
+ 
+ /* Instr_Retired.Any: */
+ #define MSR_ARCH_PERFMON_FIXED_CTR0	0x309
+-#define X86_PMC_IDX_FIXED_INSTRUCTIONS	(X86_PMC_IDX_FIXED + 0)
++#define INTEL_PMC_IDX_FIXED_INSTRUCTIONS	(INTEL_PMC_IDX_FIXED + 0)
+ 
+ /* CPU_CLK_Unhalted.Core: */
+ #define MSR_ARCH_PERFMON_FIXED_CTR1	0x30a
+-#define X86_PMC_IDX_FIXED_CPU_CYCLES	(X86_PMC_IDX_FIXED + 1)
++#define INTEL_PMC_IDX_FIXED_CPU_CYCLES	(INTEL_PMC_IDX_FIXED + 1)
+ 
+ /* CPU_CLK_Unhalted.Ref: */
+ #define MSR_ARCH_PERFMON_FIXED_CTR2	0x30b
+-#define X86_PMC_IDX_FIXED_REF_CYCLES	(X86_PMC_IDX_FIXED + 2)
+-#define X86_PMC_MSK_FIXED_REF_CYCLES	(1ULL << X86_PMC_IDX_FIXED_REF_CYCLES)
++#define INTEL_PMC_IDX_FIXED_REF_CYCLES	(INTEL_PMC_IDX_FIXED + 2)
++#define INTEL_PMC_MSK_FIXED_REF_CYCLES	(1ULL << INTEL_PMC_IDX_FIXED_REF_CYCLES)
+ 
+ /*
+  * We model BTS tracing as another fixed-mode PMC.
+@@ -139,7 +137,7 @@ struct x86_pmu_capability {
+  * values are used by actual fixed events and higher values are used
+  * to indicate other overflow conditions in the PERF_GLOBAL_STATUS msr.
+  */
+-#define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
++#define INTEL_PMC_IDX_FIXED_BTS				(INTEL_PMC_IDX_FIXED + 16)
+ 
+ /*
+  * IBS cpuid feature detection
+@@ -234,8 +232,9 @@ struct perf_guest_switch_msr {
+ 
+ extern struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr);
+ extern void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap);
++extern void perf_check_microcode(void);
+ #else
+-static inline perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
++static inline struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
+ {
+ 	*nr = 0;
+ 	return NULL;
+@@ -247,6 +246,7 @@ static inline void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
+ }
+ 
+ static inline void perf_events_lapic_init(void)	{ }
++static inline void perf_check_microcode(void) { }
+ #endif
+ 
+ #if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_AMD)
+
+commit 2059b826ce8451d742d3ec783501b8e74f9126a0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:44 2018 +0800
+
+    v3.5-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 2291895..588f52e 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -158,6 +158,7 @@ struct x86_pmu_capability {
+ #define IBS_CAPS_OPCNT			(1U<<4)
+ #define IBS_CAPS_BRNTRGT		(1U<<5)
+ #define IBS_CAPS_OPCNTEXT		(1U<<6)
++#define IBS_CAPS_RIPINVALIDCHK		(1U<<7)
+ 
+ #define IBS_CAPS_DEFAULT		(IBS_CAPS_AVAIL		\
+ 					 | IBS_CAPS_FETCHSAM	\
+@@ -170,21 +171,28 @@ struct x86_pmu_capability {
+ #define IBSCTL_LVT_OFFSET_VALID		(1ULL<<8)
+ #define IBSCTL_LVT_OFFSET_MASK		0x0F
+ 
+-/* IbsFetchCtl bits/masks */
++/* ibs fetch bits/masks */
+ #define IBS_FETCH_RAND_EN	(1ULL<<57)
+ #define IBS_FETCH_VAL		(1ULL<<49)
+ #define IBS_FETCH_ENABLE	(1ULL<<48)
+ #define IBS_FETCH_CNT		0xFFFF0000ULL
+ #define IBS_FETCH_MAX_CNT	0x0000FFFFULL
+ 
+-/* IbsOpCtl bits */
++/* ibs op bits/masks */
++/* lower 4 bits of the current count are ignored: */
++#define IBS_OP_CUR_CNT		(0xFFFF0ULL<<32)
+ #define IBS_OP_CNT_CTL		(1ULL<<19)
+ #define IBS_OP_VAL		(1ULL<<18)
+ #define IBS_OP_ENABLE		(1ULL<<17)
+ #define IBS_OP_MAX_CNT		0x0000FFFFULL
+ #define IBS_OP_MAX_CNT_EXT	0x007FFFFFULL	/* not a register bit mask */
++#define IBS_RIP_INVALID		(1ULL<<38)
+ 
++#ifdef CONFIG_X86_LOCAL_APIC
+ extern u32 get_ibs_caps(void);
++#else
++static inline u32 get_ibs_caps(void) { return 0; }
++#endif
+ 
+ #ifdef CONFIG_PERF_EVENTS
+ extern void perf_events_lapic_init(void);
+
+commit faf65d1cd88e413d89d86693cd8d56a47b99ec43
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:28 2018 +0800
+
+    v3.4-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 461ce43..2291895 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -23,6 +23,7 @@
+ #define ARCH_PERFMON_EVENTSEL_USR			(1ULL << 16)
+ #define ARCH_PERFMON_EVENTSEL_OS			(1ULL << 17)
+ #define ARCH_PERFMON_EVENTSEL_EDGE			(1ULL << 18)
++#define ARCH_PERFMON_EVENTSEL_PIN_CONTROL		(1ULL << 19)
+ #define ARCH_PERFMON_EVENTSEL_INT			(1ULL << 20)
+ #define ARCH_PERFMON_EVENTSEL_ANY			(1ULL << 21)
+ #define ARCH_PERFMON_EVENTSEL_ENABLE			(1ULL << 22)
+@@ -188,8 +189,6 @@ extern u32 get_ibs_caps(void);
+ #ifdef CONFIG_PERF_EVENTS
+ extern void perf_events_lapic_init(void);
+ 
+-#define PERF_EVENT_INDEX_OFFSET			0
+-
+ /*
+  * Abuse bit 3 of the cpu eflags register to indicate proper PEBS IP fixups.
+  * This flag is otherwise unused and ABI specified to be 0, so nobody should
+
+commit cae50ab4d41ec72e6e72f5efb4d078e095eb3c07
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:20 2018 +0800
+
+    v3.3-rc6
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 096c975..461ce43 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -242,4 +242,12 @@ static inline void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
+ static inline void perf_events_lapic_init(void)	{ }
+ #endif
+ 
++#if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_AMD)
++ extern void amd_pmu_enable_virt(void);
++ extern void amd_pmu_disable_virt(void);
++#else
++ static inline void amd_pmu_enable_virt(void) { }
++ static inline void amd_pmu_disable_virt(void) { }
++#endif
++
+ #endif /* _ASM_X86_PERF_EVENT_H */
+
+commit 6df634e9cc26544163d3cc5e0624446d97270c01
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:12 2018 +0800
+
+    v3.3-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index f61c62f..096c975 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -57,6 +57,7 @@
+ 		(1 << (ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX))
+ 
+ #define ARCH_PERFMON_BRANCH_MISSES_RETIRED		6
++#define ARCH_PERFMON_EVENTS_COUNT			7
+ 
+ /*
+  * Intel "Architectural Performance Monitoring" CPUID
+@@ -72,6 +73,19 @@ union cpuid10_eax {
+ 	unsigned int full;
+ };
+ 
++union cpuid10_ebx {
++	struct {
++		unsigned int no_unhalted_core_cycles:1;
++		unsigned int no_instructions_retired:1;
++		unsigned int no_unhalted_reference_cycles:1;
++		unsigned int no_llc_reference:1;
++		unsigned int no_llc_misses:1;
++		unsigned int no_branch_instruction_retired:1;
++		unsigned int no_branch_misses_retired:1;
++	} split;
++	unsigned int full;
++};
++
+ union cpuid10_edx {
+ 	struct {
+ 		unsigned int num_counters_fixed:5;
+@@ -81,6 +95,15 @@ union cpuid10_edx {
+ 	unsigned int full;
+ };
+ 
++struct x86_pmu_capability {
++	int		version;
++	int		num_counters_gp;
++	int		num_counters_fixed;
++	int		bit_width_gp;
++	int		bit_width_fixed;
++	unsigned int	events_mask;
++	int		events_mask_len;
++};
+ 
+ /*
+  * Fixed-purpose performance events:
+@@ -89,23 +112,24 @@ union cpuid10_edx {
+ /*
+  * All 3 fixed-mode PMCs are configured via this single MSR:
+  */
+-#define MSR_ARCH_PERFMON_FIXED_CTR_CTRL			0x38d
++#define MSR_ARCH_PERFMON_FIXED_CTR_CTRL	0x38d
+ 
+ /*
+  * The counts are available in three separate MSRs:
+  */
+ 
+ /* Instr_Retired.Any: */
+-#define MSR_ARCH_PERFMON_FIXED_CTR0			0x309
+-#define X86_PMC_IDX_FIXED_INSTRUCTIONS			(X86_PMC_IDX_FIXED + 0)
++#define MSR_ARCH_PERFMON_FIXED_CTR0	0x309
++#define X86_PMC_IDX_FIXED_INSTRUCTIONS	(X86_PMC_IDX_FIXED + 0)
+ 
+ /* CPU_CLK_Unhalted.Core: */
+-#define MSR_ARCH_PERFMON_FIXED_CTR1			0x30a
+-#define X86_PMC_IDX_FIXED_CPU_CYCLES			(X86_PMC_IDX_FIXED + 1)
++#define MSR_ARCH_PERFMON_FIXED_CTR1	0x30a
++#define X86_PMC_IDX_FIXED_CPU_CYCLES	(X86_PMC_IDX_FIXED + 1)
+ 
+ /* CPU_CLK_Unhalted.Ref: */
+-#define MSR_ARCH_PERFMON_FIXED_CTR2			0x30b
+-#define X86_PMC_IDX_FIXED_BUS_CYCLES			(X86_PMC_IDX_FIXED + 2)
++#define MSR_ARCH_PERFMON_FIXED_CTR2	0x30b
++#define X86_PMC_IDX_FIXED_REF_CYCLES	(X86_PMC_IDX_FIXED + 2)
++#define X86_PMC_MSK_FIXED_REF_CYCLES	(1ULL << X86_PMC_IDX_FIXED_REF_CYCLES)
+ 
+ /*
+  * We model BTS tracing as another fixed-mode PMC.
+@@ -202,6 +226,7 @@ struct perf_guest_switch_msr {
+ };
+ 
+ extern struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr);
++extern void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap);
+ #else
+ static inline perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
+ {
+@@ -209,6 +234,11 @@ static inline perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
+ 	return NULL;
+ }
+ 
++static inline void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
++{
++	memset(cap, 0, sizeof(*cap));
++}
++
+ static inline void perf_events_lapic_init(void)	{ }
+ #endif
+ 
+
+commit 71c0b7937895b48ae1bca86425776ec10b4d9d03
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:56 2018 +0800
+
+    v3.2-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 094fb30..f61c62f 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -29,6 +29,9 @@
+ #define ARCH_PERFMON_EVENTSEL_INV			(1ULL << 23)
+ #define ARCH_PERFMON_EVENTSEL_CMASK			0xFF000000ULL
+ 
++#define AMD_PERFMON_EVENTSEL_GUESTONLY			(1ULL << 40)
++#define AMD_PERFMON_EVENTSEL_HOSTONLY			(1ULL << 41)
++
+ #define AMD64_EVENTSEL_EVENT	\
+ 	(ARCH_PERFMON_EVENTSEL_EVENT | (0x0FULL << 32))
+ #define INTEL_ARCH_EVENT_MASK	\
+@@ -43,14 +46,17 @@
+ #define AMD64_RAW_EVENT_MASK		\
+ 	(X86_RAW_EVENT_MASK          |  \
+ 	 AMD64_EVENTSEL_EVENT)
++#define AMD64_NUM_COUNTERS				4
++#define AMD64_NUM_COUNTERS_F15H				6
++#define AMD64_NUM_COUNTERS_MAX				AMD64_NUM_COUNTERS_F15H
+ 
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX			 0
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX		0
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_PRESENT \
+ 		(1 << (ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX))
+ 
+-#define ARCH_PERFMON_BRANCH_MISSES_RETIRED			 6
++#define ARCH_PERFMON_BRANCH_MISSES_RETIRED		6
+ 
+ /*
+  * Intel "Architectural Performance Monitoring" CPUID
+@@ -110,6 +116,35 @@ union cpuid10_edx {
+  */
+ #define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
+ 
++/*
++ * IBS cpuid feature detection
++ */
++
++#define IBS_CPUID_FEATURES		0x8000001b
++
++/*
++ * Same bit mask as for IBS cpuid feature flags (Fn8000_001B_EAX), but
++ * bit 0 is used to indicate the existence of IBS.
++ */
++#define IBS_CAPS_AVAIL			(1U<<0)
++#define IBS_CAPS_FETCHSAM		(1U<<1)
++#define IBS_CAPS_OPSAM			(1U<<2)
++#define IBS_CAPS_RDWROPCNT		(1U<<3)
++#define IBS_CAPS_OPCNT			(1U<<4)
++#define IBS_CAPS_BRNTRGT		(1U<<5)
++#define IBS_CAPS_OPCNTEXT		(1U<<6)
++
++#define IBS_CAPS_DEFAULT		(IBS_CAPS_AVAIL		\
++					 | IBS_CAPS_FETCHSAM	\
++					 | IBS_CAPS_OPSAM)
++
++/*
++ * IBS APIC setup
++ */
++#define IBSCTL				0x1cc
++#define IBSCTL_LVT_OFFSET_VALID		(1ULL<<8)
++#define IBSCTL_LVT_OFFSET_MASK		0x0F
++
+ /* IbsFetchCtl bits/masks */
+ #define IBS_FETCH_RAND_EN	(1ULL<<57)
+ #define IBS_FETCH_VAL		(1ULL<<49)
+@@ -124,6 +159,8 @@ union cpuid10_edx {
+ #define IBS_OP_MAX_CNT		0x0000FFFFULL
+ #define IBS_OP_MAX_CNT_EXT	0x007FFFFFULL	/* not a register bit mask */
+ 
++extern u32 get_ibs_caps(void);
++
+ #ifdef CONFIG_PERF_EVENTS
+ extern void perf_events_lapic_init(void);
+ 
+@@ -159,7 +196,19 @@ extern unsigned long perf_misc_flags(struct pt_regs *regs);
+ 	);							\
+ }
+ 
++struct perf_guest_switch_msr {
++	unsigned msr;
++	u64 host, guest;
++};
++
++extern struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr);
+ #else
++static inline perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
++{
++	*nr = 0;
++	return NULL;
++}
++
+ static inline void perf_events_lapic_init(void)	{ }
+ #endif
+ 
+
+commit 322acceed7ae39b70f60ce57f360c939e24d809b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:36 2018 +0800
+
+    v3.1-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index d9d4dae..094fb30 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -152,6 +152,11 @@ extern unsigned long perf_misc_flags(struct pt_regs *regs);
+ 	(regs)->bp = caller_frame_pointer();			\
+ 	(regs)->cs = __KERNEL_CS;				\
+ 	regs->flags = 0;					\
++	asm volatile(						\
++		_ASM_MOV "%%"_ASM_SP ", %0\n"			\
++		: "=m" ((regs)->sp)				\
++		:: "memory"					\
++	);							\
+ }
+ 
+ #else
+
+commit 911212b958f5717e1da36485ab691a8ea876c983
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:46 2018 +0800
+
+    v2.6.38-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 550e26b..d9d4dae 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -125,7 +125,6 @@ union cpuid10_edx {
+ #define IBS_OP_MAX_CNT_EXT	0x007FFFFFULL	/* not a register bit mask */
+ 
+ #ifdef CONFIG_PERF_EVENTS
+-extern void init_hw_perf_events(void);
+ extern void perf_events_lapic_init(void);
+ 
+ #define PERF_EVENT_INDEX_OFFSET			0
+@@ -156,7 +155,6 @@ extern unsigned long perf_misc_flags(struct pt_regs *regs);
+ }
+ 
+ #else
+-static inline void init_hw_perf_events(void)		{ }
+ static inline void perf_events_lapic_init(void)	{ }
+ #endif
+ 
+
+commit 56afebd49804d7005fa6dcdaac074e5c16299dd5
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:29 2018 +0800
+
+    v2.6.37-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 6e742cc..550e26b 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -111,17 +111,18 @@ union cpuid10_edx {
+ #define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
+ 
+ /* IbsFetchCtl bits/masks */
+-#define IBS_FETCH_RAND_EN		(1ULL<<57)
+-#define IBS_FETCH_VAL			(1ULL<<49)
+-#define IBS_FETCH_ENABLE		(1ULL<<48)
+-#define IBS_FETCH_CNT			0xFFFF0000ULL
+-#define IBS_FETCH_MAX_CNT		0x0000FFFFULL
++#define IBS_FETCH_RAND_EN	(1ULL<<57)
++#define IBS_FETCH_VAL		(1ULL<<49)
++#define IBS_FETCH_ENABLE	(1ULL<<48)
++#define IBS_FETCH_CNT		0xFFFF0000ULL
++#define IBS_FETCH_MAX_CNT	0x0000FFFFULL
+ 
+ /* IbsOpCtl bits */
+-#define IBS_OP_CNT_CTL			(1ULL<<19)
+-#define IBS_OP_VAL			(1ULL<<18)
+-#define IBS_OP_ENABLE			(1ULL<<17)
+-#define IBS_OP_MAX_CNT			0x0000FFFFULL
++#define IBS_OP_CNT_CTL		(1ULL<<19)
++#define IBS_OP_VAL		(1ULL<<18)
++#define IBS_OP_ENABLE		(1ULL<<17)
++#define IBS_OP_MAX_CNT		0x0000FFFFULL
++#define IBS_OP_MAX_CNT_EXT	0x007FFFFFULL	/* not a register bit mask */
+ 
+ #ifdef CONFIG_PERF_EVENTS
+ extern void init_hw_perf_events(void);
+
+commit 0da5a5bbb785d33016561685060fff132ab73f69
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:12 2018 +0800
+
+    v2.6.36-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 254883d..6e742cc 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -68,8 +68,9 @@ union cpuid10_eax {
+ 
+ union cpuid10_edx {
+ 	struct {
+-		unsigned int num_counters_fixed:4;
+-		unsigned int reserved:28;
++		unsigned int num_counters_fixed:5;
++		unsigned int bit_width_fixed:8;
++		unsigned int reserved:19;
+ 	} split;
+ 	unsigned int full;
+ };
+@@ -140,6 +141,19 @@ extern unsigned long perf_instruction_pointer(struct pt_regs *regs);
+ extern unsigned long perf_misc_flags(struct pt_regs *regs);
+ #define perf_misc_flags(regs)	perf_misc_flags(regs)
+ 
++#include <asm/stacktrace.h>
++
++/*
++ * We abuse bit 3 from flags to pass exact information, see perf_misc_flags
++ * and the comment with PERF_EFLAGS_EXACT.
++ */
++#define perf_arch_fetch_caller_regs(regs, __ip)		{	\
++	(regs)->ip = (__ip);					\
++	(regs)->bp = caller_frame_pointer();			\
++	(regs)->cs = __KERNEL_CS;				\
++	regs->flags = 0;					\
++}
++
+ #else
+ static inline void init_hw_perf_events(void)		{ }
+ static inline void perf_events_lapic_init(void)	{ }
+
+commit a549782d6cf1e8aa3a85da549caf639425838c7c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:58 2018 +0800
+
+    v2.6.35-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index db6109a..254883d 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -5,7 +5,7 @@
+  * Performance event hw details:
+  */
+ 
+-#define X86_PMC_MAX_GENERIC					8
++#define X86_PMC_MAX_GENERIC				       32
+ #define X86_PMC_MAX_FIXED					3
+ 
+ #define X86_PMC_IDX_GENERIC				        0
+@@ -18,39 +18,31 @@
+ #define MSR_ARCH_PERFMON_EVENTSEL0			     0x186
+ #define MSR_ARCH_PERFMON_EVENTSEL1			     0x187
+ 
+-#define ARCH_PERFMON_EVENTSEL_ENABLE			  (1 << 22)
+-#define ARCH_PERFMON_EVENTSEL_ANY			  (1 << 21)
+-#define ARCH_PERFMON_EVENTSEL_INT			  (1 << 20)
+-#define ARCH_PERFMON_EVENTSEL_OS			  (1 << 17)
+-#define ARCH_PERFMON_EVENTSEL_USR			  (1 << 16)
+-
+-/*
+- * Includes eventsel and unit mask as well:
+- */
+-
+-
+-#define INTEL_ARCH_EVTSEL_MASK		0x000000FFULL
+-#define INTEL_ARCH_UNIT_MASK		0x0000FF00ULL
+-#define INTEL_ARCH_EDGE_MASK		0x00040000ULL
+-#define INTEL_ARCH_INV_MASK		0x00800000ULL
+-#define INTEL_ARCH_CNT_MASK		0xFF000000ULL
+-#define INTEL_ARCH_EVENT_MASK	(INTEL_ARCH_UNIT_MASK|INTEL_ARCH_EVTSEL_MASK)
+-
+-/*
+- * filter mask to validate fixed counter events.
+- * the following filters disqualify for fixed counters:
+- *  - inv
+- *  - edge
+- *  - cnt-mask
+- *  The other filters are supported by fixed counters.
+- *  The any-thread option is supported starting with v3.
+- */
+-#define INTEL_ARCH_FIXED_MASK \
+-	(INTEL_ARCH_CNT_MASK| \
+-	 INTEL_ARCH_INV_MASK| \
+-	 INTEL_ARCH_EDGE_MASK|\
+-	 INTEL_ARCH_UNIT_MASK|\
+-	 INTEL_ARCH_EVENT_MASK)
++#define ARCH_PERFMON_EVENTSEL_EVENT			0x000000FFULL
++#define ARCH_PERFMON_EVENTSEL_UMASK			0x0000FF00ULL
++#define ARCH_PERFMON_EVENTSEL_USR			(1ULL << 16)
++#define ARCH_PERFMON_EVENTSEL_OS			(1ULL << 17)
++#define ARCH_PERFMON_EVENTSEL_EDGE			(1ULL << 18)
++#define ARCH_PERFMON_EVENTSEL_INT			(1ULL << 20)
++#define ARCH_PERFMON_EVENTSEL_ANY			(1ULL << 21)
++#define ARCH_PERFMON_EVENTSEL_ENABLE			(1ULL << 22)
++#define ARCH_PERFMON_EVENTSEL_INV			(1ULL << 23)
++#define ARCH_PERFMON_EVENTSEL_CMASK			0xFF000000ULL
++
++#define AMD64_EVENTSEL_EVENT	\
++	(ARCH_PERFMON_EVENTSEL_EVENT | (0x0FULL << 32))
++#define INTEL_ARCH_EVENT_MASK	\
++	(ARCH_PERFMON_EVENTSEL_UMASK | ARCH_PERFMON_EVENTSEL_EVENT)
++
++#define X86_RAW_EVENT_MASK		\
++	(ARCH_PERFMON_EVENTSEL_EVENT |	\
++	 ARCH_PERFMON_EVENTSEL_UMASK |	\
++	 ARCH_PERFMON_EVENTSEL_EDGE  |	\
++	 ARCH_PERFMON_EVENTSEL_INV   |	\
++	 ARCH_PERFMON_EVENTSEL_CMASK)
++#define AMD64_RAW_EVENT_MASK		\
++	(X86_RAW_EVENT_MASK          |  \
++	 AMD64_EVENTSEL_EVENT)
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+@@ -67,7 +59,7 @@
+ union cpuid10_eax {
+ 	struct {
+ 		unsigned int version_id:8;
+-		unsigned int num_events:8;
++		unsigned int num_counters:8;
+ 		unsigned int bit_width:8;
+ 		unsigned int mask_length:8;
+ 	} split;
+@@ -76,7 +68,7 @@ union cpuid10_eax {
+ 
+ union cpuid10_edx {
+ 	struct {
+-		unsigned int num_events_fixed:4;
++		unsigned int num_counters_fixed:4;
+ 		unsigned int reserved:28;
+ 	} split;
+ 	unsigned int full;
+@@ -136,6 +128,18 @@ extern void perf_events_lapic_init(void);
+ 
+ #define PERF_EVENT_INDEX_OFFSET			0
+ 
++/*
++ * Abuse bit 3 of the cpu eflags register to indicate proper PEBS IP fixups.
++ * This flag is otherwise unused and ABI specified to be 0, so nobody should
++ * care what we do with it.
++ */
++#define PERF_EFLAGS_EXACT	(1UL << 3)
++
++struct pt_regs;
++extern unsigned long perf_instruction_pointer(struct pt_regs *regs);
++extern unsigned long perf_misc_flags(struct pt_regs *regs);
++#define perf_misc_flags(regs)	perf_misc_flags(regs)
++
+ #else
+ static inline void init_hw_perf_events(void)		{ }
+ static inline void perf_events_lapic_init(void)	{ }
+
+commit e081ddf543e65dc54008f50720ca8fde62d9bb84
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:42 2018 +0800
+
+    v2.6.34-rc2
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index befd172..db6109a 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -18,7 +18,7 @@
+ #define MSR_ARCH_PERFMON_EVENTSEL0			     0x186
+ #define MSR_ARCH_PERFMON_EVENTSEL1			     0x187
+ 
+-#define ARCH_PERFMON_EVENTSEL0_ENABLE			  (1 << 22)
++#define ARCH_PERFMON_EVENTSEL_ENABLE			  (1 << 22)
+ #define ARCH_PERFMON_EVENTSEL_ANY			  (1 << 21)
+ #define ARCH_PERFMON_EVENTSEL_INT			  (1 << 20)
+ #define ARCH_PERFMON_EVENTSEL_OS			  (1 << 17)
+@@ -50,7 +50,7 @@
+ 	 INTEL_ARCH_INV_MASK| \
+ 	 INTEL_ARCH_EDGE_MASK|\
+ 	 INTEL_ARCH_UNIT_MASK|\
+-	 INTEL_ARCH_EVTSEL_MASK)
++	 INTEL_ARCH_EVENT_MASK)
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+@@ -117,6 +117,18 @@ union cpuid10_edx {
+  */
+ #define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
+ 
++/* IbsFetchCtl bits/masks */
++#define IBS_FETCH_RAND_EN		(1ULL<<57)
++#define IBS_FETCH_VAL			(1ULL<<49)
++#define IBS_FETCH_ENABLE		(1ULL<<48)
++#define IBS_FETCH_CNT			0xFFFF0000ULL
++#define IBS_FETCH_MAX_CNT		0x0000FFFFULL
++
++/* IbsOpCtl bits */
++#define IBS_OP_CNT_CTL			(1ULL<<19)
++#define IBS_OP_VAL			(1ULL<<18)
++#define IBS_OP_ENABLE			(1ULL<<17)
++#define IBS_OP_MAX_CNT			0x0000FFFFULL
+ 
+ #ifdef CONFIG_PERF_EVENTS
+ extern void init_hw_perf_events(void);
+
+commit 63e54aba4a60b66b8da58b47ad792c297548a992
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:40 2018 +0800
+
+    v2.6.34-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 1380367..befd172 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -27,7 +27,14 @@
+ /*
+  * Includes eventsel and unit mask as well:
+  */
+-#define ARCH_PERFMON_EVENT_MASK				    0xffff
++
++
++#define INTEL_ARCH_EVTSEL_MASK		0x000000FFULL
++#define INTEL_ARCH_UNIT_MASK		0x0000FF00ULL
++#define INTEL_ARCH_EDGE_MASK		0x00040000ULL
++#define INTEL_ARCH_INV_MASK		0x00800000ULL
++#define INTEL_ARCH_CNT_MASK		0xFF000000ULL
++#define INTEL_ARCH_EVENT_MASK	(INTEL_ARCH_UNIT_MASK|INTEL_ARCH_EVTSEL_MASK)
+ 
+ /*
+  * filter mask to validate fixed counter events.
+@@ -38,7 +45,12 @@
+  *  The other filters are supported by fixed counters.
+  *  The any-thread option is supported starting with v3.
+  */
+-#define ARCH_PERFMON_EVENT_FILTER_MASK			0xff840000
++#define INTEL_ARCH_FIXED_MASK \
++	(INTEL_ARCH_CNT_MASK| \
++	 INTEL_ARCH_INV_MASK| \
++	 INTEL_ARCH_EDGE_MASK|\
++	 INTEL_ARCH_UNIT_MASK|\
++	 INTEL_ARCH_EVTSEL_MASK)
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+
+commit 41c83b9798f8f79f88eeb87858e3bd3495e53a3f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:30 2018 +0800
+
+    v2.6.33-rc5
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 8d9f854..1380367 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -19,6 +19,7 @@
+ #define MSR_ARCH_PERFMON_EVENTSEL1			     0x187
+ 
+ #define ARCH_PERFMON_EVENTSEL0_ENABLE			  (1 << 22)
++#define ARCH_PERFMON_EVENTSEL_ANY			  (1 << 21)
+ #define ARCH_PERFMON_EVENTSEL_INT			  (1 << 20)
+ #define ARCH_PERFMON_EVENTSEL_OS			  (1 << 17)
+ #define ARCH_PERFMON_EVENTSEL_USR			  (1 << 16)
+
+commit ae3ae54379fd59cef0c8c505b2aab26d45504da3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:23 2018 +0800
+
+    v2.6.33-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index ad7ce3f..8d9f854 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -28,9 +28,20 @@
+  */
+ #define ARCH_PERFMON_EVENT_MASK				    0xffff
+ 
++/*
++ * filter mask to validate fixed counter events.
++ * the following filters disqualify for fixed counters:
++ *  - inv
++ *  - edge
++ *  - cnt-mask
++ *  The other filters are supported by fixed counters.
++ *  The any-thread option is supported starting with v3.
++ */
++#define ARCH_PERFMON_EVENT_FILTER_MASK			0xff840000
++
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX 		 0
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX			 0
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_PRESENT \
+ 		(1 << (ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX))
+ 
+
+commit 93ff50d1e92cfe60ae860843bf6616b326e377be
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:06 2018 +0800
+
+    v2.6.32-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+new file mode 100644
+index 0000000..ad7ce3f
+--- /dev/null
++++ b/arch/x86/include/asm/perf_event.h
+@@ -0,0 +1,108 @@
++#ifndef _ASM_X86_PERF_EVENT_H
++#define _ASM_X86_PERF_EVENT_H
++
++/*
++ * Performance event hw details:
++ */
++
++#define X86_PMC_MAX_GENERIC					8
++#define X86_PMC_MAX_FIXED					3
++
++#define X86_PMC_IDX_GENERIC				        0
++#define X86_PMC_IDX_FIXED				       32
++#define X86_PMC_IDX_MAX					       64
++
++#define MSR_ARCH_PERFMON_PERFCTR0			      0xc1
++#define MSR_ARCH_PERFMON_PERFCTR1			      0xc2
++
++#define MSR_ARCH_PERFMON_EVENTSEL0			     0x186
++#define MSR_ARCH_PERFMON_EVENTSEL1			     0x187
++
++#define ARCH_PERFMON_EVENTSEL0_ENABLE			  (1 << 22)
++#define ARCH_PERFMON_EVENTSEL_INT			  (1 << 20)
++#define ARCH_PERFMON_EVENTSEL_OS			  (1 << 17)
++#define ARCH_PERFMON_EVENTSEL_USR			  (1 << 16)
++
++/*
++ * Includes eventsel and unit mask as well:
++ */
++#define ARCH_PERFMON_EVENT_MASK				    0xffff
++
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX 		 0
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_PRESENT \
++		(1 << (ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX))
++
++#define ARCH_PERFMON_BRANCH_MISSES_RETIRED			 6
++
++/*
++ * Intel "Architectural Performance Monitoring" CPUID
++ * detection/enumeration details:
++ */
++union cpuid10_eax {
++	struct {
++		unsigned int version_id:8;
++		unsigned int num_events:8;
++		unsigned int bit_width:8;
++		unsigned int mask_length:8;
++	} split;
++	unsigned int full;
++};
++
++union cpuid10_edx {
++	struct {
++		unsigned int num_events_fixed:4;
++		unsigned int reserved:28;
++	} split;
++	unsigned int full;
++};
++
++
++/*
++ * Fixed-purpose performance events:
++ */
++
++/*
++ * All 3 fixed-mode PMCs are configured via this single MSR:
++ */
++#define MSR_ARCH_PERFMON_FIXED_CTR_CTRL			0x38d
++
++/*
++ * The counts are available in three separate MSRs:
++ */
++
++/* Instr_Retired.Any: */
++#define MSR_ARCH_PERFMON_FIXED_CTR0			0x309
++#define X86_PMC_IDX_FIXED_INSTRUCTIONS			(X86_PMC_IDX_FIXED + 0)
++
++/* CPU_CLK_Unhalted.Core: */
++#define MSR_ARCH_PERFMON_FIXED_CTR1			0x30a
++#define X86_PMC_IDX_FIXED_CPU_CYCLES			(X86_PMC_IDX_FIXED + 1)
++
++/* CPU_CLK_Unhalted.Ref: */
++#define MSR_ARCH_PERFMON_FIXED_CTR2			0x30b
++#define X86_PMC_IDX_FIXED_BUS_CYCLES			(X86_PMC_IDX_FIXED + 2)
++
++/*
++ * We model BTS tracing as another fixed-mode PMC.
++ *
++ * We choose a value in the middle of the fixed event range, since lower
++ * values are used by actual fixed events and higher values are used
++ * to indicate other overflow conditions in the PERF_GLOBAL_STATUS msr.
++ */
++#define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
++
++
++#ifdef CONFIG_PERF_EVENTS
++extern void init_hw_perf_events(void);
++extern void perf_events_lapic_init(void);
++
++#define PERF_EVENT_INDEX_OFFSET			0
++
++#else
++static inline void init_hw_perf_events(void)		{ }
++static inline void perf_events_lapic_init(void)	{ }
++#endif
++
++#endif /* _ASM_X86_PERF_EVENT_H */
+
+commit f9522053346b4150735e3e6964fa777e9a6b5e5d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:23 2018 +0800
+
+    v2.6.12
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+deleted file mode 100644
+index dc0f6ed..0000000
+--- a/arch/x86/include/asm/perf_event.h
++++ /dev/null
+@@ -1,290 +0,0 @@
+-#ifndef _ASM_X86_PERF_EVENT_H
+-#define _ASM_X86_PERF_EVENT_H
+-
+-/*
+- * Performance event hw details:
+- */
+-
+-#define INTEL_PMC_MAX_GENERIC				       32
+-#define INTEL_PMC_MAX_FIXED					3
+-#define INTEL_PMC_IDX_FIXED				       32
+-
+-#define X86_PMC_IDX_MAX					       64
+-
+-#define MSR_ARCH_PERFMON_PERFCTR0			      0xc1
+-#define MSR_ARCH_PERFMON_PERFCTR1			      0xc2
+-
+-#define MSR_ARCH_PERFMON_EVENTSEL0			     0x186
+-#define MSR_ARCH_PERFMON_EVENTSEL1			     0x187
+-
+-#define ARCH_PERFMON_EVENTSEL_EVENT			0x000000FFULL
+-#define ARCH_PERFMON_EVENTSEL_UMASK			0x0000FF00ULL
+-#define ARCH_PERFMON_EVENTSEL_USR			(1ULL << 16)
+-#define ARCH_PERFMON_EVENTSEL_OS			(1ULL << 17)
+-#define ARCH_PERFMON_EVENTSEL_EDGE			(1ULL << 18)
+-#define ARCH_PERFMON_EVENTSEL_PIN_CONTROL		(1ULL << 19)
+-#define ARCH_PERFMON_EVENTSEL_INT			(1ULL << 20)
+-#define ARCH_PERFMON_EVENTSEL_ANY			(1ULL << 21)
+-#define ARCH_PERFMON_EVENTSEL_ENABLE			(1ULL << 22)
+-#define ARCH_PERFMON_EVENTSEL_INV			(1ULL << 23)
+-#define ARCH_PERFMON_EVENTSEL_CMASK			0xFF000000ULL
+-
+-#define HSW_IN_TX					(1ULL << 32)
+-#define HSW_IN_TX_CHECKPOINTED				(1ULL << 33)
+-
+-#define AMD64_EVENTSEL_INT_CORE_ENABLE			(1ULL << 36)
+-#define AMD64_EVENTSEL_GUESTONLY			(1ULL << 40)
+-#define AMD64_EVENTSEL_HOSTONLY				(1ULL << 41)
+-
+-#define AMD64_EVENTSEL_INT_CORE_SEL_SHIFT		37
+-#define AMD64_EVENTSEL_INT_CORE_SEL_MASK		\
+-	(0xFULL << AMD64_EVENTSEL_INT_CORE_SEL_SHIFT)
+-
+-#define AMD64_EVENTSEL_EVENT	\
+-	(ARCH_PERFMON_EVENTSEL_EVENT | (0x0FULL << 32))
+-#define INTEL_ARCH_EVENT_MASK	\
+-	(ARCH_PERFMON_EVENTSEL_UMASK | ARCH_PERFMON_EVENTSEL_EVENT)
+-
+-#define X86_RAW_EVENT_MASK		\
+-	(ARCH_PERFMON_EVENTSEL_EVENT |	\
+-	 ARCH_PERFMON_EVENTSEL_UMASK |	\
+-	 ARCH_PERFMON_EVENTSEL_EDGE  |	\
+-	 ARCH_PERFMON_EVENTSEL_INV   |	\
+-	 ARCH_PERFMON_EVENTSEL_CMASK)
+-#define X86_ALL_EVENT_FLAGS  			\
+-	(ARCH_PERFMON_EVENTSEL_EDGE |  		\
+-	 ARCH_PERFMON_EVENTSEL_INV | 		\
+-	 ARCH_PERFMON_EVENTSEL_CMASK | 		\
+-	 ARCH_PERFMON_EVENTSEL_ANY | 		\
+-	 ARCH_PERFMON_EVENTSEL_PIN_CONTROL | 	\
+-	 HSW_IN_TX | 				\
+-	 HSW_IN_TX_CHECKPOINTED)
+-#define AMD64_RAW_EVENT_MASK		\
+-	(X86_RAW_EVENT_MASK          |  \
+-	 AMD64_EVENTSEL_EVENT)
+-#define AMD64_RAW_EVENT_MASK_NB		\
+-	(AMD64_EVENTSEL_EVENT        |  \
+-	 ARCH_PERFMON_EVENTSEL_UMASK)
+-#define AMD64_NUM_COUNTERS				4
+-#define AMD64_NUM_COUNTERS_CORE				6
+-#define AMD64_NUM_COUNTERS_NB				4
+-
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		0x3c
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX		0
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_PRESENT \
+-		(1 << (ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX))
+-
+-#define ARCH_PERFMON_BRANCH_MISSES_RETIRED		6
+-#define ARCH_PERFMON_EVENTS_COUNT			7
+-
+-/*
+- * Intel "Architectural Performance Monitoring" CPUID
+- * detection/enumeration details:
+- */
+-union cpuid10_eax {
+-	struct {
+-		unsigned int version_id:8;
+-		unsigned int num_counters:8;
+-		unsigned int bit_width:8;
+-		unsigned int mask_length:8;
+-	} split;
+-	unsigned int full;
+-};
+-
+-union cpuid10_ebx {
+-	struct {
+-		unsigned int no_unhalted_core_cycles:1;
+-		unsigned int no_instructions_retired:1;
+-		unsigned int no_unhalted_reference_cycles:1;
+-		unsigned int no_llc_reference:1;
+-		unsigned int no_llc_misses:1;
+-		unsigned int no_branch_instruction_retired:1;
+-		unsigned int no_branch_misses_retired:1;
+-	} split;
+-	unsigned int full;
+-};
+-
+-union cpuid10_edx {
+-	struct {
+-		unsigned int num_counters_fixed:5;
+-		unsigned int bit_width_fixed:8;
+-		unsigned int reserved:19;
+-	} split;
+-	unsigned int full;
+-};
+-
+-struct x86_pmu_capability {
+-	int		version;
+-	int		num_counters_gp;
+-	int		num_counters_fixed;
+-	int		bit_width_gp;
+-	int		bit_width_fixed;
+-	unsigned int	events_mask;
+-	int		events_mask_len;
+-};
+-
+-/*
+- * Fixed-purpose performance events:
+- */
+-
+-/*
+- * All 3 fixed-mode PMCs are configured via this single MSR:
+- */
+-#define MSR_ARCH_PERFMON_FIXED_CTR_CTRL	0x38d
+-
+-/*
+- * The counts are available in three separate MSRs:
+- */
+-
+-/* Instr_Retired.Any: */
+-#define MSR_ARCH_PERFMON_FIXED_CTR0	0x309
+-#define INTEL_PMC_IDX_FIXED_INSTRUCTIONS	(INTEL_PMC_IDX_FIXED + 0)
+-
+-/* CPU_CLK_Unhalted.Core: */
+-#define MSR_ARCH_PERFMON_FIXED_CTR1	0x30a
+-#define INTEL_PMC_IDX_FIXED_CPU_CYCLES	(INTEL_PMC_IDX_FIXED + 1)
+-
+-/* CPU_CLK_Unhalted.Ref: */
+-#define MSR_ARCH_PERFMON_FIXED_CTR2	0x30b
+-#define INTEL_PMC_IDX_FIXED_REF_CYCLES	(INTEL_PMC_IDX_FIXED + 2)
+-#define INTEL_PMC_MSK_FIXED_REF_CYCLES	(1ULL << INTEL_PMC_IDX_FIXED_REF_CYCLES)
+-
+-/*
+- * We model BTS tracing as another fixed-mode PMC.
+- *
+- * We choose a value in the middle of the fixed event range, since lower
+- * values are used by actual fixed events and higher values are used
+- * to indicate other overflow conditions in the PERF_GLOBAL_STATUS msr.
+- */
+-#define INTEL_PMC_IDX_FIXED_BTS				(INTEL_PMC_IDX_FIXED + 16)
+-
+-/*
+- * IBS cpuid feature detection
+- */
+-
+-#define IBS_CPUID_FEATURES		0x8000001b
+-
+-/*
+- * Same bit mask as for IBS cpuid feature flags (Fn8000_001B_EAX), but
+- * bit 0 is used to indicate the existence of IBS.
+- */
+-#define IBS_CAPS_AVAIL			(1U<<0)
+-#define IBS_CAPS_FETCHSAM		(1U<<1)
+-#define IBS_CAPS_OPSAM			(1U<<2)
+-#define IBS_CAPS_RDWROPCNT		(1U<<3)
+-#define IBS_CAPS_OPCNT			(1U<<4)
+-#define IBS_CAPS_BRNTRGT		(1U<<5)
+-#define IBS_CAPS_OPCNTEXT		(1U<<6)
+-#define IBS_CAPS_RIPINVALIDCHK		(1U<<7)
+-#define IBS_CAPS_OPBRNFUSE		(1U<<8)
+-#define IBS_CAPS_FETCHCTLEXTD		(1U<<9)
+-#define IBS_CAPS_OPDATA4		(1U<<10)
+-
+-#define IBS_CAPS_DEFAULT		(IBS_CAPS_AVAIL		\
+-					 | IBS_CAPS_FETCHSAM	\
+-					 | IBS_CAPS_OPSAM)
+-
+-/*
+- * IBS APIC setup
+- */
+-#define IBSCTL				0x1cc
+-#define IBSCTL_LVT_OFFSET_VALID		(1ULL<<8)
+-#define IBSCTL_LVT_OFFSET_MASK		0x0F
+-
+-/* ibs fetch bits/masks */
+-#define IBS_FETCH_RAND_EN	(1ULL<<57)
+-#define IBS_FETCH_VAL		(1ULL<<49)
+-#define IBS_FETCH_ENABLE	(1ULL<<48)
+-#define IBS_FETCH_CNT		0xFFFF0000ULL
+-#define IBS_FETCH_MAX_CNT	0x0000FFFFULL
+-
+-/* ibs op bits/masks */
+-/* lower 4 bits of the current count are ignored: */
+-#define IBS_OP_CUR_CNT		(0xFFFF0ULL<<32)
+-#define IBS_OP_CNT_CTL		(1ULL<<19)
+-#define IBS_OP_VAL		(1ULL<<18)
+-#define IBS_OP_ENABLE		(1ULL<<17)
+-#define IBS_OP_MAX_CNT		0x0000FFFFULL
+-#define IBS_OP_MAX_CNT_EXT	0x007FFFFFULL	/* not a register bit mask */
+-#define IBS_RIP_INVALID		(1ULL<<38)
+-
+-#ifdef CONFIG_X86_LOCAL_APIC
+-extern u32 get_ibs_caps(void);
+-#else
+-static inline u32 get_ibs_caps(void) { return 0; }
+-#endif
+-
+-#ifdef CONFIG_PERF_EVENTS
+-extern void perf_events_lapic_init(void);
+-
+-/*
+- * Abuse bits {3,5} of the cpu eflags register. These flags are otherwise
+- * unused and ABI specified to be 0, so nobody should care what we do with
+- * them.
+- *
+- * EXACT - the IP points to the exact instruction that triggered the
+- *         event (HW bugs exempt).
+- * VM    - original X86_VM_MASK; see set_linear_ip().
+- */
+-#define PERF_EFLAGS_EXACT	(1UL << 3)
+-#define PERF_EFLAGS_VM		(1UL << 5)
+-
+-struct pt_regs;
+-extern unsigned long perf_instruction_pointer(struct pt_regs *regs);
+-extern unsigned long perf_misc_flags(struct pt_regs *regs);
+-#define perf_misc_flags(regs)	perf_misc_flags(regs)
+-
+-#include <asm/stacktrace.h>
+-
+-/*
+- * We abuse bit 3 from flags to pass exact information, see perf_misc_flags
+- * and the comment with PERF_EFLAGS_EXACT.
+- */
+-#define perf_arch_fetch_caller_regs(regs, __ip)		{	\
+-	(regs)->ip = (__ip);					\
+-	(regs)->bp = caller_frame_pointer();			\
+-	(regs)->cs = __KERNEL_CS;				\
+-	regs->flags = 0;					\
+-	asm volatile(						\
+-		_ASM_MOV "%%"_ASM_SP ", %0\n"			\
+-		: "=m" ((regs)->sp)				\
+-		:: "memory"					\
+-	);							\
+-}
+-
+-struct perf_guest_switch_msr {
+-	unsigned msr;
+-	u64 host, guest;
+-};
+-
+-extern struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr);
+-extern void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap);
+-extern void perf_check_microcode(void);
+-#else
+-static inline struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
+-{
+-	*nr = 0;
+-	return NULL;
+-}
+-
+-static inline void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
+-{
+-	memset(cap, 0, sizeof(*cap));
+-}
+-
+-static inline void perf_events_lapic_init(void)	{ }
+-static inline void perf_check_microcode(void) { }
+-#endif
+-
+-#if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_AMD)
+- extern void amd_pmu_enable_virt(void);
+- extern void amd_pmu_disable_virt(void);
+-#else
+- static inline void amd_pmu_enable_virt(void) { }
+- static inline void amd_pmu_disable_virt(void) { }
+-#endif
+-
+-#define arch_perf_out_copy_user copy_from_user_nmi
+-
+-#endif /* _ASM_X86_PERF_EVENT_H */
+
+commit 0d7c5ce90d98152fbaf024606511d0993518d5af
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:14 2018 +0800
+
+    v2.6.11
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 12f5408..dc0f6ed 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -1,4 +1,3 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+ #ifndef _ASM_X86_PERF_EVENT_H
+ #define _ASM_X86_PERF_EVENT_H
+ 
+@@ -160,14 +159,6 @@ struct x86_pmu_capability {
+  */
+ #define INTEL_PMC_IDX_FIXED_BTS				(INTEL_PMC_IDX_FIXED + 16)
+ 
+-#define GLOBAL_STATUS_COND_CHG				BIT_ULL(63)
+-#define GLOBAL_STATUS_BUFFER_OVF			BIT_ULL(62)
+-#define GLOBAL_STATUS_UNC_OVF				BIT_ULL(61)
+-#define GLOBAL_STATUS_ASIF				BIT_ULL(60)
+-#define GLOBAL_STATUS_COUNTERS_FROZEN			BIT_ULL(59)
+-#define GLOBAL_STATUS_LBRS_FROZEN			BIT_ULL(58)
+-#define GLOBAL_STATUS_TRACE_TOPAPMI			BIT_ULL(55)
+-
+ /*
+  * IBS cpuid feature detection
+  */
+@@ -286,10 +277,6 @@ static inline void perf_events_lapic_init(void)	{ }
+ static inline void perf_check_microcode(void) { }
+ #endif
+ 
+-#ifdef CONFIG_CPU_SUP_INTEL
+- extern void intel_pt_handle_vmx(int on);
+-#endif
+-
+ #if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_AMD)
+  extern void amd_pmu_enable_virt(void);
+  extern void amd_pmu_disable_virt(void);
+
+commit cb434583cb605d1f945cbcfb85c159190a2a1ea3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:28:33 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index f353061..12f5408 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -1,3 +1,4 @@
++/* SPDX-License-Identifier: GPL-2.0 */
+ #ifndef _ASM_X86_PERF_EVENT_H
+ #define _ASM_X86_PERF_EVENT_H
+ 
+
+commit 56b883bb2e1691da9c0c544e77f41eb5be715aec
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:26:46 2018 +0800
+
+    v4.6-rc6
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 5a2ed3e..f353061 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -285,6 +285,10 @@ static inline void perf_events_lapic_init(void)	{ }
+ static inline void perf_check_microcode(void) { }
+ #endif
+ 
++#ifdef CONFIG_CPU_SUP_INTEL
++ extern void intel_pt_handle_vmx(int on);
++#endif
++
+ #if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_AMD)
+  extern void amd_pmu_enable_virt(void);
+  extern void amd_pmu_disable_virt(void);
+
+commit 29bf7bb577848af86c7bb2b2647e2d01ae031e4d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:26:41 2018 +0800
+
+    v4.6-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 7bcb861..5a2ed3e 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -165,6 +165,7 @@ struct x86_pmu_capability {
+ #define GLOBAL_STATUS_ASIF				BIT_ULL(60)
+ #define GLOBAL_STATUS_COUNTERS_FROZEN			BIT_ULL(59)
+ #define GLOBAL_STATUS_LBRS_FROZEN			BIT_ULL(58)
++#define GLOBAL_STATUS_TRACE_TOPAPMI			BIT_ULL(55)
+ 
+ /*
+  * IBS cpuid feature detection
+
+commit f71bee03b93a9036d4532cd1e6968945cfa6bbd1
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:26:09 2018 +0800
+
+    v4.3-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index dc0f6ed..7bcb861 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -159,6 +159,13 @@ struct x86_pmu_capability {
+  */
+ #define INTEL_PMC_IDX_FIXED_BTS				(INTEL_PMC_IDX_FIXED + 16)
+ 
++#define GLOBAL_STATUS_COND_CHG				BIT_ULL(63)
++#define GLOBAL_STATUS_BUFFER_OVF			BIT_ULL(62)
++#define GLOBAL_STATUS_UNC_OVF				BIT_ULL(61)
++#define GLOBAL_STATUS_ASIF				BIT_ULL(60)
++#define GLOBAL_STATUS_COUNTERS_FROZEN			BIT_ULL(59)
++#define GLOBAL_STATUS_LBRS_FROZEN			BIT_ULL(58)
++
+ /*
+  * IBS cpuid feature detection
+  */
+
+commit 232e3a703db25d21b00a2b9b861d7d8cb7d9be96
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:25:27 2018 +0800
+
+    v3.19-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 8dfc9fd..dc0f6ed 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -177,6 +177,9 @@ struct x86_pmu_capability {
+ #define IBS_CAPS_BRNTRGT		(1U<<5)
+ #define IBS_CAPS_OPCNTEXT		(1U<<6)
+ #define IBS_CAPS_RIPINVALIDCHK		(1U<<7)
++#define IBS_CAPS_OPBRNFUSE		(1U<<8)
++#define IBS_CAPS_FETCHCTLEXTD		(1U<<9)
++#define IBS_CAPS_OPDATA4		(1U<<10)
+ 
+ #define IBS_CAPS_DEFAULT		(IBS_CAPS_AVAIL		\
+ 					 | IBS_CAPS_FETCHSAM	\
+
+commit a14cb0ef038964be0b9284027887699e263c9590
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:25:17 2018 +0800
+
+    v3.18-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 8249df4..8dfc9fd 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -51,6 +51,14 @@
+ 	 ARCH_PERFMON_EVENTSEL_EDGE  |	\
+ 	 ARCH_PERFMON_EVENTSEL_INV   |	\
+ 	 ARCH_PERFMON_EVENTSEL_CMASK)
++#define X86_ALL_EVENT_FLAGS  			\
++	(ARCH_PERFMON_EVENTSEL_EDGE |  		\
++	 ARCH_PERFMON_EVENTSEL_INV | 		\
++	 ARCH_PERFMON_EVENTSEL_CMASK | 		\
++	 ARCH_PERFMON_EVENTSEL_ANY | 		\
++	 ARCH_PERFMON_EVENTSEL_PIN_CONTROL | 	\
++	 HSW_IN_TX | 				\
++	 HSW_IN_TX_CHECKPOINTED)
+ #define AMD64_RAW_EVENT_MASK		\
+ 	(X86_RAW_EVENT_MASK          |  \
+ 	 AMD64_EVENTSEL_EVENT)
+
+commit 668cf95d2b50c132f40460134ed735678baddb43
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:24:08 2018 +0800
+
+    v3.11-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 57cb634..8249df4 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -29,6 +29,9 @@
+ #define ARCH_PERFMON_EVENTSEL_INV			(1ULL << 23)
+ #define ARCH_PERFMON_EVENTSEL_CMASK			0xFF000000ULL
+ 
++#define HSW_IN_TX					(1ULL << 32)
++#define HSW_IN_TX_CHECKPOINTED				(1ULL << 33)
++
+ #define AMD64_EVENTSEL_INT_CORE_ENABLE			(1ULL << 36)
+ #define AMD64_EVENTSEL_GUESTONLY			(1ULL << 40)
+ #define AMD64_EVENTSEL_HOSTONLY				(1ULL << 41)
+
+commit 121254b65300176059baea6a3af8b01dabf63ded
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:23:50 2018 +0800
+
+    v3.9-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 4fabcdf..57cb634 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -29,8 +29,13 @@
+ #define ARCH_PERFMON_EVENTSEL_INV			(1ULL << 23)
+ #define ARCH_PERFMON_EVENTSEL_CMASK			0xFF000000ULL
+ 
+-#define AMD_PERFMON_EVENTSEL_GUESTONLY			(1ULL << 40)
+-#define AMD_PERFMON_EVENTSEL_HOSTONLY			(1ULL << 41)
++#define AMD64_EVENTSEL_INT_CORE_ENABLE			(1ULL << 36)
++#define AMD64_EVENTSEL_GUESTONLY			(1ULL << 40)
++#define AMD64_EVENTSEL_HOSTONLY				(1ULL << 41)
++
++#define AMD64_EVENTSEL_INT_CORE_SEL_SHIFT		37
++#define AMD64_EVENTSEL_INT_CORE_SEL_MASK		\
++	(0xFULL << AMD64_EVENTSEL_INT_CORE_SEL_SHIFT)
+ 
+ #define AMD64_EVENTSEL_EVENT	\
+ 	(ARCH_PERFMON_EVENTSEL_EVENT | (0x0FULL << 32))
+@@ -46,8 +51,12 @@
+ #define AMD64_RAW_EVENT_MASK		\
+ 	(X86_RAW_EVENT_MASK          |  \
+ 	 AMD64_EVENTSEL_EVENT)
++#define AMD64_RAW_EVENT_MASK_NB		\
++	(AMD64_EVENTSEL_EVENT        |  \
++	 ARCH_PERFMON_EVENTSEL_UMASK)
+ #define AMD64_NUM_COUNTERS				4
+ #define AMD64_NUM_COUNTERS_CORE				6
++#define AMD64_NUM_COUNTERS_NB				4
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+
+commit 3e39e3da65ad35debd6eed0066486adde62ab604
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:23:31 2018 +0800
+
+    v3.7-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index cb4e43b..4fabcdf 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -262,4 +262,6 @@ static inline void perf_check_microcode(void) { }
+  static inline void amd_pmu_disable_virt(void) { }
+ #endif
+ 
++#define arch_perf_out_copy_user copy_from_user_nmi
++
+ #endif /* _ASM_X86_PERF_EVENT_H */
+
+commit 8c82982825caa482b86547674d31163cde3d31bf
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:23:23 2018 +0800
+
+    v3.6-rc2
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index dab3935..cb4e43b 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -196,11 +196,16 @@ static inline u32 get_ibs_caps(void) { return 0; }
+ extern void perf_events_lapic_init(void);
+ 
+ /*
+- * Abuse bit 3 of the cpu eflags register to indicate proper PEBS IP fixups.
+- * This flag is otherwise unused and ABI specified to be 0, so nobody should
+- * care what we do with it.
++ * Abuse bits {3,5} of the cpu eflags register. These flags are otherwise
++ * unused and ABI specified to be 0, so nobody should care what we do with
++ * them.
++ *
++ * EXACT - the IP points to the exact instruction that triggered the
++ *         event (HW bugs exempt).
++ * VM    - original X86_VM_MASK; see set_linear_ip().
+  */
+ #define PERF_EFLAGS_EXACT	(1UL << 3)
++#define PERF_EFLAGS_VM		(1UL << 5)
+ 
+ struct pt_regs;
+ extern unsigned long perf_instruction_pointer(struct pt_regs *regs);
+
+commit 30859b506e9377dfa47918293fb7228ba44e97ed
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:23:22 2018 +0800
+
+    v3.6-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 588f52e..dab3935 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -5,11 +5,10 @@
+  * Performance event hw details:
+  */
+ 
+-#define X86_PMC_MAX_GENERIC				       32
+-#define X86_PMC_MAX_FIXED					3
++#define INTEL_PMC_MAX_GENERIC				       32
++#define INTEL_PMC_MAX_FIXED					3
++#define INTEL_PMC_IDX_FIXED				       32
+ 
+-#define X86_PMC_IDX_GENERIC				        0
+-#define X86_PMC_IDX_FIXED				       32
+ #define X86_PMC_IDX_MAX					       64
+ 
+ #define MSR_ARCH_PERFMON_PERFCTR0			      0xc1
+@@ -48,8 +47,7 @@
+ 	(X86_RAW_EVENT_MASK          |  \
+ 	 AMD64_EVENTSEL_EVENT)
+ #define AMD64_NUM_COUNTERS				4
+-#define AMD64_NUM_COUNTERS_F15H				6
+-#define AMD64_NUM_COUNTERS_MAX				AMD64_NUM_COUNTERS_F15H
++#define AMD64_NUM_COUNTERS_CORE				6
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+@@ -121,16 +119,16 @@ struct x86_pmu_capability {
+ 
+ /* Instr_Retired.Any: */
+ #define MSR_ARCH_PERFMON_FIXED_CTR0	0x309
+-#define X86_PMC_IDX_FIXED_INSTRUCTIONS	(X86_PMC_IDX_FIXED + 0)
++#define INTEL_PMC_IDX_FIXED_INSTRUCTIONS	(INTEL_PMC_IDX_FIXED + 0)
+ 
+ /* CPU_CLK_Unhalted.Core: */
+ #define MSR_ARCH_PERFMON_FIXED_CTR1	0x30a
+-#define X86_PMC_IDX_FIXED_CPU_CYCLES	(X86_PMC_IDX_FIXED + 1)
++#define INTEL_PMC_IDX_FIXED_CPU_CYCLES	(INTEL_PMC_IDX_FIXED + 1)
+ 
+ /* CPU_CLK_Unhalted.Ref: */
+ #define MSR_ARCH_PERFMON_FIXED_CTR2	0x30b
+-#define X86_PMC_IDX_FIXED_REF_CYCLES	(X86_PMC_IDX_FIXED + 2)
+-#define X86_PMC_MSK_FIXED_REF_CYCLES	(1ULL << X86_PMC_IDX_FIXED_REF_CYCLES)
++#define INTEL_PMC_IDX_FIXED_REF_CYCLES	(INTEL_PMC_IDX_FIXED + 2)
++#define INTEL_PMC_MSK_FIXED_REF_CYCLES	(1ULL << INTEL_PMC_IDX_FIXED_REF_CYCLES)
+ 
+ /*
+  * We model BTS tracing as another fixed-mode PMC.
+@@ -139,7 +137,7 @@ struct x86_pmu_capability {
+  * values are used by actual fixed events and higher values are used
+  * to indicate other overflow conditions in the PERF_GLOBAL_STATUS msr.
+  */
+-#define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
++#define INTEL_PMC_IDX_FIXED_BTS				(INTEL_PMC_IDX_FIXED + 16)
+ 
+ /*
+  * IBS cpuid feature detection
+@@ -234,8 +232,9 @@ struct perf_guest_switch_msr {
+ 
+ extern struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr);
+ extern void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap);
++extern void perf_check_microcode(void);
+ #else
+-static inline perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
++static inline struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
+ {
+ 	*nr = 0;
+ 	return NULL;
+@@ -247,6 +246,7 @@ static inline void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
+ }
+ 
+ static inline void perf_events_lapic_init(void)	{ }
++static inline void perf_check_microcode(void) { }
+ #endif
+ 
+ #if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_AMD)
+
+commit c022e839c3fc606137d8d7708b0797cc1765d475
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:23:13 2018 +0800
+
+    v3.5-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 2291895..588f52e 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -158,6 +158,7 @@ struct x86_pmu_capability {
+ #define IBS_CAPS_OPCNT			(1U<<4)
+ #define IBS_CAPS_BRNTRGT		(1U<<5)
+ #define IBS_CAPS_OPCNTEXT		(1U<<6)
++#define IBS_CAPS_RIPINVALIDCHK		(1U<<7)
+ 
+ #define IBS_CAPS_DEFAULT		(IBS_CAPS_AVAIL		\
+ 					 | IBS_CAPS_FETCHSAM	\
+@@ -170,21 +171,28 @@ struct x86_pmu_capability {
+ #define IBSCTL_LVT_OFFSET_VALID		(1ULL<<8)
+ #define IBSCTL_LVT_OFFSET_MASK		0x0F
+ 
+-/* IbsFetchCtl bits/masks */
++/* ibs fetch bits/masks */
+ #define IBS_FETCH_RAND_EN	(1ULL<<57)
+ #define IBS_FETCH_VAL		(1ULL<<49)
+ #define IBS_FETCH_ENABLE	(1ULL<<48)
+ #define IBS_FETCH_CNT		0xFFFF0000ULL
+ #define IBS_FETCH_MAX_CNT	0x0000FFFFULL
+ 
+-/* IbsOpCtl bits */
++/* ibs op bits/masks */
++/* lower 4 bits of the current count are ignored: */
++#define IBS_OP_CUR_CNT		(0xFFFF0ULL<<32)
+ #define IBS_OP_CNT_CTL		(1ULL<<19)
+ #define IBS_OP_VAL		(1ULL<<18)
+ #define IBS_OP_ENABLE		(1ULL<<17)
+ #define IBS_OP_MAX_CNT		0x0000FFFFULL
+ #define IBS_OP_MAX_CNT_EXT	0x007FFFFFULL	/* not a register bit mask */
++#define IBS_RIP_INVALID		(1ULL<<38)
+ 
++#ifdef CONFIG_X86_LOCAL_APIC
+ extern u32 get_ibs_caps(void);
++#else
++static inline u32 get_ibs_caps(void) { return 0; }
++#endif
+ 
+ #ifdef CONFIG_PERF_EVENTS
+ extern void perf_events_lapic_init(void);
+
+commit 11b299904c15a6e085e2433169b60589313f328a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:23:05 2018 +0800
+
+    v3.4-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 461ce43..2291895 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -23,6 +23,7 @@
+ #define ARCH_PERFMON_EVENTSEL_USR			(1ULL << 16)
+ #define ARCH_PERFMON_EVENTSEL_OS			(1ULL << 17)
+ #define ARCH_PERFMON_EVENTSEL_EDGE			(1ULL << 18)
++#define ARCH_PERFMON_EVENTSEL_PIN_CONTROL		(1ULL << 19)
+ #define ARCH_PERFMON_EVENTSEL_INT			(1ULL << 20)
+ #define ARCH_PERFMON_EVENTSEL_ANY			(1ULL << 21)
+ #define ARCH_PERFMON_EVENTSEL_ENABLE			(1ULL << 22)
+@@ -188,8 +189,6 @@ extern u32 get_ibs_caps(void);
+ #ifdef CONFIG_PERF_EVENTS
+ extern void perf_events_lapic_init(void);
+ 
+-#define PERF_EVENT_INDEX_OFFSET			0
+-
+ /*
+  * Abuse bit 3 of the cpu eflags register to indicate proper PEBS IP fixups.
+  * This flag is otherwise unused and ABI specified to be 0, so nobody should
+
+commit 35a7c2954641cf4d34e3ab7ec58c5af97a52b98b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:22:59 2018 +0800
+
+    v3.3-rc6
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 096c975..461ce43 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -242,4 +242,12 @@ static inline void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
+ static inline void perf_events_lapic_init(void)	{ }
+ #endif
+ 
++#if defined(CONFIG_PERF_EVENTS) && defined(CONFIG_CPU_SUP_AMD)
++ extern void amd_pmu_enable_virt(void);
++ extern void amd_pmu_disable_virt(void);
++#else
++ static inline void amd_pmu_enable_virt(void) { }
++ static inline void amd_pmu_disable_virt(void) { }
++#endif
++
+ #endif /* _ASM_X86_PERF_EVENT_H */
+
+commit f2d9bbf903f09287849bb24468fa00b66180b16b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:22:55 2018 +0800
+
+    v3.3-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index f61c62f..096c975 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -57,6 +57,7 @@
+ 		(1 << (ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX))
+ 
+ #define ARCH_PERFMON_BRANCH_MISSES_RETIRED		6
++#define ARCH_PERFMON_EVENTS_COUNT			7
+ 
+ /*
+  * Intel "Architectural Performance Monitoring" CPUID
+@@ -72,6 +73,19 @@ union cpuid10_eax {
+ 	unsigned int full;
+ };
+ 
++union cpuid10_ebx {
++	struct {
++		unsigned int no_unhalted_core_cycles:1;
++		unsigned int no_instructions_retired:1;
++		unsigned int no_unhalted_reference_cycles:1;
++		unsigned int no_llc_reference:1;
++		unsigned int no_llc_misses:1;
++		unsigned int no_branch_instruction_retired:1;
++		unsigned int no_branch_misses_retired:1;
++	} split;
++	unsigned int full;
++};
++
+ union cpuid10_edx {
+ 	struct {
+ 		unsigned int num_counters_fixed:5;
+@@ -81,6 +95,15 @@ union cpuid10_edx {
+ 	unsigned int full;
+ };
+ 
++struct x86_pmu_capability {
++	int		version;
++	int		num_counters_gp;
++	int		num_counters_fixed;
++	int		bit_width_gp;
++	int		bit_width_fixed;
++	unsigned int	events_mask;
++	int		events_mask_len;
++};
+ 
+ /*
+  * Fixed-purpose performance events:
+@@ -89,23 +112,24 @@ union cpuid10_edx {
+ /*
+  * All 3 fixed-mode PMCs are configured via this single MSR:
+  */
+-#define MSR_ARCH_PERFMON_FIXED_CTR_CTRL			0x38d
++#define MSR_ARCH_PERFMON_FIXED_CTR_CTRL	0x38d
+ 
+ /*
+  * The counts are available in three separate MSRs:
+  */
+ 
+ /* Instr_Retired.Any: */
+-#define MSR_ARCH_PERFMON_FIXED_CTR0			0x309
+-#define X86_PMC_IDX_FIXED_INSTRUCTIONS			(X86_PMC_IDX_FIXED + 0)
++#define MSR_ARCH_PERFMON_FIXED_CTR0	0x309
++#define X86_PMC_IDX_FIXED_INSTRUCTIONS	(X86_PMC_IDX_FIXED + 0)
+ 
+ /* CPU_CLK_Unhalted.Core: */
+-#define MSR_ARCH_PERFMON_FIXED_CTR1			0x30a
+-#define X86_PMC_IDX_FIXED_CPU_CYCLES			(X86_PMC_IDX_FIXED + 1)
++#define MSR_ARCH_PERFMON_FIXED_CTR1	0x30a
++#define X86_PMC_IDX_FIXED_CPU_CYCLES	(X86_PMC_IDX_FIXED + 1)
+ 
+ /* CPU_CLK_Unhalted.Ref: */
+-#define MSR_ARCH_PERFMON_FIXED_CTR2			0x30b
+-#define X86_PMC_IDX_FIXED_BUS_CYCLES			(X86_PMC_IDX_FIXED + 2)
++#define MSR_ARCH_PERFMON_FIXED_CTR2	0x30b
++#define X86_PMC_IDX_FIXED_REF_CYCLES	(X86_PMC_IDX_FIXED + 2)
++#define X86_PMC_MSK_FIXED_REF_CYCLES	(1ULL << X86_PMC_IDX_FIXED_REF_CYCLES)
+ 
+ /*
+  * We model BTS tracing as another fixed-mode PMC.
+@@ -202,6 +226,7 @@ struct perf_guest_switch_msr {
+ };
+ 
+ extern struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr);
++extern void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap);
+ #else
+ static inline perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
+ {
+@@ -209,6 +234,11 @@ static inline perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
+ 	return NULL;
+ }
+ 
++static inline void perf_get_x86_pmu_capability(struct x86_pmu_capability *cap)
++{
++	memset(cap, 0, sizeof(*cap));
++}
++
+ static inline void perf_events_lapic_init(void)	{ }
+ #endif
+ 
+
+commit 4857571e9c57c3a7e315731c3d57b496dd17bc1b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:22:47 2018 +0800
+
+    v3.2-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 094fb30..f61c62f 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -29,6 +29,9 @@
+ #define ARCH_PERFMON_EVENTSEL_INV			(1ULL << 23)
+ #define ARCH_PERFMON_EVENTSEL_CMASK			0xFF000000ULL
+ 
++#define AMD_PERFMON_EVENTSEL_GUESTONLY			(1ULL << 40)
++#define AMD_PERFMON_EVENTSEL_HOSTONLY			(1ULL << 41)
++
+ #define AMD64_EVENTSEL_EVENT	\
+ 	(ARCH_PERFMON_EVENTSEL_EVENT | (0x0FULL << 32))
+ #define INTEL_ARCH_EVENT_MASK	\
+@@ -43,14 +46,17 @@
+ #define AMD64_RAW_EVENT_MASK		\
+ 	(X86_RAW_EVENT_MASK          |  \
+ 	 AMD64_EVENTSEL_EVENT)
++#define AMD64_NUM_COUNTERS				4
++#define AMD64_NUM_COUNTERS_F15H				6
++#define AMD64_NUM_COUNTERS_MAX				AMD64_NUM_COUNTERS_F15H
+ 
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX			 0
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX		0
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_PRESENT \
+ 		(1 << (ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX))
+ 
+-#define ARCH_PERFMON_BRANCH_MISSES_RETIRED			 6
++#define ARCH_PERFMON_BRANCH_MISSES_RETIRED		6
+ 
+ /*
+  * Intel "Architectural Performance Monitoring" CPUID
+@@ -110,6 +116,35 @@ union cpuid10_edx {
+  */
+ #define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
+ 
++/*
++ * IBS cpuid feature detection
++ */
++
++#define IBS_CPUID_FEATURES		0x8000001b
++
++/*
++ * Same bit mask as for IBS cpuid feature flags (Fn8000_001B_EAX), but
++ * bit 0 is used to indicate the existence of IBS.
++ */
++#define IBS_CAPS_AVAIL			(1U<<0)
++#define IBS_CAPS_FETCHSAM		(1U<<1)
++#define IBS_CAPS_OPSAM			(1U<<2)
++#define IBS_CAPS_RDWROPCNT		(1U<<3)
++#define IBS_CAPS_OPCNT			(1U<<4)
++#define IBS_CAPS_BRNTRGT		(1U<<5)
++#define IBS_CAPS_OPCNTEXT		(1U<<6)
++
++#define IBS_CAPS_DEFAULT		(IBS_CAPS_AVAIL		\
++					 | IBS_CAPS_FETCHSAM	\
++					 | IBS_CAPS_OPSAM)
++
++/*
++ * IBS APIC setup
++ */
++#define IBSCTL				0x1cc
++#define IBSCTL_LVT_OFFSET_VALID		(1ULL<<8)
++#define IBSCTL_LVT_OFFSET_MASK		0x0F
++
+ /* IbsFetchCtl bits/masks */
+ #define IBS_FETCH_RAND_EN	(1ULL<<57)
+ #define IBS_FETCH_VAL		(1ULL<<49)
+@@ -124,6 +159,8 @@ union cpuid10_edx {
+ #define IBS_OP_MAX_CNT		0x0000FFFFULL
+ #define IBS_OP_MAX_CNT_EXT	0x007FFFFFULL	/* not a register bit mask */
+ 
++extern u32 get_ibs_caps(void);
++
+ #ifdef CONFIG_PERF_EVENTS
+ extern void perf_events_lapic_init(void);
+ 
+@@ -159,7 +196,19 @@ extern unsigned long perf_misc_flags(struct pt_regs *regs);
+ 	);							\
+ }
+ 
++struct perf_guest_switch_msr {
++	unsigned msr;
++	u64 host, guest;
++};
++
++extern struct perf_guest_switch_msr *perf_guest_get_msrs(int *nr);
+ #else
++static inline perf_guest_switch_msr *perf_guest_get_msrs(int *nr)
++{
++	*nr = 0;
++	return NULL;
++}
++
+ static inline void perf_events_lapic_init(void)	{ }
+ #endif
+ 
+
+commit 53d1009946f383e049522de6e29a95e21a47f830
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:22:37 2018 +0800
+
+    v3.1-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index d9d4dae..094fb30 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -152,6 +152,11 @@ extern unsigned long perf_misc_flags(struct pt_regs *regs);
+ 	(regs)->bp = caller_frame_pointer();			\
+ 	(regs)->cs = __KERNEL_CS;				\
+ 	regs->flags = 0;					\
++	asm volatile(						\
++		_ASM_MOV "%%"_ASM_SP ", %0\n"			\
++		: "=m" ((regs)->sp)				\
++		:: "memory"					\
++	);							\
+ }
+ 
+ #else
+
+commit b657e8c179a1e483699a0c9dbd7fc09abec4a30f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:22:09 2018 +0800
+
+    v2.6.38-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 550e26b..d9d4dae 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -125,7 +125,6 @@ union cpuid10_edx {
+ #define IBS_OP_MAX_CNT_EXT	0x007FFFFFULL	/* not a register bit mask */
+ 
+ #ifdef CONFIG_PERF_EVENTS
+-extern void init_hw_perf_events(void);
+ extern void perf_events_lapic_init(void);
+ 
+ #define PERF_EVENT_INDEX_OFFSET			0
+@@ -156,7 +155,6 @@ extern unsigned long perf_misc_flags(struct pt_regs *regs);
+ }
+ 
+ #else
+-static inline void init_hw_perf_events(void)		{ }
+ static inline void perf_events_lapic_init(void)	{ }
+ #endif
+ 
+
+commit b1d9d4e1ea37fd9c0d1e64c11e968385ef5fb408
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:21:59 2018 +0800
+
+    v2.6.37-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 6e742cc..550e26b 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -111,17 +111,18 @@ union cpuid10_edx {
+ #define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
+ 
+ /* IbsFetchCtl bits/masks */
+-#define IBS_FETCH_RAND_EN		(1ULL<<57)
+-#define IBS_FETCH_VAL			(1ULL<<49)
+-#define IBS_FETCH_ENABLE		(1ULL<<48)
+-#define IBS_FETCH_CNT			0xFFFF0000ULL
+-#define IBS_FETCH_MAX_CNT		0x0000FFFFULL
++#define IBS_FETCH_RAND_EN	(1ULL<<57)
++#define IBS_FETCH_VAL		(1ULL<<49)
++#define IBS_FETCH_ENABLE	(1ULL<<48)
++#define IBS_FETCH_CNT		0xFFFF0000ULL
++#define IBS_FETCH_MAX_CNT	0x0000FFFFULL
+ 
+ /* IbsOpCtl bits */
+-#define IBS_OP_CNT_CTL			(1ULL<<19)
+-#define IBS_OP_VAL			(1ULL<<18)
+-#define IBS_OP_ENABLE			(1ULL<<17)
+-#define IBS_OP_MAX_CNT			0x0000FFFFULL
++#define IBS_OP_CNT_CTL		(1ULL<<19)
++#define IBS_OP_VAL		(1ULL<<18)
++#define IBS_OP_ENABLE		(1ULL<<17)
++#define IBS_OP_MAX_CNT		0x0000FFFFULL
++#define IBS_OP_MAX_CNT_EXT	0x007FFFFFULL	/* not a register bit mask */
+ 
+ #ifdef CONFIG_PERF_EVENTS
+ extern void init_hw_perf_events(void);
+
+commit 3c2f2ec4de5174d1828d198b262f58b85822109b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:21:50 2018 +0800
+
+    v2.6.36-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 254883d..6e742cc 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -68,8 +68,9 @@ union cpuid10_eax {
+ 
+ union cpuid10_edx {
+ 	struct {
+-		unsigned int num_counters_fixed:4;
+-		unsigned int reserved:28;
++		unsigned int num_counters_fixed:5;
++		unsigned int bit_width_fixed:8;
++		unsigned int reserved:19;
+ 	} split;
+ 	unsigned int full;
+ };
+@@ -140,6 +141,19 @@ extern unsigned long perf_instruction_pointer(struct pt_regs *regs);
+ extern unsigned long perf_misc_flags(struct pt_regs *regs);
+ #define perf_misc_flags(regs)	perf_misc_flags(regs)
+ 
++#include <asm/stacktrace.h>
++
++/*
++ * We abuse bit 3 from flags to pass exact information, see perf_misc_flags
++ * and the comment with PERF_EFLAGS_EXACT.
++ */
++#define perf_arch_fetch_caller_regs(regs, __ip)		{	\
++	(regs)->ip = (__ip);					\
++	(regs)->bp = caller_frame_pointer();			\
++	(regs)->cs = __KERNEL_CS;				\
++	regs->flags = 0;					\
++}
++
+ #else
+ static inline void init_hw_perf_events(void)		{ }
+ static inline void perf_events_lapic_init(void)	{ }
+
+commit 7b20c440f3d518e397c8991c35b2686332c077e1
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:21:42 2018 +0800
+
+    v2.6.35-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index db6109a..254883d 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -5,7 +5,7 @@
+  * Performance event hw details:
+  */
+ 
+-#define X86_PMC_MAX_GENERIC					8
++#define X86_PMC_MAX_GENERIC				       32
+ #define X86_PMC_MAX_FIXED					3
+ 
+ #define X86_PMC_IDX_GENERIC				        0
+@@ -18,39 +18,31 @@
+ #define MSR_ARCH_PERFMON_EVENTSEL0			     0x186
+ #define MSR_ARCH_PERFMON_EVENTSEL1			     0x187
+ 
+-#define ARCH_PERFMON_EVENTSEL_ENABLE			  (1 << 22)
+-#define ARCH_PERFMON_EVENTSEL_ANY			  (1 << 21)
+-#define ARCH_PERFMON_EVENTSEL_INT			  (1 << 20)
+-#define ARCH_PERFMON_EVENTSEL_OS			  (1 << 17)
+-#define ARCH_PERFMON_EVENTSEL_USR			  (1 << 16)
+-
+-/*
+- * Includes eventsel and unit mask as well:
+- */
+-
+-
+-#define INTEL_ARCH_EVTSEL_MASK		0x000000FFULL
+-#define INTEL_ARCH_UNIT_MASK		0x0000FF00ULL
+-#define INTEL_ARCH_EDGE_MASK		0x00040000ULL
+-#define INTEL_ARCH_INV_MASK		0x00800000ULL
+-#define INTEL_ARCH_CNT_MASK		0xFF000000ULL
+-#define INTEL_ARCH_EVENT_MASK	(INTEL_ARCH_UNIT_MASK|INTEL_ARCH_EVTSEL_MASK)
+-
+-/*
+- * filter mask to validate fixed counter events.
+- * the following filters disqualify for fixed counters:
+- *  - inv
+- *  - edge
+- *  - cnt-mask
+- *  The other filters are supported by fixed counters.
+- *  The any-thread option is supported starting with v3.
+- */
+-#define INTEL_ARCH_FIXED_MASK \
+-	(INTEL_ARCH_CNT_MASK| \
+-	 INTEL_ARCH_INV_MASK| \
+-	 INTEL_ARCH_EDGE_MASK|\
+-	 INTEL_ARCH_UNIT_MASK|\
+-	 INTEL_ARCH_EVENT_MASK)
++#define ARCH_PERFMON_EVENTSEL_EVENT			0x000000FFULL
++#define ARCH_PERFMON_EVENTSEL_UMASK			0x0000FF00ULL
++#define ARCH_PERFMON_EVENTSEL_USR			(1ULL << 16)
++#define ARCH_PERFMON_EVENTSEL_OS			(1ULL << 17)
++#define ARCH_PERFMON_EVENTSEL_EDGE			(1ULL << 18)
++#define ARCH_PERFMON_EVENTSEL_INT			(1ULL << 20)
++#define ARCH_PERFMON_EVENTSEL_ANY			(1ULL << 21)
++#define ARCH_PERFMON_EVENTSEL_ENABLE			(1ULL << 22)
++#define ARCH_PERFMON_EVENTSEL_INV			(1ULL << 23)
++#define ARCH_PERFMON_EVENTSEL_CMASK			0xFF000000ULL
++
++#define AMD64_EVENTSEL_EVENT	\
++	(ARCH_PERFMON_EVENTSEL_EVENT | (0x0FULL << 32))
++#define INTEL_ARCH_EVENT_MASK	\
++	(ARCH_PERFMON_EVENTSEL_UMASK | ARCH_PERFMON_EVENTSEL_EVENT)
++
++#define X86_RAW_EVENT_MASK		\
++	(ARCH_PERFMON_EVENTSEL_EVENT |	\
++	 ARCH_PERFMON_EVENTSEL_UMASK |	\
++	 ARCH_PERFMON_EVENTSEL_EDGE  |	\
++	 ARCH_PERFMON_EVENTSEL_INV   |	\
++	 ARCH_PERFMON_EVENTSEL_CMASK)
++#define AMD64_RAW_EVENT_MASK		\
++	(X86_RAW_EVENT_MASK          |  \
++	 AMD64_EVENTSEL_EVENT)
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+@@ -67,7 +59,7 @@
+ union cpuid10_eax {
+ 	struct {
+ 		unsigned int version_id:8;
+-		unsigned int num_events:8;
++		unsigned int num_counters:8;
+ 		unsigned int bit_width:8;
+ 		unsigned int mask_length:8;
+ 	} split;
+@@ -76,7 +68,7 @@ union cpuid10_eax {
+ 
+ union cpuid10_edx {
+ 	struct {
+-		unsigned int num_events_fixed:4;
++		unsigned int num_counters_fixed:4;
+ 		unsigned int reserved:28;
+ 	} split;
+ 	unsigned int full;
+@@ -136,6 +128,18 @@ extern void perf_events_lapic_init(void);
+ 
+ #define PERF_EVENT_INDEX_OFFSET			0
+ 
++/*
++ * Abuse bit 3 of the cpu eflags register to indicate proper PEBS IP fixups.
++ * This flag is otherwise unused and ABI specified to be 0, so nobody should
++ * care what we do with it.
++ */
++#define PERF_EFLAGS_EXACT	(1UL << 3)
++
++struct pt_regs;
++extern unsigned long perf_instruction_pointer(struct pt_regs *regs);
++extern unsigned long perf_misc_flags(struct pt_regs *regs);
++#define perf_misc_flags(regs)	perf_misc_flags(regs)
++
+ #else
+ static inline void init_hw_perf_events(void)		{ }
+ static inline void perf_events_lapic_init(void)	{ }
+
+commit 4d0bc686cb8d5ae21ff9e552390f2409eea96f3e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:21:32 2018 +0800
+
+    v2.6.34-rc2
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index befd172..db6109a 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -18,7 +18,7 @@
+ #define MSR_ARCH_PERFMON_EVENTSEL0			     0x186
+ #define MSR_ARCH_PERFMON_EVENTSEL1			     0x187
+ 
+-#define ARCH_PERFMON_EVENTSEL0_ENABLE			  (1 << 22)
++#define ARCH_PERFMON_EVENTSEL_ENABLE			  (1 << 22)
+ #define ARCH_PERFMON_EVENTSEL_ANY			  (1 << 21)
+ #define ARCH_PERFMON_EVENTSEL_INT			  (1 << 20)
+ #define ARCH_PERFMON_EVENTSEL_OS			  (1 << 17)
+@@ -50,7 +50,7 @@
+ 	 INTEL_ARCH_INV_MASK| \
+ 	 INTEL_ARCH_EDGE_MASK|\
+ 	 INTEL_ARCH_UNIT_MASK|\
+-	 INTEL_ARCH_EVTSEL_MASK)
++	 INTEL_ARCH_EVENT_MASK)
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+@@ -117,6 +117,18 @@ union cpuid10_edx {
+  */
+ #define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
+ 
++/* IbsFetchCtl bits/masks */
++#define IBS_FETCH_RAND_EN		(1ULL<<57)
++#define IBS_FETCH_VAL			(1ULL<<49)
++#define IBS_FETCH_ENABLE		(1ULL<<48)
++#define IBS_FETCH_CNT			0xFFFF0000ULL
++#define IBS_FETCH_MAX_CNT		0x0000FFFFULL
++
++/* IbsOpCtl bits */
++#define IBS_OP_CNT_CTL			(1ULL<<19)
++#define IBS_OP_VAL			(1ULL<<18)
++#define IBS_OP_ENABLE			(1ULL<<17)
++#define IBS_OP_MAX_CNT			0x0000FFFFULL
+ 
+ #ifdef CONFIG_PERF_EVENTS
+ extern void init_hw_perf_events(void);
+
+commit c1fcecab07c6c9d5be7e60635bd6ce36bed983ca
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:21:31 2018 +0800
+
+    v2.6.34-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 1380367..befd172 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -27,7 +27,14 @@
+ /*
+  * Includes eventsel and unit mask as well:
+  */
+-#define ARCH_PERFMON_EVENT_MASK				    0xffff
++
++
++#define INTEL_ARCH_EVTSEL_MASK		0x000000FFULL
++#define INTEL_ARCH_UNIT_MASK		0x0000FF00ULL
++#define INTEL_ARCH_EDGE_MASK		0x00040000ULL
++#define INTEL_ARCH_INV_MASK		0x00800000ULL
++#define INTEL_ARCH_CNT_MASK		0xFF000000ULL
++#define INTEL_ARCH_EVENT_MASK	(INTEL_ARCH_UNIT_MASK|INTEL_ARCH_EVTSEL_MASK)
+ 
+ /*
+  * filter mask to validate fixed counter events.
+@@ -38,7 +45,12 @@
+  *  The other filters are supported by fixed counters.
+  *  The any-thread option is supported starting with v3.
+  */
+-#define ARCH_PERFMON_EVENT_FILTER_MASK			0xff840000
++#define INTEL_ARCH_FIXED_MASK \
++	(INTEL_ARCH_CNT_MASK| \
++	 INTEL_ARCH_INV_MASK| \
++	 INTEL_ARCH_EDGE_MASK|\
++	 INTEL_ARCH_UNIT_MASK|\
++	 INTEL_ARCH_EVTSEL_MASK)
+ 
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+
+commit ee1a1d07e890ec114c9cd4db86bf392c127e100a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:21:25 2018 +0800
+
+    v2.6.33-rc5
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index 8d9f854..1380367 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -19,6 +19,7 @@
+ #define MSR_ARCH_PERFMON_EVENTSEL1			     0x187
+ 
+ #define ARCH_PERFMON_EVENTSEL0_ENABLE			  (1 << 22)
++#define ARCH_PERFMON_EVENTSEL_ANY			  (1 << 21)
+ #define ARCH_PERFMON_EVENTSEL_INT			  (1 << 20)
+ #define ARCH_PERFMON_EVENTSEL_OS			  (1 << 17)
+ #define ARCH_PERFMON_EVENTSEL_USR			  (1 << 16)
+
+commit 81f3d39acc5919ee9b2ed975b31bd7d64755f5ad
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:21:21 2018 +0800
+
+    v2.6.33-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+index ad7ce3f..8d9f854 100644
+--- a/arch/x86/include/asm/perf_event.h
++++ b/arch/x86/include/asm/perf_event.h
+@@ -28,9 +28,20 @@
+  */
+ #define ARCH_PERFMON_EVENT_MASK				    0xffff
+ 
++/*
++ * filter mask to validate fixed counter events.
++ * the following filters disqualify for fixed counters:
++ *  - inv
++ *  - edge
++ *  - cnt-mask
++ *  The other filters are supported by fixed counters.
++ *  The any-thread option is supported starting with v3.
++ */
++#define ARCH_PERFMON_EVENT_FILTER_MASK			0xff840000
++
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
+-#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX 		 0
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX			 0
+ #define ARCH_PERFMON_UNHALTED_CORE_CYCLES_PRESENT \
+ 		(1 << (ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX))
+ 
+
+commit d975d333e9c1eaed7024551bce0697ec2a65e28f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:21:11 2018 +0800
+
+    v2.6.32-rc1
+
+diff --git a/arch/x86/include/asm/perf_event.h b/arch/x86/include/asm/perf_event.h
+new file mode 100644
+index 0000000..ad7ce3f
+--- /dev/null
++++ b/arch/x86/include/asm/perf_event.h
+@@ -0,0 +1,108 @@
++#ifndef _ASM_X86_PERF_EVENT_H
++#define _ASM_X86_PERF_EVENT_H
++
++/*
++ * Performance event hw details:
++ */
++
++#define X86_PMC_MAX_GENERIC					8
++#define X86_PMC_MAX_FIXED					3
++
++#define X86_PMC_IDX_GENERIC				        0
++#define X86_PMC_IDX_FIXED				       32
++#define X86_PMC_IDX_MAX					       64
++
++#define MSR_ARCH_PERFMON_PERFCTR0			      0xc1
++#define MSR_ARCH_PERFMON_PERFCTR1			      0xc2
++
++#define MSR_ARCH_PERFMON_EVENTSEL0			     0x186
++#define MSR_ARCH_PERFMON_EVENTSEL1			     0x187
++
++#define ARCH_PERFMON_EVENTSEL0_ENABLE			  (1 << 22)
++#define ARCH_PERFMON_EVENTSEL_INT			  (1 << 20)
++#define ARCH_PERFMON_EVENTSEL_OS			  (1 << 17)
++#define ARCH_PERFMON_EVENTSEL_USR			  (1 << 16)
++
++/*
++ * Includes eventsel and unit mask as well:
++ */
++#define ARCH_PERFMON_EVENT_MASK				    0xffff
++
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_SEL		      0x3c
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_UMASK		(0x00 << 8)
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX 		 0
++#define ARCH_PERFMON_UNHALTED_CORE_CYCLES_PRESENT \
++		(1 << (ARCH_PERFMON_UNHALTED_CORE_CYCLES_INDEX))
++
++#define ARCH_PERFMON_BRANCH_MISSES_RETIRED			 6
++
++/*
++ * Intel "Architectural Performance Monitoring" CPUID
++ * detection/enumeration details:
++ */
++union cpuid10_eax {
++	struct {
++		unsigned int version_id:8;
++		unsigned int num_events:8;
++		unsigned int bit_width:8;
++		unsigned int mask_length:8;
++	} split;
++	unsigned int full;
++};
++
++union cpuid10_edx {
++	struct {
++		unsigned int num_events_fixed:4;
++		unsigned int reserved:28;
++	} split;
++	unsigned int full;
++};
++
++
++/*
++ * Fixed-purpose performance events:
++ */
++
++/*
++ * All 3 fixed-mode PMCs are configured via this single MSR:
++ */
++#define MSR_ARCH_PERFMON_FIXED_CTR_CTRL			0x38d
++
++/*
++ * The counts are available in three separate MSRs:
++ */
++
++/* Instr_Retired.Any: */
++#define MSR_ARCH_PERFMON_FIXED_CTR0			0x309
++#define X86_PMC_IDX_FIXED_INSTRUCTIONS			(X86_PMC_IDX_FIXED + 0)
++
++/* CPU_CLK_Unhalted.Core: */
++#define MSR_ARCH_PERFMON_FIXED_CTR1			0x30a
++#define X86_PMC_IDX_FIXED_CPU_CYCLES			(X86_PMC_IDX_FIXED + 1)
++
++/* CPU_CLK_Unhalted.Ref: */
++#define MSR_ARCH_PERFMON_FIXED_CTR2			0x30b
++#define X86_PMC_IDX_FIXED_BUS_CYCLES			(X86_PMC_IDX_FIXED + 2)
++
++/*
++ * We model BTS tracing as another fixed-mode PMC.
++ *
++ * We choose a value in the middle of the fixed event range, since lower
++ * values are used by actual fixed events and higher values are used
++ * to indicate other overflow conditions in the PERF_GLOBAL_STATUS msr.
++ */
++#define X86_PMC_IDX_FIXED_BTS				(X86_PMC_IDX_FIXED + 16)
++
++
++#ifdef CONFIG_PERF_EVENTS
++extern void init_hw_perf_events(void);
++extern void perf_events_lapic_init(void);
++
++#define PERF_EVENT_INDEX_OFFSET			0
++
++#else
++static inline void init_hw_perf_events(void)		{ }
++static inline void perf_events_lapic_init(void)	{ }
++#endif
++
++#endif /* _ASM_X86_PERF_EVENT_H */
+
+commit 8e7efcbea70b4281ad0b2332a5274c4e4c81f040
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sat Jul 14 06:18:37 2018 +0800
+
+    target source code file : arch/x86/include/asm/perf_event.h
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..fafc187
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++arch/x86/include/asm/perf_event.h

@@ -1,0 +1,1424 @@
+commit 8116bafb161adfeacda82350530122d70679c75d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:38:49 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+index 0e2f31f..22d4db3 100644
+--- a/drivers/iommu/s390-iommu.c
++++ b/drivers/iommu/s390-iommu.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  * IOMMU API for s390 PCI devices
+  *
+
+commit df50143dcbf56c58359cdbd52c245d8ad47e9949
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:38:34 2018 +0800
+
+    v4.14-rc1
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+index 8788640..0e2f31f 100644
+--- a/drivers/iommu/s390-iommu.c
++++ b/drivers/iommu/s390-iommu.c
+@@ -18,6 +18,8 @@
+  */
+ #define S390_IOMMU_PGSIZES	(~0xFFFUL)
+ 
++static const struct iommu_ops s390_iommu_ops;
++
+ struct s390_domain {
+ 	struct iommu_domain	domain;
+ 	struct list_head	devices;
+@@ -166,11 +168,13 @@ static void s390_iommu_detach_device(struct iommu_domain *domain,
+ static int s390_iommu_add_device(struct device *dev)
+ {
+ 	struct iommu_group *group = iommu_group_get_for_dev(dev);
++	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
+ 
+ 	if (IS_ERR(group))
+ 		return PTR_ERR(group);
+ 
+ 	iommu_group_put(group);
++	iommu_device_link(&zdev->iommu_dev, dev);
+ 
+ 	return 0;
+ }
+@@ -197,6 +201,7 @@ static void s390_iommu_remove_device(struct device *dev)
+ 			s390_iommu_detach_device(domain, dev);
+ 	}
+ 
++	iommu_device_unlink(&zdev->iommu_dev, dev);
+ 	iommu_group_remove_device(dev);
+ }
+ 
+@@ -327,7 +332,37 @@ static size_t s390_iommu_unmap(struct iommu_domain *domain,
+ 	return size;
+ }
+ 
+-static struct iommu_ops s390_iommu_ops = {
++int zpci_init_iommu(struct zpci_dev *zdev)
++{
++	int rc = 0;
++
++	rc = iommu_device_sysfs_add(&zdev->iommu_dev, NULL, NULL,
++				    "s390-iommu.%08x", zdev->fid);
++	if (rc)
++		goto out_err;
++
++	iommu_device_set_ops(&zdev->iommu_dev, &s390_iommu_ops);
++
++	rc = iommu_device_register(&zdev->iommu_dev);
++	if (rc)
++		goto out_sysfs;
++
++	return 0;
++
++out_sysfs:
++	iommu_device_sysfs_remove(&zdev->iommu_dev);
++
++out_err:
++	return rc;
++}
++
++void zpci_destroy_iommu(struct zpci_dev *zdev)
++{
++	iommu_device_unregister(&zdev->iommu_dev);
++	iommu_device_sysfs_remove(&zdev->iommu_dev);
++}
++
++static const struct iommu_ops s390_iommu_ops = {
+ 	.capable = s390_iommu_capable,
+ 	.domain_alloc = s390_domain_alloc,
+ 	.domain_free = s390_domain_free,
+
+commit 7789d8383f00e72ae6217a25b482324214acf3d8
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:38:16 2018 +0800
+
+    v4.13-rc1
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+index 179e636..8788640 100644
+--- a/drivers/iommu/s390-iommu.c
++++ b/drivers/iommu/s390-iommu.c
+@@ -165,20 +165,14 @@ static void s390_iommu_detach_device(struct iommu_domain *domain,
+ 
+ static int s390_iommu_add_device(struct device *dev)
+ {
+-	struct iommu_group *group;
+-	int rc;
++	struct iommu_group *group = iommu_group_get_for_dev(dev);
+ 
+-	group = iommu_group_get(dev);
+-	if (!group) {
+-		group = iommu_group_alloc();
+-		if (IS_ERR(group))
+-			return PTR_ERR(group);
+-	}
++	if (IS_ERR(group))
++		return PTR_ERR(group);
+ 
+-	rc = iommu_group_add_device(group, dev);
+ 	iommu_group_put(group);
+ 
+-	return rc;
++	return 0;
+ }
+ 
+ static void s390_iommu_remove_device(struct device *dev)
+@@ -344,6 +338,7 @@ static struct iommu_ops s390_iommu_ops = {
+ 	.iova_to_phys = s390_iommu_iova_to_phys,
+ 	.add_device = s390_iommu_add_device,
+ 	.remove_device = s390_iommu_remove_device,
++	.device_group = generic_device_group,
+ 	.pgsize_bitmap = S390_IOMMU_PGSIZES,
+ };
+ 
+
+commit 096bbc63439fb7a3ae44d682580f305da54e7712
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:37:21 2018 +0800
+
+    v4.10-rc1
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+index 3b44b1d..179e636 100644
+--- a/drivers/iommu/s390-iommu.c
++++ b/drivers/iommu/s390-iommu.c
+@@ -8,7 +8,6 @@
+ #include <linux/pci.h>
+ #include <linux/iommu.h>
+ #include <linux/iommu-helper.h>
+-#include <linux/pci.h>
+ #include <linux/sizes.h>
+ #include <asm/pci_dma.h>
+ 
+
+commit 36660563c529255c97433c9687199193c5b3f076
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:37:03 2018 +0800
+
+    v4.9-rc1
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+index a04d491..3b44b1d 100644
+--- a/drivers/iommu/s390-iommu.c
++++ b/drivers/iommu/s390-iommu.c
+@@ -101,8 +101,7 @@ static int s390_iommu_attach_device(struct iommu_domain *domain,
+ 		zpci_dma_exit_device(zdev);
+ 
+ 	zdev->dma_table = s390_domain->dma_table;
+-	rc = zpci_register_ioat(zdev, 0, zdev->start_dma + PAGE_OFFSET,
+-				zdev->start_dma + zdev->iommu_size - 1,
++	rc = zpci_register_ioat(zdev, 0, zdev->start_dma, zdev->end_dma,
+ 				(u64) zdev->dma_table);
+ 	if (rc)
+ 		goto out_restore;
+
+commit b47f7c60cfa1c67f6c9e47d768fce60ea155e97a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:35:58 2018 +0800
+
+    v4.5-rc1
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+index 471ee36..a04d491 100644
+--- a/drivers/iommu/s390-iommu.c
++++ b/drivers/iommu/s390-iommu.c
+@@ -49,7 +49,7 @@ static bool s390_iommu_capable(enum iommu_cap cap)
+ 	}
+ }
+ 
+-struct iommu_domain *s390_domain_alloc(unsigned domain_type)
++static struct iommu_domain *s390_domain_alloc(unsigned domain_type)
+ {
+ 	struct s390_domain *s390_domain;
+ 
+@@ -73,7 +73,7 @@ struct iommu_domain *s390_domain_alloc(unsigned domain_type)
+ 	return &s390_domain->domain;
+ }
+ 
+-void s390_domain_free(struct iommu_domain *domain)
++static void s390_domain_free(struct iommu_domain *domain)
+ {
+ 	struct s390_domain *s390_domain = to_s390_domain(domain);
+ 
+
+commit 295a3d65f9d0f201db7a577696f3e334c4e10d86
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:35:44 2018 +0800
+
+    v4.4-rc2
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+index cbe198c..471ee36 100644
+--- a/drivers/iommu/s390-iommu.c
++++ b/drivers/iommu/s390-iommu.c
+@@ -216,6 +216,7 @@ static int s390_iommu_update_trans(struct s390_domain *s390_domain,
+ 	u8 *page_addr = (u8 *) (pa & PAGE_MASK);
+ 	dma_addr_t start_dma_addr = dma_addr;
+ 	unsigned long irq_flags, nr_pages, i;
++	unsigned long *entry;
+ 	int rc = 0;
+ 
+ 	if (dma_addr < s390_domain->domain.geometry.aperture_start ||
+@@ -228,8 +229,12 @@ static int s390_iommu_update_trans(struct s390_domain *s390_domain,
+ 
+ 	spin_lock_irqsave(&s390_domain->dma_table_lock, irq_flags);
+ 	for (i = 0; i < nr_pages; i++) {
+-		dma_update_cpu_trans(s390_domain->dma_table, page_addr,
+-				     dma_addr, flags);
++		entry = dma_walk_cpu_trans(s390_domain->dma_table, dma_addr);
++		if (!entry) {
++			rc = -ENOMEM;
++			goto undo_cpu_trans;
++		}
++		dma_update_cpu_trans(entry, page_addr, flags);
+ 		page_addr += PAGE_SIZE;
+ 		dma_addr += PAGE_SIZE;
+ 	}
+@@ -242,6 +247,20 @@ static int s390_iommu_update_trans(struct s390_domain *s390_domain,
+ 			break;
+ 	}
+ 	spin_unlock(&s390_domain->list_lock);
++
++undo_cpu_trans:
++	if (rc && ((flags & ZPCI_PTE_VALID_MASK) == ZPCI_PTE_VALID)) {
++		flags = ZPCI_PTE_INVALID;
++		while (i-- > 0) {
++			page_addr -= PAGE_SIZE;
++			dma_addr -= PAGE_SIZE;
++			entry = dma_walk_cpu_trans(s390_domain->dma_table,
++						   dma_addr);
++			if (!entry)
++				break;
++			dma_update_cpu_trans(entry, page_addr, flags);
++		}
++	}
+ 	spin_unlock_irqrestore(&s390_domain->dma_table_lock, irq_flags);
+ 
+ 	return rc;
+
+commit 2137b9f97e20951eb788ce5d4bb72fb01f6dc201
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:35:42 2018 +0800
+
+    v4.4-rc1
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+new file mode 100644
+index 0000000..cbe198c
+--- /dev/null
++++ b/drivers/iommu/s390-iommu.c
+@@ -0,0 +1,337 @@
++/*
++ * IOMMU API for s390 PCI devices
++ *
++ * Copyright IBM Corp. 2015
++ * Author(s): Gerald Schaefer <gerald.schaefer@de.ibm.com>
++ */
++
++#include <linux/pci.h>
++#include <linux/iommu.h>
++#include <linux/iommu-helper.h>
++#include <linux/pci.h>
++#include <linux/sizes.h>
++#include <asm/pci_dma.h>
++
++/*
++ * Physically contiguous memory regions can be mapped with 4 KiB alignment,
++ * we allow all page sizes that are an order of 4KiB (no special large page
++ * support so far).
++ */
++#define S390_IOMMU_PGSIZES	(~0xFFFUL)
++
++struct s390_domain {
++	struct iommu_domain	domain;
++	struct list_head	devices;
++	unsigned long		*dma_table;
++	spinlock_t		dma_table_lock;
++	spinlock_t		list_lock;
++};
++
++struct s390_domain_device {
++	struct list_head	list;
++	struct zpci_dev		*zdev;
++};
++
++static struct s390_domain *to_s390_domain(struct iommu_domain *dom)
++{
++	return container_of(dom, struct s390_domain, domain);
++}
++
++static bool s390_iommu_capable(enum iommu_cap cap)
++{
++	switch (cap) {
++	case IOMMU_CAP_CACHE_COHERENCY:
++		return true;
++	case IOMMU_CAP_INTR_REMAP:
++		return true;
++	default:
++		return false;
++	}
++}
++
++struct iommu_domain *s390_domain_alloc(unsigned domain_type)
++{
++	struct s390_domain *s390_domain;
++
++	if (domain_type != IOMMU_DOMAIN_UNMANAGED)
++		return NULL;
++
++	s390_domain = kzalloc(sizeof(*s390_domain), GFP_KERNEL);
++	if (!s390_domain)
++		return NULL;
++
++	s390_domain->dma_table = dma_alloc_cpu_table();
++	if (!s390_domain->dma_table) {
++		kfree(s390_domain);
++		return NULL;
++	}
++
++	spin_lock_init(&s390_domain->dma_table_lock);
++	spin_lock_init(&s390_domain->list_lock);
++	INIT_LIST_HEAD(&s390_domain->devices);
++
++	return &s390_domain->domain;
++}
++
++void s390_domain_free(struct iommu_domain *domain)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++
++	dma_cleanup_tables(s390_domain->dma_table);
++	kfree(s390_domain);
++}
++
++static int s390_iommu_attach_device(struct iommu_domain *domain,
++				    struct device *dev)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
++	struct s390_domain_device *domain_device;
++	unsigned long flags;
++	int rc;
++
++	if (!zdev)
++		return -ENODEV;
++
++	domain_device = kzalloc(sizeof(*domain_device), GFP_KERNEL);
++	if (!domain_device)
++		return -ENOMEM;
++
++	if (zdev->dma_table)
++		zpci_dma_exit_device(zdev);
++
++	zdev->dma_table = s390_domain->dma_table;
++	rc = zpci_register_ioat(zdev, 0, zdev->start_dma + PAGE_OFFSET,
++				zdev->start_dma + zdev->iommu_size - 1,
++				(u64) zdev->dma_table);
++	if (rc)
++		goto out_restore;
++
++	spin_lock_irqsave(&s390_domain->list_lock, flags);
++	/* First device defines the DMA range limits */
++	if (list_empty(&s390_domain->devices)) {
++		domain->geometry.aperture_start = zdev->start_dma;
++		domain->geometry.aperture_end = zdev->end_dma;
++		domain->geometry.force_aperture = true;
++	/* Allow only devices with identical DMA range limits */
++	} else if (domain->geometry.aperture_start != zdev->start_dma ||
++		   domain->geometry.aperture_end != zdev->end_dma) {
++		rc = -EINVAL;
++		spin_unlock_irqrestore(&s390_domain->list_lock, flags);
++		goto out_restore;
++	}
++	domain_device->zdev = zdev;
++	zdev->s390_domain = s390_domain;
++	list_add(&domain_device->list, &s390_domain->devices);
++	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
++
++	return 0;
++
++out_restore:
++	zpci_dma_init_device(zdev);
++	kfree(domain_device);
++
++	return rc;
++}
++
++static void s390_iommu_detach_device(struct iommu_domain *domain,
++				     struct device *dev)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
++	struct s390_domain_device *domain_device, *tmp;
++	unsigned long flags;
++	int found = 0;
++
++	if (!zdev)
++		return;
++
++	spin_lock_irqsave(&s390_domain->list_lock, flags);
++	list_for_each_entry_safe(domain_device, tmp, &s390_domain->devices,
++				 list) {
++		if (domain_device->zdev == zdev) {
++			list_del(&domain_device->list);
++			kfree(domain_device);
++			found = 1;
++			break;
++		}
++	}
++	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
++
++	if (found) {
++		zdev->s390_domain = NULL;
++		zpci_unregister_ioat(zdev, 0);
++		zpci_dma_init_device(zdev);
++	}
++}
++
++static int s390_iommu_add_device(struct device *dev)
++{
++	struct iommu_group *group;
++	int rc;
++
++	group = iommu_group_get(dev);
++	if (!group) {
++		group = iommu_group_alloc();
++		if (IS_ERR(group))
++			return PTR_ERR(group);
++	}
++
++	rc = iommu_group_add_device(group, dev);
++	iommu_group_put(group);
++
++	return rc;
++}
++
++static void s390_iommu_remove_device(struct device *dev)
++{
++	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
++	struct iommu_domain *domain;
++
++	/*
++	 * This is a workaround for a scenario where the IOMMU API common code
++	 * "forgets" to call the detach_dev callback: After binding a device
++	 * to vfio-pci and completing the VFIO_SET_IOMMU ioctl (which triggers
++	 * the attach_dev), removing the device via
++	 * "echo 1 > /sys/bus/pci/devices/.../remove" won't trigger detach_dev,
++	 * only remove_device will be called via the BUS_NOTIFY_REMOVED_DEVICE
++	 * notifier.
++	 *
++	 * So let's call detach_dev from here if it hasn't been called before.
++	 */
++	if (zdev && zdev->s390_domain) {
++		domain = iommu_get_domain_for_dev(dev);
++		if (domain)
++			s390_iommu_detach_device(domain, dev);
++	}
++
++	iommu_group_remove_device(dev);
++}
++
++static int s390_iommu_update_trans(struct s390_domain *s390_domain,
++				   unsigned long pa, dma_addr_t dma_addr,
++				   size_t size, int flags)
++{
++	struct s390_domain_device *domain_device;
++	u8 *page_addr = (u8 *) (pa & PAGE_MASK);
++	dma_addr_t start_dma_addr = dma_addr;
++	unsigned long irq_flags, nr_pages, i;
++	int rc = 0;
++
++	if (dma_addr < s390_domain->domain.geometry.aperture_start ||
++	    dma_addr + size > s390_domain->domain.geometry.aperture_end)
++		return -EINVAL;
++
++	nr_pages = PAGE_ALIGN(size) >> PAGE_SHIFT;
++	if (!nr_pages)
++		return 0;
++
++	spin_lock_irqsave(&s390_domain->dma_table_lock, irq_flags);
++	for (i = 0; i < nr_pages; i++) {
++		dma_update_cpu_trans(s390_domain->dma_table, page_addr,
++				     dma_addr, flags);
++		page_addr += PAGE_SIZE;
++		dma_addr += PAGE_SIZE;
++	}
++
++	spin_lock(&s390_domain->list_lock);
++	list_for_each_entry(domain_device, &s390_domain->devices, list) {
++		rc = zpci_refresh_trans((u64) domain_device->zdev->fh << 32,
++					start_dma_addr, nr_pages * PAGE_SIZE);
++		if (rc)
++			break;
++	}
++	spin_unlock(&s390_domain->list_lock);
++	spin_unlock_irqrestore(&s390_domain->dma_table_lock, irq_flags);
++
++	return rc;
++}
++
++static int s390_iommu_map(struct iommu_domain *domain, unsigned long iova,
++			  phys_addr_t paddr, size_t size, int prot)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	int flags = ZPCI_PTE_VALID, rc = 0;
++
++	if (!(prot & IOMMU_READ))
++		return -EINVAL;
++
++	if (!(prot & IOMMU_WRITE))
++		flags |= ZPCI_TABLE_PROTECTED;
++
++	rc = s390_iommu_update_trans(s390_domain, (unsigned long) paddr, iova,
++				     size, flags);
++
++	return rc;
++}
++
++static phys_addr_t s390_iommu_iova_to_phys(struct iommu_domain *domain,
++					   dma_addr_t iova)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	unsigned long *sto, *pto, *rto, flags;
++	unsigned int rtx, sx, px;
++	phys_addr_t phys = 0;
++
++	if (iova < domain->geometry.aperture_start ||
++	    iova > domain->geometry.aperture_end)
++		return 0;
++
++	rtx = calc_rtx(iova);
++	sx = calc_sx(iova);
++	px = calc_px(iova);
++	rto = s390_domain->dma_table;
++
++	spin_lock_irqsave(&s390_domain->dma_table_lock, flags);
++	if (rto && reg_entry_isvalid(rto[rtx])) {
++		sto = get_rt_sto(rto[rtx]);
++		if (sto && reg_entry_isvalid(sto[sx])) {
++			pto = get_st_pto(sto[sx]);
++			if (pto && pt_entry_isvalid(pto[px]))
++				phys = pto[px] & ZPCI_PTE_ADDR_MASK;
++		}
++	}
++	spin_unlock_irqrestore(&s390_domain->dma_table_lock, flags);
++
++	return phys;
++}
++
++static size_t s390_iommu_unmap(struct iommu_domain *domain,
++			       unsigned long iova, size_t size)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	int flags = ZPCI_PTE_INVALID;
++	phys_addr_t paddr;
++	int rc;
++
++	paddr = s390_iommu_iova_to_phys(domain, iova);
++	if (!paddr)
++		return 0;
++
++	rc = s390_iommu_update_trans(s390_domain, (unsigned long) paddr, iova,
++				     size, flags);
++	if (rc)
++		return 0;
++
++	return size;
++}
++
++static struct iommu_ops s390_iommu_ops = {
++	.capable = s390_iommu_capable,
++	.domain_alloc = s390_domain_alloc,
++	.domain_free = s390_domain_free,
++	.attach_dev = s390_iommu_attach_device,
++	.detach_dev = s390_iommu_detach_device,
++	.map = s390_iommu_map,
++	.unmap = s390_iommu_unmap,
++	.iova_to_phys = s390_iommu_iova_to_phys,
++	.add_device = s390_iommu_add_device,
++	.remove_device = s390_iommu_remove_device,
++	.pgsize_bitmap = S390_IOMMU_PGSIZES,
++};
++
++static int __init s390_iommu_init(void)
++{
++	return bus_set_iommu(&pci_bus_type, &s390_iommu_ops);
++}
++subsys_initcall(s390_iommu_init);
+
+commit 7f3ae5649f6c4897db61788b76f14d82e08277fa
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:24:30 2018 +0800
+
+    v2.6.12
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+deleted file mode 100644
+index 22d4db3..0000000
+--- a/drivers/iommu/s390-iommu.c
++++ /dev/null
+@@ -1,385 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0
+-/*
+- * IOMMU API for s390 PCI devices
+- *
+- * Copyright IBM Corp. 2015
+- * Author(s): Gerald Schaefer <gerald.schaefer@de.ibm.com>
+- */
+-
+-#include <linux/pci.h>
+-#include <linux/iommu.h>
+-#include <linux/iommu-helper.h>
+-#include <linux/sizes.h>
+-#include <asm/pci_dma.h>
+-
+-/*
+- * Physically contiguous memory regions can be mapped with 4 KiB alignment,
+- * we allow all page sizes that are an order of 4KiB (no special large page
+- * support so far).
+- */
+-#define S390_IOMMU_PGSIZES	(~0xFFFUL)
+-
+-static const struct iommu_ops s390_iommu_ops;
+-
+-struct s390_domain {
+-	struct iommu_domain	domain;
+-	struct list_head	devices;
+-	unsigned long		*dma_table;
+-	spinlock_t		dma_table_lock;
+-	spinlock_t		list_lock;
+-};
+-
+-struct s390_domain_device {
+-	struct list_head	list;
+-	struct zpci_dev		*zdev;
+-};
+-
+-static struct s390_domain *to_s390_domain(struct iommu_domain *dom)
+-{
+-	return container_of(dom, struct s390_domain, domain);
+-}
+-
+-static bool s390_iommu_capable(enum iommu_cap cap)
+-{
+-	switch (cap) {
+-	case IOMMU_CAP_CACHE_COHERENCY:
+-		return true;
+-	case IOMMU_CAP_INTR_REMAP:
+-		return true;
+-	default:
+-		return false;
+-	}
+-}
+-
+-static struct iommu_domain *s390_domain_alloc(unsigned domain_type)
+-{
+-	struct s390_domain *s390_domain;
+-
+-	if (domain_type != IOMMU_DOMAIN_UNMANAGED)
+-		return NULL;
+-
+-	s390_domain = kzalloc(sizeof(*s390_domain), GFP_KERNEL);
+-	if (!s390_domain)
+-		return NULL;
+-
+-	s390_domain->dma_table = dma_alloc_cpu_table();
+-	if (!s390_domain->dma_table) {
+-		kfree(s390_domain);
+-		return NULL;
+-	}
+-
+-	spin_lock_init(&s390_domain->dma_table_lock);
+-	spin_lock_init(&s390_domain->list_lock);
+-	INIT_LIST_HEAD(&s390_domain->devices);
+-
+-	return &s390_domain->domain;
+-}
+-
+-static void s390_domain_free(struct iommu_domain *domain)
+-{
+-	struct s390_domain *s390_domain = to_s390_domain(domain);
+-
+-	dma_cleanup_tables(s390_domain->dma_table);
+-	kfree(s390_domain);
+-}
+-
+-static int s390_iommu_attach_device(struct iommu_domain *domain,
+-				    struct device *dev)
+-{
+-	struct s390_domain *s390_domain = to_s390_domain(domain);
+-	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
+-	struct s390_domain_device *domain_device;
+-	unsigned long flags;
+-	int rc;
+-
+-	if (!zdev)
+-		return -ENODEV;
+-
+-	domain_device = kzalloc(sizeof(*domain_device), GFP_KERNEL);
+-	if (!domain_device)
+-		return -ENOMEM;
+-
+-	if (zdev->dma_table)
+-		zpci_dma_exit_device(zdev);
+-
+-	zdev->dma_table = s390_domain->dma_table;
+-	rc = zpci_register_ioat(zdev, 0, zdev->start_dma, zdev->end_dma,
+-				(u64) zdev->dma_table);
+-	if (rc)
+-		goto out_restore;
+-
+-	spin_lock_irqsave(&s390_domain->list_lock, flags);
+-	/* First device defines the DMA range limits */
+-	if (list_empty(&s390_domain->devices)) {
+-		domain->geometry.aperture_start = zdev->start_dma;
+-		domain->geometry.aperture_end = zdev->end_dma;
+-		domain->geometry.force_aperture = true;
+-	/* Allow only devices with identical DMA range limits */
+-	} else if (domain->geometry.aperture_start != zdev->start_dma ||
+-		   domain->geometry.aperture_end != zdev->end_dma) {
+-		rc = -EINVAL;
+-		spin_unlock_irqrestore(&s390_domain->list_lock, flags);
+-		goto out_restore;
+-	}
+-	domain_device->zdev = zdev;
+-	zdev->s390_domain = s390_domain;
+-	list_add(&domain_device->list, &s390_domain->devices);
+-	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
+-
+-	return 0;
+-
+-out_restore:
+-	zpci_dma_init_device(zdev);
+-	kfree(domain_device);
+-
+-	return rc;
+-}
+-
+-static void s390_iommu_detach_device(struct iommu_domain *domain,
+-				     struct device *dev)
+-{
+-	struct s390_domain *s390_domain = to_s390_domain(domain);
+-	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
+-	struct s390_domain_device *domain_device, *tmp;
+-	unsigned long flags;
+-	int found = 0;
+-
+-	if (!zdev)
+-		return;
+-
+-	spin_lock_irqsave(&s390_domain->list_lock, flags);
+-	list_for_each_entry_safe(domain_device, tmp, &s390_domain->devices,
+-				 list) {
+-		if (domain_device->zdev == zdev) {
+-			list_del(&domain_device->list);
+-			kfree(domain_device);
+-			found = 1;
+-			break;
+-		}
+-	}
+-	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
+-
+-	if (found) {
+-		zdev->s390_domain = NULL;
+-		zpci_unregister_ioat(zdev, 0);
+-		zpci_dma_init_device(zdev);
+-	}
+-}
+-
+-static int s390_iommu_add_device(struct device *dev)
+-{
+-	struct iommu_group *group = iommu_group_get_for_dev(dev);
+-	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
+-
+-	if (IS_ERR(group))
+-		return PTR_ERR(group);
+-
+-	iommu_group_put(group);
+-	iommu_device_link(&zdev->iommu_dev, dev);
+-
+-	return 0;
+-}
+-
+-static void s390_iommu_remove_device(struct device *dev)
+-{
+-	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
+-	struct iommu_domain *domain;
+-
+-	/*
+-	 * This is a workaround for a scenario where the IOMMU API common code
+-	 * "forgets" to call the detach_dev callback: After binding a device
+-	 * to vfio-pci and completing the VFIO_SET_IOMMU ioctl (which triggers
+-	 * the attach_dev), removing the device via
+-	 * "echo 1 > /sys/bus/pci/devices/.../remove" won't trigger detach_dev,
+-	 * only remove_device will be called via the BUS_NOTIFY_REMOVED_DEVICE
+-	 * notifier.
+-	 *
+-	 * So let's call detach_dev from here if it hasn't been called before.
+-	 */
+-	if (zdev && zdev->s390_domain) {
+-		domain = iommu_get_domain_for_dev(dev);
+-		if (domain)
+-			s390_iommu_detach_device(domain, dev);
+-	}
+-
+-	iommu_device_unlink(&zdev->iommu_dev, dev);
+-	iommu_group_remove_device(dev);
+-}
+-
+-static int s390_iommu_update_trans(struct s390_domain *s390_domain,
+-				   unsigned long pa, dma_addr_t dma_addr,
+-				   size_t size, int flags)
+-{
+-	struct s390_domain_device *domain_device;
+-	u8 *page_addr = (u8 *) (pa & PAGE_MASK);
+-	dma_addr_t start_dma_addr = dma_addr;
+-	unsigned long irq_flags, nr_pages, i;
+-	unsigned long *entry;
+-	int rc = 0;
+-
+-	if (dma_addr < s390_domain->domain.geometry.aperture_start ||
+-	    dma_addr + size > s390_domain->domain.geometry.aperture_end)
+-		return -EINVAL;
+-
+-	nr_pages = PAGE_ALIGN(size) >> PAGE_SHIFT;
+-	if (!nr_pages)
+-		return 0;
+-
+-	spin_lock_irqsave(&s390_domain->dma_table_lock, irq_flags);
+-	for (i = 0; i < nr_pages; i++) {
+-		entry = dma_walk_cpu_trans(s390_domain->dma_table, dma_addr);
+-		if (!entry) {
+-			rc = -ENOMEM;
+-			goto undo_cpu_trans;
+-		}
+-		dma_update_cpu_trans(entry, page_addr, flags);
+-		page_addr += PAGE_SIZE;
+-		dma_addr += PAGE_SIZE;
+-	}
+-
+-	spin_lock(&s390_domain->list_lock);
+-	list_for_each_entry(domain_device, &s390_domain->devices, list) {
+-		rc = zpci_refresh_trans((u64) domain_device->zdev->fh << 32,
+-					start_dma_addr, nr_pages * PAGE_SIZE);
+-		if (rc)
+-			break;
+-	}
+-	spin_unlock(&s390_domain->list_lock);
+-
+-undo_cpu_trans:
+-	if (rc && ((flags & ZPCI_PTE_VALID_MASK) == ZPCI_PTE_VALID)) {
+-		flags = ZPCI_PTE_INVALID;
+-		while (i-- > 0) {
+-			page_addr -= PAGE_SIZE;
+-			dma_addr -= PAGE_SIZE;
+-			entry = dma_walk_cpu_trans(s390_domain->dma_table,
+-						   dma_addr);
+-			if (!entry)
+-				break;
+-			dma_update_cpu_trans(entry, page_addr, flags);
+-		}
+-	}
+-	spin_unlock_irqrestore(&s390_domain->dma_table_lock, irq_flags);
+-
+-	return rc;
+-}
+-
+-static int s390_iommu_map(struct iommu_domain *domain, unsigned long iova,
+-			  phys_addr_t paddr, size_t size, int prot)
+-{
+-	struct s390_domain *s390_domain = to_s390_domain(domain);
+-	int flags = ZPCI_PTE_VALID, rc = 0;
+-
+-	if (!(prot & IOMMU_READ))
+-		return -EINVAL;
+-
+-	if (!(prot & IOMMU_WRITE))
+-		flags |= ZPCI_TABLE_PROTECTED;
+-
+-	rc = s390_iommu_update_trans(s390_domain, (unsigned long) paddr, iova,
+-				     size, flags);
+-
+-	return rc;
+-}
+-
+-static phys_addr_t s390_iommu_iova_to_phys(struct iommu_domain *domain,
+-					   dma_addr_t iova)
+-{
+-	struct s390_domain *s390_domain = to_s390_domain(domain);
+-	unsigned long *sto, *pto, *rto, flags;
+-	unsigned int rtx, sx, px;
+-	phys_addr_t phys = 0;
+-
+-	if (iova < domain->geometry.aperture_start ||
+-	    iova > domain->geometry.aperture_end)
+-		return 0;
+-
+-	rtx = calc_rtx(iova);
+-	sx = calc_sx(iova);
+-	px = calc_px(iova);
+-	rto = s390_domain->dma_table;
+-
+-	spin_lock_irqsave(&s390_domain->dma_table_lock, flags);
+-	if (rto && reg_entry_isvalid(rto[rtx])) {
+-		sto = get_rt_sto(rto[rtx]);
+-		if (sto && reg_entry_isvalid(sto[sx])) {
+-			pto = get_st_pto(sto[sx]);
+-			if (pto && pt_entry_isvalid(pto[px]))
+-				phys = pto[px] & ZPCI_PTE_ADDR_MASK;
+-		}
+-	}
+-	spin_unlock_irqrestore(&s390_domain->dma_table_lock, flags);
+-
+-	return phys;
+-}
+-
+-static size_t s390_iommu_unmap(struct iommu_domain *domain,
+-			       unsigned long iova, size_t size)
+-{
+-	struct s390_domain *s390_domain = to_s390_domain(domain);
+-	int flags = ZPCI_PTE_INVALID;
+-	phys_addr_t paddr;
+-	int rc;
+-
+-	paddr = s390_iommu_iova_to_phys(domain, iova);
+-	if (!paddr)
+-		return 0;
+-
+-	rc = s390_iommu_update_trans(s390_domain, (unsigned long) paddr, iova,
+-				     size, flags);
+-	if (rc)
+-		return 0;
+-
+-	return size;
+-}
+-
+-int zpci_init_iommu(struct zpci_dev *zdev)
+-{
+-	int rc = 0;
+-
+-	rc = iommu_device_sysfs_add(&zdev->iommu_dev, NULL, NULL,
+-				    "s390-iommu.%08x", zdev->fid);
+-	if (rc)
+-		goto out_err;
+-
+-	iommu_device_set_ops(&zdev->iommu_dev, &s390_iommu_ops);
+-
+-	rc = iommu_device_register(&zdev->iommu_dev);
+-	if (rc)
+-		goto out_sysfs;
+-
+-	return 0;
+-
+-out_sysfs:
+-	iommu_device_sysfs_remove(&zdev->iommu_dev);
+-
+-out_err:
+-	return rc;
+-}
+-
+-void zpci_destroy_iommu(struct zpci_dev *zdev)
+-{
+-	iommu_device_unregister(&zdev->iommu_dev);
+-	iommu_device_sysfs_remove(&zdev->iommu_dev);
+-}
+-
+-static const struct iommu_ops s390_iommu_ops = {
+-	.capable = s390_iommu_capable,
+-	.domain_alloc = s390_domain_alloc,
+-	.domain_free = s390_domain_free,
+-	.attach_dev = s390_iommu_attach_device,
+-	.detach_dev = s390_iommu_detach_device,
+-	.map = s390_iommu_map,
+-	.unmap = s390_iommu_unmap,
+-	.iova_to_phys = s390_iommu_iova_to_phys,
+-	.add_device = s390_iommu_add_device,
+-	.remove_device = s390_iommu_remove_device,
+-	.device_group = generic_device_group,
+-	.pgsize_bitmap = S390_IOMMU_PGSIZES,
+-};
+-
+-static int __init s390_iommu_init(void)
+-{
+-	return bus_set_iommu(&pci_bus_type, &s390_iommu_ops);
+-}
+-subsys_initcall(s390_iommu_init);
+
+commit 793611b96861f60ed7f14c69bddc37385ca3d683
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:24:21 2018 +0800
+
+    v2.6.11
+
+diff --git a/drivers/iommu/s390-iommu.c b/drivers/iommu/s390-iommu.c
+new file mode 100644
+index 0000000..22d4db3
+--- /dev/null
++++ b/drivers/iommu/s390-iommu.c
+@@ -0,0 +1,385 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * IOMMU API for s390 PCI devices
++ *
++ * Copyright IBM Corp. 2015
++ * Author(s): Gerald Schaefer <gerald.schaefer@de.ibm.com>
++ */
++
++#include <linux/pci.h>
++#include <linux/iommu.h>
++#include <linux/iommu-helper.h>
++#include <linux/sizes.h>
++#include <asm/pci_dma.h>
++
++/*
++ * Physically contiguous memory regions can be mapped with 4 KiB alignment,
++ * we allow all page sizes that are an order of 4KiB (no special large page
++ * support so far).
++ */
++#define S390_IOMMU_PGSIZES	(~0xFFFUL)
++
++static const struct iommu_ops s390_iommu_ops;
++
++struct s390_domain {
++	struct iommu_domain	domain;
++	struct list_head	devices;
++	unsigned long		*dma_table;
++	spinlock_t		dma_table_lock;
++	spinlock_t		list_lock;
++};
++
++struct s390_domain_device {
++	struct list_head	list;
++	struct zpci_dev		*zdev;
++};
++
++static struct s390_domain *to_s390_domain(struct iommu_domain *dom)
++{
++	return container_of(dom, struct s390_domain, domain);
++}
++
++static bool s390_iommu_capable(enum iommu_cap cap)
++{
++	switch (cap) {
++	case IOMMU_CAP_CACHE_COHERENCY:
++		return true;
++	case IOMMU_CAP_INTR_REMAP:
++		return true;
++	default:
++		return false;
++	}
++}
++
++static struct iommu_domain *s390_domain_alloc(unsigned domain_type)
++{
++	struct s390_domain *s390_domain;
++
++	if (domain_type != IOMMU_DOMAIN_UNMANAGED)
++		return NULL;
++
++	s390_domain = kzalloc(sizeof(*s390_domain), GFP_KERNEL);
++	if (!s390_domain)
++		return NULL;
++
++	s390_domain->dma_table = dma_alloc_cpu_table();
++	if (!s390_domain->dma_table) {
++		kfree(s390_domain);
++		return NULL;
++	}
++
++	spin_lock_init(&s390_domain->dma_table_lock);
++	spin_lock_init(&s390_domain->list_lock);
++	INIT_LIST_HEAD(&s390_domain->devices);
++
++	return &s390_domain->domain;
++}
++
++static void s390_domain_free(struct iommu_domain *domain)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++
++	dma_cleanup_tables(s390_domain->dma_table);
++	kfree(s390_domain);
++}
++
++static int s390_iommu_attach_device(struct iommu_domain *domain,
++				    struct device *dev)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
++	struct s390_domain_device *domain_device;
++	unsigned long flags;
++	int rc;
++
++	if (!zdev)
++		return -ENODEV;
++
++	domain_device = kzalloc(sizeof(*domain_device), GFP_KERNEL);
++	if (!domain_device)
++		return -ENOMEM;
++
++	if (zdev->dma_table)
++		zpci_dma_exit_device(zdev);
++
++	zdev->dma_table = s390_domain->dma_table;
++	rc = zpci_register_ioat(zdev, 0, zdev->start_dma, zdev->end_dma,
++				(u64) zdev->dma_table);
++	if (rc)
++		goto out_restore;
++
++	spin_lock_irqsave(&s390_domain->list_lock, flags);
++	/* First device defines the DMA range limits */
++	if (list_empty(&s390_domain->devices)) {
++		domain->geometry.aperture_start = zdev->start_dma;
++		domain->geometry.aperture_end = zdev->end_dma;
++		domain->geometry.force_aperture = true;
++	/* Allow only devices with identical DMA range limits */
++	} else if (domain->geometry.aperture_start != zdev->start_dma ||
++		   domain->geometry.aperture_end != zdev->end_dma) {
++		rc = -EINVAL;
++		spin_unlock_irqrestore(&s390_domain->list_lock, flags);
++		goto out_restore;
++	}
++	domain_device->zdev = zdev;
++	zdev->s390_domain = s390_domain;
++	list_add(&domain_device->list, &s390_domain->devices);
++	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
++
++	return 0;
++
++out_restore:
++	zpci_dma_init_device(zdev);
++	kfree(domain_device);
++
++	return rc;
++}
++
++static void s390_iommu_detach_device(struct iommu_domain *domain,
++				     struct device *dev)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
++	struct s390_domain_device *domain_device, *tmp;
++	unsigned long flags;
++	int found = 0;
++
++	if (!zdev)
++		return;
++
++	spin_lock_irqsave(&s390_domain->list_lock, flags);
++	list_for_each_entry_safe(domain_device, tmp, &s390_domain->devices,
++				 list) {
++		if (domain_device->zdev == zdev) {
++			list_del(&domain_device->list);
++			kfree(domain_device);
++			found = 1;
++			break;
++		}
++	}
++	spin_unlock_irqrestore(&s390_domain->list_lock, flags);
++
++	if (found) {
++		zdev->s390_domain = NULL;
++		zpci_unregister_ioat(zdev, 0);
++		zpci_dma_init_device(zdev);
++	}
++}
++
++static int s390_iommu_add_device(struct device *dev)
++{
++	struct iommu_group *group = iommu_group_get_for_dev(dev);
++	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
++
++	if (IS_ERR(group))
++		return PTR_ERR(group);
++
++	iommu_group_put(group);
++	iommu_device_link(&zdev->iommu_dev, dev);
++
++	return 0;
++}
++
++static void s390_iommu_remove_device(struct device *dev)
++{
++	struct zpci_dev *zdev = to_pci_dev(dev)->sysdata;
++	struct iommu_domain *domain;
++
++	/*
++	 * This is a workaround for a scenario where the IOMMU API common code
++	 * "forgets" to call the detach_dev callback: After binding a device
++	 * to vfio-pci and completing the VFIO_SET_IOMMU ioctl (which triggers
++	 * the attach_dev), removing the device via
++	 * "echo 1 > /sys/bus/pci/devices/.../remove" won't trigger detach_dev,
++	 * only remove_device will be called via the BUS_NOTIFY_REMOVED_DEVICE
++	 * notifier.
++	 *
++	 * So let's call detach_dev from here if it hasn't been called before.
++	 */
++	if (zdev && zdev->s390_domain) {
++		domain = iommu_get_domain_for_dev(dev);
++		if (domain)
++			s390_iommu_detach_device(domain, dev);
++	}
++
++	iommu_device_unlink(&zdev->iommu_dev, dev);
++	iommu_group_remove_device(dev);
++}
++
++static int s390_iommu_update_trans(struct s390_domain *s390_domain,
++				   unsigned long pa, dma_addr_t dma_addr,
++				   size_t size, int flags)
++{
++	struct s390_domain_device *domain_device;
++	u8 *page_addr = (u8 *) (pa & PAGE_MASK);
++	dma_addr_t start_dma_addr = dma_addr;
++	unsigned long irq_flags, nr_pages, i;
++	unsigned long *entry;
++	int rc = 0;
++
++	if (dma_addr < s390_domain->domain.geometry.aperture_start ||
++	    dma_addr + size > s390_domain->domain.geometry.aperture_end)
++		return -EINVAL;
++
++	nr_pages = PAGE_ALIGN(size) >> PAGE_SHIFT;
++	if (!nr_pages)
++		return 0;
++
++	spin_lock_irqsave(&s390_domain->dma_table_lock, irq_flags);
++	for (i = 0; i < nr_pages; i++) {
++		entry = dma_walk_cpu_trans(s390_domain->dma_table, dma_addr);
++		if (!entry) {
++			rc = -ENOMEM;
++			goto undo_cpu_trans;
++		}
++		dma_update_cpu_trans(entry, page_addr, flags);
++		page_addr += PAGE_SIZE;
++		dma_addr += PAGE_SIZE;
++	}
++
++	spin_lock(&s390_domain->list_lock);
++	list_for_each_entry(domain_device, &s390_domain->devices, list) {
++		rc = zpci_refresh_trans((u64) domain_device->zdev->fh << 32,
++					start_dma_addr, nr_pages * PAGE_SIZE);
++		if (rc)
++			break;
++	}
++	spin_unlock(&s390_domain->list_lock);
++
++undo_cpu_trans:
++	if (rc && ((flags & ZPCI_PTE_VALID_MASK) == ZPCI_PTE_VALID)) {
++		flags = ZPCI_PTE_INVALID;
++		while (i-- > 0) {
++			page_addr -= PAGE_SIZE;
++			dma_addr -= PAGE_SIZE;
++			entry = dma_walk_cpu_trans(s390_domain->dma_table,
++						   dma_addr);
++			if (!entry)
++				break;
++			dma_update_cpu_trans(entry, page_addr, flags);
++		}
++	}
++	spin_unlock_irqrestore(&s390_domain->dma_table_lock, irq_flags);
++
++	return rc;
++}
++
++static int s390_iommu_map(struct iommu_domain *domain, unsigned long iova,
++			  phys_addr_t paddr, size_t size, int prot)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	int flags = ZPCI_PTE_VALID, rc = 0;
++
++	if (!(prot & IOMMU_READ))
++		return -EINVAL;
++
++	if (!(prot & IOMMU_WRITE))
++		flags |= ZPCI_TABLE_PROTECTED;
++
++	rc = s390_iommu_update_trans(s390_domain, (unsigned long) paddr, iova,
++				     size, flags);
++
++	return rc;
++}
++
++static phys_addr_t s390_iommu_iova_to_phys(struct iommu_domain *domain,
++					   dma_addr_t iova)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	unsigned long *sto, *pto, *rto, flags;
++	unsigned int rtx, sx, px;
++	phys_addr_t phys = 0;
++
++	if (iova < domain->geometry.aperture_start ||
++	    iova > domain->geometry.aperture_end)
++		return 0;
++
++	rtx = calc_rtx(iova);
++	sx = calc_sx(iova);
++	px = calc_px(iova);
++	rto = s390_domain->dma_table;
++
++	spin_lock_irqsave(&s390_domain->dma_table_lock, flags);
++	if (rto && reg_entry_isvalid(rto[rtx])) {
++		sto = get_rt_sto(rto[rtx]);
++		if (sto && reg_entry_isvalid(sto[sx])) {
++			pto = get_st_pto(sto[sx]);
++			if (pto && pt_entry_isvalid(pto[px]))
++				phys = pto[px] & ZPCI_PTE_ADDR_MASK;
++		}
++	}
++	spin_unlock_irqrestore(&s390_domain->dma_table_lock, flags);
++
++	return phys;
++}
++
++static size_t s390_iommu_unmap(struct iommu_domain *domain,
++			       unsigned long iova, size_t size)
++{
++	struct s390_domain *s390_domain = to_s390_domain(domain);
++	int flags = ZPCI_PTE_INVALID;
++	phys_addr_t paddr;
++	int rc;
++
++	paddr = s390_iommu_iova_to_phys(domain, iova);
++	if (!paddr)
++		return 0;
++
++	rc = s390_iommu_update_trans(s390_domain, (unsigned long) paddr, iova,
++				     size, flags);
++	if (rc)
++		return 0;
++
++	return size;
++}
++
++int zpci_init_iommu(struct zpci_dev *zdev)
++{
++	int rc = 0;
++
++	rc = iommu_device_sysfs_add(&zdev->iommu_dev, NULL, NULL,
++				    "s390-iommu.%08x", zdev->fid);
++	if (rc)
++		goto out_err;
++
++	iommu_device_set_ops(&zdev->iommu_dev, &s390_iommu_ops);
++
++	rc = iommu_device_register(&zdev->iommu_dev);
++	if (rc)
++		goto out_sysfs;
++
++	return 0;
++
++out_sysfs:
++	iommu_device_sysfs_remove(&zdev->iommu_dev);
++
++out_err:
++	return rc;
++}
++
++void zpci_destroy_iommu(struct zpci_dev *zdev)
++{
++	iommu_device_unregister(&zdev->iommu_dev);
++	iommu_device_sysfs_remove(&zdev->iommu_dev);
++}
++
++static const struct iommu_ops s390_iommu_ops = {
++	.capable = s390_iommu_capable,
++	.domain_alloc = s390_domain_alloc,
++	.domain_free = s390_domain_free,
++	.attach_dev = s390_iommu_attach_device,
++	.detach_dev = s390_iommu_detach_device,
++	.map = s390_iommu_map,
++	.unmap = s390_iommu_unmap,
++	.iova_to_phys = s390_iommu_iova_to_phys,
++	.add_device = s390_iommu_add_device,
++	.remove_device = s390_iommu_remove_device,
++	.device_group = generic_device_group,
++	.pgsize_bitmap = S390_IOMMU_PGSIZES,
++};
++
++static int __init s390_iommu_init(void)
++{
++	return bus_set_iommu(&pci_bus_type, &s390_iommu_ops);
++}
++subsys_initcall(s390_iommu_init);
+
+commit 438c51098e7e17d3c18339037238890c8db053a0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:24:20 2018 +0800
+
+    target source code file : drivers/iommu/s390-iommu.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..b17c774
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++drivers/iommu/s390-iommu.c

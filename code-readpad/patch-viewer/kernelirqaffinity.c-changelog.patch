@@ -1,0 +1,1122 @@
+commit ecc679e13cf873c2d095dd02ea8c51b179345a1a
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:48 2018 +0800
+
+    v4.17-rc1
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+index a37a3b4..f4f29b9 100644
+--- a/kernel/irq/affinity.c
++++ b/kernel/irq/affinity.c
+@@ -39,7 +39,7 @@ static void irq_spread_init_one(struct cpumask *irqmsk, struct cpumask *nmsk,
+ 	}
+ }
+ 
+-static cpumask_var_t *alloc_node_to_possible_cpumask(void)
++static cpumask_var_t *alloc_node_to_cpumask(void)
+ {
+ 	cpumask_var_t *masks;
+ 	int node;
+@@ -62,7 +62,7 @@ out_unwind:
+ 	return NULL;
+ }
+ 
+-static void free_node_to_possible_cpumask(cpumask_var_t *masks)
++static void free_node_to_cpumask(cpumask_var_t *masks)
+ {
+ 	int node;
+ 
+@@ -71,7 +71,7 @@ static void free_node_to_possible_cpumask(cpumask_var_t *masks)
+ 	kfree(masks);
+ }
+ 
+-static void build_node_to_possible_cpumask(cpumask_var_t *masks)
++static void build_node_to_cpumask(cpumask_var_t *masks)
+ {
+ 	int cpu;
+ 
+@@ -79,14 +79,14 @@ static void build_node_to_possible_cpumask(cpumask_var_t *masks)
+ 		cpumask_set_cpu(cpu, masks[cpu_to_node(cpu)]);
+ }
+ 
+-static int get_nodes_in_cpumask(cpumask_var_t *node_to_possible_cpumask,
++static int get_nodes_in_cpumask(cpumask_var_t *node_to_cpumask,
+ 				const struct cpumask *mask, nodemask_t *nodemsk)
+ {
+ 	int n, nodes = 0;
+ 
+ 	/* Calculate the number of nodes in the supplied affinity mask */
+ 	for_each_node(n) {
+-		if (cpumask_intersects(mask, node_to_possible_cpumask[n])) {
++		if (cpumask_intersects(mask, node_to_cpumask[n])) {
+ 			node_set(n, *nodemsk);
+ 			nodes++;
+ 		}
+@@ -94,73 +94,46 @@ static int get_nodes_in_cpumask(cpumask_var_t *node_to_possible_cpumask,
+ 	return nodes;
+ }
+ 
+-/**
+- * irq_create_affinity_masks - Create affinity masks for multiqueue spreading
+- * @nvecs:	The total number of vectors
+- * @affd:	Description of the affinity requirements
+- *
+- * Returns the masks pointer or NULL if allocation failed.
+- */
+-struct cpumask *
+-irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
++static int irq_build_affinity_masks(const struct irq_affinity *affd,
++				    int startvec, int numvecs,
++				    cpumask_var_t *node_to_cpumask,
++				    const struct cpumask *cpu_mask,
++				    struct cpumask *nmsk,
++				    struct cpumask *masks)
+ {
+-	int n, nodes, cpus_per_vec, extra_vecs, curvec;
+-	int affv = nvecs - affd->pre_vectors - affd->post_vectors;
+-	int last_affv = affv + affd->pre_vectors;
++	int n, nodes, cpus_per_vec, extra_vecs, done = 0;
++	int last_affv = affd->pre_vectors + numvecs;
++	int curvec = startvec;
+ 	nodemask_t nodemsk = NODE_MASK_NONE;
+-	struct cpumask *masks;
+-	cpumask_var_t nmsk, *node_to_possible_cpumask;
+-
+-	/*
+-	 * If there aren't any vectors left after applying the pre/post
+-	 * vectors don't bother with assigning affinity.
+-	 */
+-	if (!affv)
+-		return NULL;
+-
+-	if (!zalloc_cpumask_var(&nmsk, GFP_KERNEL))
+-		return NULL;
+-
+-	masks = kcalloc(nvecs, sizeof(*masks), GFP_KERNEL);
+-	if (!masks)
+-		goto out;
+ 
+-	node_to_possible_cpumask = alloc_node_to_possible_cpumask();
+-	if (!node_to_possible_cpumask)
+-		goto out;
++	if (!cpumask_weight(cpu_mask))
++		return 0;
+ 
+-	/* Fill out vectors at the beginning that don't need affinity */
+-	for (curvec = 0; curvec < affd->pre_vectors; curvec++)
+-		cpumask_copy(masks + curvec, irq_default_affinity);
+-
+-	/* Stabilize the cpumasks */
+-	get_online_cpus();
+-	build_node_to_possible_cpumask(node_to_possible_cpumask);
+-	nodes = get_nodes_in_cpumask(node_to_possible_cpumask, cpu_possible_mask,
+-				     &nodemsk);
++	nodes = get_nodes_in_cpumask(node_to_cpumask, cpu_mask, &nodemsk);
+ 
+ 	/*
+ 	 * If the number of nodes in the mask is greater than or equal the
+ 	 * number of vectors we just spread the vectors across the nodes.
+ 	 */
+-	if (affv <= nodes) {
++	if (numvecs <= nodes) {
+ 		for_each_node_mask(n, nodemsk) {
+-			cpumask_copy(masks + curvec,
+-				     node_to_possible_cpumask[n]);
+-			if (++curvec == last_affv)
++			cpumask_copy(masks + curvec, node_to_cpumask[n]);
++			if (++done == numvecs)
+ 				break;
++			if (++curvec == last_affv)
++				curvec = affd->pre_vectors;
+ 		}
+-		goto done;
++		goto out;
+ 	}
+ 
+ 	for_each_node_mask(n, nodemsk) {
+ 		int ncpus, v, vecs_to_assign, vecs_per_node;
+ 
+ 		/* Spread the vectors per node */
+-		vecs_per_node = (affv - (curvec - affd->pre_vectors)) / nodes;
++		vecs_per_node = (numvecs - (curvec - affd->pre_vectors)) / nodes;
+ 
+ 		/* Get the cpus on this node which are in the mask */
+-		cpumask_and(nmsk, cpu_possible_mask, node_to_possible_cpumask[n]);
++		cpumask_and(nmsk, cpu_mask, node_to_cpumask[n]);
+ 
+ 		/* Calculate the number of cpus per vector */
+ 		ncpus = cpumask_weight(nmsk);
+@@ -181,19 +154,96 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 			irq_spread_init_one(masks + curvec, nmsk, cpus_per_vec);
+ 		}
+ 
+-		if (curvec >= last_affv)
++		done += v;
++		if (done >= numvecs)
+ 			break;
++		if (curvec >= last_affv)
++			curvec = affd->pre_vectors;
+ 		--nodes;
+ 	}
+ 
+-done:
++out:
++	return done;
++}
++
++/**
++ * irq_create_affinity_masks - Create affinity masks for multiqueue spreading
++ * @nvecs:	The total number of vectors
++ * @affd:	Description of the affinity requirements
++ *
++ * Returns the masks pointer or NULL if allocation failed.
++ */
++struct cpumask *
++irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
++{
++	int affvecs = nvecs - affd->pre_vectors - affd->post_vectors;
++	int curvec, usedvecs;
++	cpumask_var_t nmsk, npresmsk, *node_to_cpumask;
++	struct cpumask *masks = NULL;
++
++	/*
++	 * If there aren't any vectors left after applying the pre/post
++	 * vectors don't bother with assigning affinity.
++	 */
++	if (nvecs == affd->pre_vectors + affd->post_vectors)
++		return NULL;
++
++	if (!zalloc_cpumask_var(&nmsk, GFP_KERNEL))
++		return NULL;
++
++	if (!zalloc_cpumask_var(&npresmsk, GFP_KERNEL))
++		goto outcpumsk;
++
++	node_to_cpumask = alloc_node_to_cpumask();
++	if (!node_to_cpumask)
++		goto outnpresmsk;
++
++	masks = kcalloc(nvecs, sizeof(*masks), GFP_KERNEL);
++	if (!masks)
++		goto outnodemsk;
++
++	/* Fill out vectors at the beginning that don't need affinity */
++	for (curvec = 0; curvec < affd->pre_vectors; curvec++)
++		cpumask_copy(masks + curvec, irq_default_affinity);
++
++	/* Stabilize the cpumasks */
++	get_online_cpus();
++	build_node_to_cpumask(node_to_cpumask);
++
++	/* Spread on present CPUs starting from affd->pre_vectors */
++	usedvecs = irq_build_affinity_masks(affd, curvec, affvecs,
++					    node_to_cpumask, cpu_present_mask,
++					    nmsk, masks);
++
++	/*
++	 * Spread on non present CPUs starting from the next vector to be
++	 * handled. If the spreading of present CPUs already exhausted the
++	 * vector space, assign the non present CPUs to the already spread
++	 * out vectors.
++	 */
++	if (usedvecs >= affvecs)
++		curvec = affd->pre_vectors;
++	else
++		curvec = affd->pre_vectors + usedvecs;
++	cpumask_andnot(npresmsk, cpu_possible_mask, cpu_present_mask);
++	usedvecs += irq_build_affinity_masks(affd, curvec, affvecs,
++					     node_to_cpumask, npresmsk,
++					     nmsk, masks);
+ 	put_online_cpus();
+ 
+ 	/* Fill out vectors at the end that don't need affinity */
++	if (usedvecs >= affvecs)
++		curvec = affd->pre_vectors + affvecs;
++	else
++		curvec = affd->pre_vectors + usedvecs;
+ 	for (; curvec < nvecs; curvec++)
+ 		cpumask_copy(masks + curvec, irq_default_affinity);
+-	free_node_to_possible_cpumask(node_to_possible_cpumask);
+-out:
++
++outnodemsk:
++	free_node_to_cpumask(node_to_cpumask);
++outnpresmsk:
++	free_cpumask_var(npresmsk);
++outcpumsk:
+ 	free_cpumask_var(nmsk);
+ 	return masks;
+ }
+
+commit 7c3eeba92daf1295b2dcfd44d080ea5645b4d13f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:11:29 2018 +0800
+
+    v4.16-rc1
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+index e12d351..a37a3b4 100644
+--- a/kernel/irq/affinity.c
++++ b/kernel/irq/affinity.c
+@@ -39,7 +39,7 @@ static void irq_spread_init_one(struct cpumask *irqmsk, struct cpumask *nmsk,
+ 	}
+ }
+ 
+-static cpumask_var_t *alloc_node_to_present_cpumask(void)
++static cpumask_var_t *alloc_node_to_possible_cpumask(void)
+ {
+ 	cpumask_var_t *masks;
+ 	int node;
+@@ -62,7 +62,7 @@ out_unwind:
+ 	return NULL;
+ }
+ 
+-static void free_node_to_present_cpumask(cpumask_var_t *masks)
++static void free_node_to_possible_cpumask(cpumask_var_t *masks)
+ {
+ 	int node;
+ 
+@@ -71,22 +71,22 @@ static void free_node_to_present_cpumask(cpumask_var_t *masks)
+ 	kfree(masks);
+ }
+ 
+-static void build_node_to_present_cpumask(cpumask_var_t *masks)
++static void build_node_to_possible_cpumask(cpumask_var_t *masks)
+ {
+ 	int cpu;
+ 
+-	for_each_present_cpu(cpu)
++	for_each_possible_cpu(cpu)
+ 		cpumask_set_cpu(cpu, masks[cpu_to_node(cpu)]);
+ }
+ 
+-static int get_nodes_in_cpumask(cpumask_var_t *node_to_present_cpumask,
++static int get_nodes_in_cpumask(cpumask_var_t *node_to_possible_cpumask,
+ 				const struct cpumask *mask, nodemask_t *nodemsk)
+ {
+ 	int n, nodes = 0;
+ 
+ 	/* Calculate the number of nodes in the supplied affinity mask */
+ 	for_each_node(n) {
+-		if (cpumask_intersects(mask, node_to_present_cpumask[n])) {
++		if (cpumask_intersects(mask, node_to_possible_cpumask[n])) {
+ 			node_set(n, *nodemsk);
+ 			nodes++;
+ 		}
+@@ -109,7 +109,7 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 	int last_affv = affv + affd->pre_vectors;
+ 	nodemask_t nodemsk = NODE_MASK_NONE;
+ 	struct cpumask *masks;
+-	cpumask_var_t nmsk, *node_to_present_cpumask;
++	cpumask_var_t nmsk, *node_to_possible_cpumask;
+ 
+ 	/*
+ 	 * If there aren't any vectors left after applying the pre/post
+@@ -125,8 +125,8 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 	if (!masks)
+ 		goto out;
+ 
+-	node_to_present_cpumask = alloc_node_to_present_cpumask();
+-	if (!node_to_present_cpumask)
++	node_to_possible_cpumask = alloc_node_to_possible_cpumask();
++	if (!node_to_possible_cpumask)
+ 		goto out;
+ 
+ 	/* Fill out vectors at the beginning that don't need affinity */
+@@ -135,8 +135,8 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 
+ 	/* Stabilize the cpumasks */
+ 	get_online_cpus();
+-	build_node_to_present_cpumask(node_to_present_cpumask);
+-	nodes = get_nodes_in_cpumask(node_to_present_cpumask, cpu_present_mask,
++	build_node_to_possible_cpumask(node_to_possible_cpumask);
++	nodes = get_nodes_in_cpumask(node_to_possible_cpumask, cpu_possible_mask,
+ 				     &nodemsk);
+ 
+ 	/*
+@@ -146,7 +146,7 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 	if (affv <= nodes) {
+ 		for_each_node_mask(n, nodemsk) {
+ 			cpumask_copy(masks + curvec,
+-				     node_to_present_cpumask[n]);
++				     node_to_possible_cpumask[n]);
+ 			if (++curvec == last_affv)
+ 				break;
+ 		}
+@@ -160,7 +160,7 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 		vecs_per_node = (affv - (curvec - affd->pre_vectors)) / nodes;
+ 
+ 		/* Get the cpus on this node which are in the mask */
+-		cpumask_and(nmsk, cpu_present_mask, node_to_present_cpumask[n]);
++		cpumask_and(nmsk, cpu_possible_mask, node_to_possible_cpumask[n]);
+ 
+ 		/* Calculate the number of cpus per vector */
+ 		ncpus = cpumask_weight(nmsk);
+@@ -192,7 +192,7 @@ done:
+ 	/* Fill out vectors at the end that don't need affinity */
+ 	for (; curvec < nvecs; curvec++)
+ 		cpumask_copy(masks + curvec, irq_default_affinity);
+-	free_node_to_present_cpumask(node_to_present_cpumask);
++	free_node_to_possible_cpumask(node_to_possible_cpumask);
+ out:
+ 	free_cpumask_var(nmsk);
+ 	return masks;
+@@ -214,7 +214,7 @@ int irq_calc_affinity_vectors(int minvec, int maxvec, const struct irq_affinity
+ 		return 0;
+ 
+ 	get_online_cpus();
+-	ret = min_t(int, cpumask_weight(cpu_present_mask), vecs) + resv;
++	ret = min_t(int, cpumask_weight(cpu_possible_mask), vecs) + resv;
+ 	put_online_cpus();
+ 	return ret;
+ }
+
+commit 15e4302e537246e1acde1b5003d062cef7e4eeb0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:56 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+index d69bd77..e12d351 100644
+--- a/kernel/irq/affinity.c
++++ b/kernel/irq/affinity.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  * Copyright (C) 2016 Thomas Gleixner.
+  * Copyright (C) 2016-2017 Christoph Hellwig.
+
+commit 4d0d6b595fe5f0a81ee9139b482e6a1fc0173eb9
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:18 2018 +0800
+
+    v4.13-rc1
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+index e2d356d..d69bd77 100644
+--- a/kernel/irq/affinity.c
++++ b/kernel/irq/affinity.c
+@@ -1,4 +1,7 @@
+-
++/*
++ * Copyright (C) 2016 Thomas Gleixner.
++ * Copyright (C) 2016-2017 Christoph Hellwig.
++ */
+ #include <linux/interrupt.h>
+ #include <linux/kernel.h>
+ #include <linux/slab.h>
+@@ -35,13 +38,54 @@ static void irq_spread_init_one(struct cpumask *irqmsk, struct cpumask *nmsk,
+ 	}
+ }
+ 
+-static int get_nodes_in_cpumask(const struct cpumask *mask, nodemask_t *nodemsk)
++static cpumask_var_t *alloc_node_to_present_cpumask(void)
++{
++	cpumask_var_t *masks;
++	int node;
++
++	masks = kcalloc(nr_node_ids, sizeof(cpumask_var_t), GFP_KERNEL);
++	if (!masks)
++		return NULL;
++
++	for (node = 0; node < nr_node_ids; node++) {
++		if (!zalloc_cpumask_var(&masks[node], GFP_KERNEL))
++			goto out_unwind;
++	}
++
++	return masks;
++
++out_unwind:
++	while (--node >= 0)
++		free_cpumask_var(masks[node]);
++	kfree(masks);
++	return NULL;
++}
++
++static void free_node_to_present_cpumask(cpumask_var_t *masks)
++{
++	int node;
++
++	for (node = 0; node < nr_node_ids; node++)
++		free_cpumask_var(masks[node]);
++	kfree(masks);
++}
++
++static void build_node_to_present_cpumask(cpumask_var_t *masks)
++{
++	int cpu;
++
++	for_each_present_cpu(cpu)
++		cpumask_set_cpu(cpu, masks[cpu_to_node(cpu)]);
++}
++
++static int get_nodes_in_cpumask(cpumask_var_t *node_to_present_cpumask,
++				const struct cpumask *mask, nodemask_t *nodemsk)
+ {
+ 	int n, nodes = 0;
+ 
+ 	/* Calculate the number of nodes in the supplied affinity mask */
+-	for_each_online_node(n) {
+-		if (cpumask_intersects(mask, cpumask_of_node(n))) {
++	for_each_node(n) {
++		if (cpumask_intersects(mask, node_to_present_cpumask[n])) {
+ 			node_set(n, *nodemsk);
+ 			nodes++;
+ 		}
+@@ -64,7 +108,14 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 	int last_affv = affv + affd->pre_vectors;
+ 	nodemask_t nodemsk = NODE_MASK_NONE;
+ 	struct cpumask *masks;
+-	cpumask_var_t nmsk;
++	cpumask_var_t nmsk, *node_to_present_cpumask;
++
++	/*
++	 * If there aren't any vectors left after applying the pre/post
++	 * vectors don't bother with assigning affinity.
++	 */
++	if (!affv)
++		return NULL;
+ 
+ 	if (!zalloc_cpumask_var(&nmsk, GFP_KERNEL))
+ 		return NULL;
+@@ -73,13 +124,19 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 	if (!masks)
+ 		goto out;
+ 
++	node_to_present_cpumask = alloc_node_to_present_cpumask();
++	if (!node_to_present_cpumask)
++		goto out;
++
+ 	/* Fill out vectors at the beginning that don't need affinity */
+ 	for (curvec = 0; curvec < affd->pre_vectors; curvec++)
+ 		cpumask_copy(masks + curvec, irq_default_affinity);
+ 
+ 	/* Stabilize the cpumasks */
+ 	get_online_cpus();
+-	nodes = get_nodes_in_cpumask(cpu_online_mask, &nodemsk);
++	build_node_to_present_cpumask(node_to_present_cpumask);
++	nodes = get_nodes_in_cpumask(node_to_present_cpumask, cpu_present_mask,
++				     &nodemsk);
+ 
+ 	/*
+ 	 * If the number of nodes in the mask is greater than or equal the
+@@ -87,7 +144,8 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 	 */
+ 	if (affv <= nodes) {
+ 		for_each_node_mask(n, nodemsk) {
+-			cpumask_copy(masks + curvec, cpumask_of_node(n));
++			cpumask_copy(masks + curvec,
++				     node_to_present_cpumask[n]);
+ 			if (++curvec == last_affv)
+ 				break;
+ 		}
+@@ -101,7 +159,7 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 		vecs_per_node = (affv - (curvec - affd->pre_vectors)) / nodes;
+ 
+ 		/* Get the cpus on this node which are in the mask */
+-		cpumask_and(nmsk, cpu_online_mask, cpumask_of_node(n));
++		cpumask_and(nmsk, cpu_present_mask, node_to_present_cpumask[n]);
+ 
+ 		/* Calculate the number of cpus per vector */
+ 		ncpus = cpumask_weight(nmsk);
+@@ -133,6 +191,7 @@ done:
+ 	/* Fill out vectors at the end that don't need affinity */
+ 	for (; curvec < nvecs; curvec++)
+ 		cpumask_copy(masks + curvec, irq_default_affinity);
++	free_node_to_present_cpumask(node_to_present_cpumask);
+ out:
+ 	free_cpumask_var(nmsk);
+ 	return masks;
+@@ -140,19 +199,21 @@ out:
+ 
+ /**
+  * irq_calc_affinity_vectors - Calculate the optimal number of vectors
++ * @minvec:	The minimum number of vectors available
+  * @maxvec:	The maximum number of vectors available
+  * @affd:	Description of the affinity requirements
+  */
+-int irq_calc_affinity_vectors(int maxvec, const struct irq_affinity *affd)
++int irq_calc_affinity_vectors(int minvec, int maxvec, const struct irq_affinity *affd)
+ {
+ 	int resv = affd->pre_vectors + affd->post_vectors;
+ 	int vecs = maxvec - resv;
+-	int cpus;
++	int ret;
++
++	if (resv > minvec)
++		return 0;
+ 
+-	/* Stabilize the cpumasks */
+ 	get_online_cpus();
+-	cpus = cpumask_weight(cpu_online_mask);
++	ret = min_t(int, cpumask_weight(cpu_present_mask), vecs) + resv;
+ 	put_online_cpus();
+-
+-	return min(cpus, vecs) + resv;
++	return ret;
+ }
+
+commit c967b42913e55a1f5c4697888c90e07271d9273f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:09:49 2018 +0800
+
+    v4.11-rc8
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+index d052947..e2d356d 100644
+--- a/kernel/irq/affinity.c
++++ b/kernel/irq/affinity.c
+@@ -98,7 +98,7 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 		int ncpus, v, vecs_to_assign, vecs_per_node;
+ 
+ 		/* Spread the vectors per node */
+-		vecs_per_node = (affv - curvec) / nodes;
++		vecs_per_node = (affv - (curvec - affd->pre_vectors)) / nodes;
+ 
+ 		/* Get the cpus on this node which are in the mask */
+ 		cpumask_and(nmsk, cpu_online_mask, cpumask_of_node(n));
+
+commit b3aa57ae983a1ccd8077b4b9469486ccf1f7da31
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:09:47 2018 +0800
+
+    v4.11-rc7
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+index 4544b11..d052947 100644
+--- a/kernel/irq/affinity.c
++++ b/kernel/irq/affinity.c
+@@ -59,7 +59,7 @@ static int get_nodes_in_cpumask(const struct cpumask *mask, nodemask_t *nodemsk)
+ struct cpumask *
+ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ {
+-	int n, nodes, vecs_per_node, cpus_per_vec, extra_vecs, curvec;
++	int n, nodes, cpus_per_vec, extra_vecs, curvec;
+ 	int affv = nvecs - affd->pre_vectors - affd->post_vectors;
+ 	int last_affv = affv + affd->pre_vectors;
+ 	nodemask_t nodemsk = NODE_MASK_NONE;
+@@ -94,19 +94,21 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 		goto done;
+ 	}
+ 
+-	/* Spread the vectors per node */
+-	vecs_per_node = affv / nodes;
+-	/* Account for rounding errors */
+-	extra_vecs = affv - (nodes * vecs_per_node);
+-
+ 	for_each_node_mask(n, nodemsk) {
+-		int ncpus, v, vecs_to_assign = vecs_per_node;
++		int ncpus, v, vecs_to_assign, vecs_per_node;
++
++		/* Spread the vectors per node */
++		vecs_per_node = (affv - curvec) / nodes;
+ 
+ 		/* Get the cpus on this node which are in the mask */
+ 		cpumask_and(nmsk, cpu_online_mask, cpumask_of_node(n));
+ 
+ 		/* Calculate the number of cpus per vector */
+ 		ncpus = cpumask_weight(nmsk);
++		vecs_to_assign = min(vecs_per_node, ncpus);
++
++		/* Account for rounding errors */
++		extra_vecs = ncpus - vecs_to_assign * (ncpus / vecs_to_assign);
+ 
+ 		for (v = 0; curvec < last_affv && v < vecs_to_assign;
+ 		     curvec++, v++) {
+@@ -115,14 +117,14 @@ irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ 			/* Account for extra vectors to compensate rounding errors */
+ 			if (extra_vecs) {
+ 				cpus_per_vec++;
+-				if (!--extra_vecs)
+-					vecs_per_node++;
++				--extra_vecs;
+ 			}
+ 			irq_spread_init_one(masks + curvec, nmsk, cpus_per_vec);
+ 		}
+ 
+ 		if (curvec >= last_affv)
+ 			break;
++		--nodes;
+ 	}
+ 
+ done:
+
+commit 40061151bb5ea6f9622fe009685acca1109c149b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:09:13 2018 +0800
+
+    v4.10-rc1
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+index 17f51d6..4544b11 100644
+--- a/kernel/irq/affinity.c
++++ b/kernel/irq/affinity.c
+@@ -37,10 +37,10 @@ static void irq_spread_init_one(struct cpumask *irqmsk, struct cpumask *nmsk,
+ 
+ static int get_nodes_in_cpumask(const struct cpumask *mask, nodemask_t *nodemsk)
+ {
+-	int n, nodes;
++	int n, nodes = 0;
+ 
+ 	/* Calculate the number of nodes in the supplied affinity mask */
+-	for (n = 0, nodes = 0; n < num_online_nodes(); n++) {
++	for_each_online_node(n) {
+ 		if (cpumask_intersects(mask, cpumask_of_node(n))) {
+ 			node_set(n, *nodemsk);
+ 			nodes++;
+@@ -51,16 +51,17 @@ static int get_nodes_in_cpumask(const struct cpumask *mask, nodemask_t *nodemsk)
+ 
+ /**
+  * irq_create_affinity_masks - Create affinity masks for multiqueue spreading
+- * @affinity:		The affinity mask to spread. If NULL cpu_online_mask
+- *			is used
+- * @nvecs:		The number of vectors
++ * @nvecs:	The total number of vectors
++ * @affd:	Description of the affinity requirements
+  *
+  * Returns the masks pointer or NULL if allocation failed.
+  */
+-struct cpumask *irq_create_affinity_masks(const struct cpumask *affinity,
+-					  int nvec)
++struct cpumask *
++irq_create_affinity_masks(int nvecs, const struct irq_affinity *affd)
+ {
+-	int n, nodes, vecs_per_node, cpus_per_vec, extra_vecs, curvec = 0;
++	int n, nodes, vecs_per_node, cpus_per_vec, extra_vecs, curvec;
++	int affv = nvecs - affd->pre_vectors - affd->post_vectors;
++	int last_affv = affv + affd->pre_vectors;
+ 	nodemask_t nodemsk = NODE_MASK_NONE;
+ 	struct cpumask *masks;
+ 	cpumask_var_t nmsk;
+@@ -68,46 +69,47 @@ struct cpumask *irq_create_affinity_masks(const struct cpumask *affinity,
+ 	if (!zalloc_cpumask_var(&nmsk, GFP_KERNEL))
+ 		return NULL;
+ 
+-	masks = kzalloc(nvec * sizeof(*masks), GFP_KERNEL);
++	masks = kcalloc(nvecs, sizeof(*masks), GFP_KERNEL);
+ 	if (!masks)
+ 		goto out;
+ 
++	/* Fill out vectors at the beginning that don't need affinity */
++	for (curvec = 0; curvec < affd->pre_vectors; curvec++)
++		cpumask_copy(masks + curvec, irq_default_affinity);
++
+ 	/* Stabilize the cpumasks */
+ 	get_online_cpus();
+-	/* If the supplied affinity mask is NULL, use cpu online mask */
+-	if (!affinity)
+-		affinity = cpu_online_mask;
+-
+-	nodes = get_nodes_in_cpumask(affinity, &nodemsk);
++	nodes = get_nodes_in_cpumask(cpu_online_mask, &nodemsk);
+ 
+ 	/*
+-	 * If the number of nodes in the mask is less than or equal the
++	 * If the number of nodes in the mask is greater than or equal the
+ 	 * number of vectors we just spread the vectors across the nodes.
+ 	 */
+-	if (nvec <= nodes) {
++	if (affv <= nodes) {
+ 		for_each_node_mask(n, nodemsk) {
+ 			cpumask_copy(masks + curvec, cpumask_of_node(n));
+-			if (++curvec == nvec)
++			if (++curvec == last_affv)
+ 				break;
+ 		}
+-		goto outonl;
++		goto done;
+ 	}
+ 
+ 	/* Spread the vectors per node */
+-	vecs_per_node = nvec / nodes;
++	vecs_per_node = affv / nodes;
+ 	/* Account for rounding errors */
+-	extra_vecs = nvec - (nodes * vecs_per_node);
++	extra_vecs = affv - (nodes * vecs_per_node);
+ 
+ 	for_each_node_mask(n, nodemsk) {
+ 		int ncpus, v, vecs_to_assign = vecs_per_node;
+ 
+ 		/* Get the cpus on this node which are in the mask */
+-		cpumask_and(nmsk, affinity, cpumask_of_node(n));
++		cpumask_and(nmsk, cpu_online_mask, cpumask_of_node(n));
+ 
+ 		/* Calculate the number of cpus per vector */
+ 		ncpus = cpumask_weight(nmsk);
+ 
+-		for (v = 0; curvec < nvec && v < vecs_to_assign; curvec++, v++) {
++		for (v = 0; curvec < last_affv && v < vecs_to_assign;
++		     curvec++, v++) {
+ 			cpus_per_vec = ncpus / vecs_to_assign;
+ 
+ 			/* Account for extra vectors to compensate rounding errors */
+@@ -119,36 +121,36 @@ struct cpumask *irq_create_affinity_masks(const struct cpumask *affinity,
+ 			irq_spread_init_one(masks + curvec, nmsk, cpus_per_vec);
+ 		}
+ 
+-		if (curvec >= nvec)
++		if (curvec >= last_affv)
+ 			break;
+ 	}
+ 
+-outonl:
++done:
+ 	put_online_cpus();
++
++	/* Fill out vectors at the end that don't need affinity */
++	for (; curvec < nvecs; curvec++)
++		cpumask_copy(masks + curvec, irq_default_affinity);
+ out:
+ 	free_cpumask_var(nmsk);
+ 	return masks;
+ }
+ 
+ /**
+- * irq_calc_affinity_vectors - Calculate to optimal number of vectors for a given affinity mask
+- * @affinity:		The affinity mask to spread. If NULL cpu_online_mask
+- *			is used
+- * @maxvec:		The maximum number of vectors available
++ * irq_calc_affinity_vectors - Calculate the optimal number of vectors
++ * @maxvec:	The maximum number of vectors available
++ * @affd:	Description of the affinity requirements
+  */
+-int irq_calc_affinity_vectors(const struct cpumask *affinity, int maxvec)
++int irq_calc_affinity_vectors(int maxvec, const struct irq_affinity *affd)
+ {
+-	int cpus, ret;
++	int resv = affd->pre_vectors + affd->post_vectors;
++	int vecs = maxvec - resv;
++	int cpus;
+ 
+ 	/* Stabilize the cpumasks */
+ 	get_online_cpus();
+-	/* If the supplied affinity mask is NULL, use cpu online mask */
+-	if (!affinity)
+-		affinity = cpu_online_mask;
+-
+-	cpus = cpumask_weight(affinity);
+-	ret = (cpus < maxvec) ? cpus : maxvec;
+-
++	cpus = cpumask_weight(cpu_online_mask);
+ 	put_online_cpus();
+-	return ret;
++
++	return min(cpus, vecs) + resv;
+ }
+
+commit 9ce1437f56ee55fab8940f82c21e3eb38a8eabe4
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:08:52 2018 +0800
+
+    v4.9-rc1
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+index 32f6cfc..17f51d6 100644
+--- a/kernel/irq/affinity.c
++++ b/kernel/irq/affinity.c
+@@ -4,60 +4,151 @@
+ #include <linux/slab.h>
+ #include <linux/cpu.h>
+ 
+-static int get_first_sibling(unsigned int cpu)
++static void irq_spread_init_one(struct cpumask *irqmsk, struct cpumask *nmsk,
++				int cpus_per_vec)
+ {
+-	unsigned int ret;
++	const struct cpumask *siblmsk;
++	int cpu, sibl;
+ 
+-	ret = cpumask_first(topology_sibling_cpumask(cpu));
+-	if (ret < nr_cpu_ids)
+-		return ret;
+-	return cpu;
++	for ( ; cpus_per_vec > 0; ) {
++		cpu = cpumask_first(nmsk);
++
++		/* Should not happen, but I'm too lazy to think about it */
++		if (cpu >= nr_cpu_ids)
++			return;
++
++		cpumask_clear_cpu(cpu, nmsk);
++		cpumask_set_cpu(cpu, irqmsk);
++		cpus_per_vec--;
++
++		/* If the cpu has siblings, use them first */
++		siblmsk = topology_sibling_cpumask(cpu);
++		for (sibl = -1; cpus_per_vec > 0; ) {
++			sibl = cpumask_next(sibl, siblmsk);
++			if (sibl >= nr_cpu_ids)
++				break;
++			if (!cpumask_test_and_clear_cpu(sibl, nmsk))
++				continue;
++			cpumask_set_cpu(sibl, irqmsk);
++			cpus_per_vec--;
++		}
++	}
++}
++
++static int get_nodes_in_cpumask(const struct cpumask *mask, nodemask_t *nodemsk)
++{
++	int n, nodes;
++
++	/* Calculate the number of nodes in the supplied affinity mask */
++	for (n = 0, nodes = 0; n < num_online_nodes(); n++) {
++		if (cpumask_intersects(mask, cpumask_of_node(n))) {
++			node_set(n, *nodemsk);
++			nodes++;
++		}
++	}
++	return nodes;
+ }
+ 
+-/*
+- * Take a map of online CPUs and the number of available interrupt vectors
+- * and generate an output cpumask suitable for spreading MSI/MSI-X vectors
+- * so that they are distributed as good as possible around the CPUs.  If
+- * more vectors than CPUs are available we'll map one to each CPU,
+- * otherwise we map one to the first sibling of each socket.
++/**
++ * irq_create_affinity_masks - Create affinity masks for multiqueue spreading
++ * @affinity:		The affinity mask to spread. If NULL cpu_online_mask
++ *			is used
++ * @nvecs:		The number of vectors
+  *
+- * If there are more vectors than CPUs we will still only have one bit
+- * set per CPU, but interrupt code will keep on assigning the vectors from
+- * the start of the bitmap until we run out of vectors.
++ * Returns the masks pointer or NULL if allocation failed.
+  */
+-struct cpumask *irq_create_affinity_mask(unsigned int *nr_vecs)
++struct cpumask *irq_create_affinity_masks(const struct cpumask *affinity,
++					  int nvec)
+ {
+-	struct cpumask *affinity_mask;
+-	unsigned int max_vecs = *nr_vecs;
++	int n, nodes, vecs_per_node, cpus_per_vec, extra_vecs, curvec = 0;
++	nodemask_t nodemsk = NODE_MASK_NONE;
++	struct cpumask *masks;
++	cpumask_var_t nmsk;
+ 
+-	if (max_vecs == 1)
++	if (!zalloc_cpumask_var(&nmsk, GFP_KERNEL))
+ 		return NULL;
+ 
+-	affinity_mask = kzalloc(cpumask_size(), GFP_KERNEL);
+-	if (!affinity_mask) {
+-		*nr_vecs = 1;
+-		return NULL;
+-	}
++	masks = kzalloc(nvec * sizeof(*masks), GFP_KERNEL);
++	if (!masks)
++		goto out;
+ 
++	/* Stabilize the cpumasks */
+ 	get_online_cpus();
+-	if (max_vecs >= num_online_cpus()) {
+-		cpumask_copy(affinity_mask, cpu_online_mask);
+-		*nr_vecs = num_online_cpus();
+-	} else {
+-		unsigned int vecs = 0, cpu;
+-
+-		for_each_online_cpu(cpu) {
+-			if (cpu == get_first_sibling(cpu)) {
+-				cpumask_set_cpu(cpu, affinity_mask);
+-				vecs++;
+-			}
++	/* If the supplied affinity mask is NULL, use cpu online mask */
++	if (!affinity)
++		affinity = cpu_online_mask;
++
++	nodes = get_nodes_in_cpumask(affinity, &nodemsk);
+ 
+-			if (--max_vecs == 0)
++	/*
++	 * If the number of nodes in the mask is less than or equal the
++	 * number of vectors we just spread the vectors across the nodes.
++	 */
++	if (nvec <= nodes) {
++		for_each_node_mask(n, nodemsk) {
++			cpumask_copy(masks + curvec, cpumask_of_node(n));
++			if (++curvec == nvec)
+ 				break;
+ 		}
+-		*nr_vecs = vecs;
++		goto outonl;
+ 	}
++
++	/* Spread the vectors per node */
++	vecs_per_node = nvec / nodes;
++	/* Account for rounding errors */
++	extra_vecs = nvec - (nodes * vecs_per_node);
++
++	for_each_node_mask(n, nodemsk) {
++		int ncpus, v, vecs_to_assign = vecs_per_node;
++
++		/* Get the cpus on this node which are in the mask */
++		cpumask_and(nmsk, affinity, cpumask_of_node(n));
++
++		/* Calculate the number of cpus per vector */
++		ncpus = cpumask_weight(nmsk);
++
++		for (v = 0; curvec < nvec && v < vecs_to_assign; curvec++, v++) {
++			cpus_per_vec = ncpus / vecs_to_assign;
++
++			/* Account for extra vectors to compensate rounding errors */
++			if (extra_vecs) {
++				cpus_per_vec++;
++				if (!--extra_vecs)
++					vecs_per_node++;
++			}
++			irq_spread_init_one(masks + curvec, nmsk, cpus_per_vec);
++		}
++
++		if (curvec >= nvec)
++			break;
++	}
++
++outonl:
+ 	put_online_cpus();
++out:
++	free_cpumask_var(nmsk);
++	return masks;
++}
++
++/**
++ * irq_calc_affinity_vectors - Calculate to optimal number of vectors for a given affinity mask
++ * @affinity:		The affinity mask to spread. If NULL cpu_online_mask
++ *			is used
++ * @maxvec:		The maximum number of vectors available
++ */
++int irq_calc_affinity_vectors(const struct cpumask *affinity, int maxvec)
++{
++	int cpus, ret;
+ 
+-	return affinity_mask;
++	/* Stabilize the cpumasks */
++	get_online_cpus();
++	/* If the supplied affinity mask is NULL, use cpu online mask */
++	if (!affinity)
++		affinity = cpu_online_mask;
++
++	cpus = cpumask_weight(affinity);
++	ret = (cpus < maxvec) ? cpus : maxvec;
++
++	put_online_cpus();
++	return ret;
+ }
+
+commit 6e548dce4a5b10bf444f9408d40ebe2f85546fed
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:08:36 2018 +0800
+
+    v4.8-rc4
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+index f689593..32f6cfc 100644
+--- a/kernel/irq/affinity.c
++++ b/kernel/irq/affinity.c
+@@ -39,6 +39,7 @@ struct cpumask *irq_create_affinity_mask(unsigned int *nr_vecs)
+ 		return NULL;
+ 	}
+ 
++	get_online_cpus();
+ 	if (max_vecs >= num_online_cpus()) {
+ 		cpumask_copy(affinity_mask, cpu_online_mask);
+ 		*nr_vecs = num_online_cpus();
+@@ -56,6 +57,7 @@ struct cpumask *irq_create_affinity_mask(unsigned int *nr_vecs)
+ 		}
+ 		*nr_vecs = vecs;
+ 	}
++	put_online_cpus();
+ 
+ 	return affinity_mask;
+ }
+
+commit a9f5a01ac5afc287b2c3eb18dc30a02142155bcc
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:08:31 2018 +0800
+
+    v4.8-rc1
+
+diff --git a/kernel/irq/affinity.c b/kernel/irq/affinity.c
+new file mode 100644
+index 0000000..f689593
+--- /dev/null
++++ b/kernel/irq/affinity.c
+@@ -0,0 +1,61 @@
++
++#include <linux/interrupt.h>
++#include <linux/kernel.h>
++#include <linux/slab.h>
++#include <linux/cpu.h>
++
++static int get_first_sibling(unsigned int cpu)
++{
++	unsigned int ret;
++
++	ret = cpumask_first(topology_sibling_cpumask(cpu));
++	if (ret < nr_cpu_ids)
++		return ret;
++	return cpu;
++}
++
++/*
++ * Take a map of online CPUs and the number of available interrupt vectors
++ * and generate an output cpumask suitable for spreading MSI/MSI-X vectors
++ * so that they are distributed as good as possible around the CPUs.  If
++ * more vectors than CPUs are available we'll map one to each CPU,
++ * otherwise we map one to the first sibling of each socket.
++ *
++ * If there are more vectors than CPUs we will still only have one bit
++ * set per CPU, but interrupt code will keep on assigning the vectors from
++ * the start of the bitmap until we run out of vectors.
++ */
++struct cpumask *irq_create_affinity_mask(unsigned int *nr_vecs)
++{
++	struct cpumask *affinity_mask;
++	unsigned int max_vecs = *nr_vecs;
++
++	if (max_vecs == 1)
++		return NULL;
++
++	affinity_mask = kzalloc(cpumask_size(), GFP_KERNEL);
++	if (!affinity_mask) {
++		*nr_vecs = 1;
++		return NULL;
++	}
++
++	if (max_vecs >= num_online_cpus()) {
++		cpumask_copy(affinity_mask, cpu_online_mask);
++		*nr_vecs = num_online_cpus();
++	} else {
++		unsigned int vecs = 0, cpu;
++
++		for_each_online_cpu(cpu) {
++			if (cpu == get_first_sibling(cpu)) {
++				cpumask_set_cpu(cpu, affinity_mask);
++				vecs++;
++			}
++
++			if (--max_vecs == 0)
++				break;
++		}
++		*nr_vecs = vecs;
++	}
++
++	return affinity_mask;
++}
+
+commit d5c0125117d88347a5e7cb53d506bd6ac5885bc5
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:13 2018 +0800
+
+    target source code file : kernel/irq/affinity.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..00887b6
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++kernel/irq/affinity.c

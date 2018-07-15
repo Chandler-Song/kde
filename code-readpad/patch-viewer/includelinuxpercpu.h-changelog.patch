@@ -1,0 +1,4647 @@
+commit a4e05008011de41760bbf31a4dc3b8cb3a8a462f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:56 2018 +0800
+
+    v4.14-rc8
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 6a5fb93..296bbe4 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -1,3 +1,4 @@
++/* SPDX-License-Identifier: GPL-2.0 */
+ #ifndef __LINUX_PERCPU_H
+ #define __LINUX_PERCPU_H
+ 
+
+commit c50a517b627b958f4158c33d92e0a6cda6076138
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:10:39 2018 +0800
+
+    v4.14-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 491b3f5..6a5fb93 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -21,6 +21,25 @@
+ /* minimum unit size, also is the maximum supported allocation size */
+ #define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(32 << 10)
+ 
++/* minimum allocation size and shift in bytes */
++#define PCPU_MIN_ALLOC_SHIFT		2
++#define PCPU_MIN_ALLOC_SIZE		(1 << PCPU_MIN_ALLOC_SHIFT)
++
++/* number of bits per page, used to trigger a scan if blocks are > PAGE_SIZE */
++#define PCPU_BITS_PER_PAGE		(PAGE_SIZE >> PCPU_MIN_ALLOC_SHIFT)
++
++/*
++ * This determines the size of each metadata block.  There are several subtle
++ * constraints around this constant.  The reserved region must be a multiple of
++ * PCPU_BITMAP_BLOCK_SIZE.  Additionally, PCPU_BITMAP_BLOCK_SIZE must be a
++ * multiple of PAGE_SIZE or PAGE_SIZE must be a multiple of
++ * PCPU_BITMAP_BLOCK_SIZE to align with the populated page map. The unit_size
++ * also has to be a multiple of PCPU_BITMAP_BLOCK_SIZE to ensure full blocks.
++ */
++#define PCPU_BITMAP_BLOCK_SIZE		PAGE_SIZE
++#define PCPU_BITMAP_BLOCK_BITS		(PCPU_BITMAP_BLOCK_SIZE >>	\
++					 PCPU_MIN_ALLOC_SHIFT)
++
+ /*
+  * Percpu allocator can serve percpu allocations before slab is
+  * initialized which allows slab to depend on the percpu allocator.
+@@ -116,7 +135,6 @@ extern bool is_kernel_percpu_address(unsigned long addr);
+ #if !defined(CONFIG_SMP) || !defined(CONFIG_HAVE_SETUP_PER_CPU_AREA)
+ extern void __init setup_per_cpu_areas(void);
+ #endif
+-extern void __init percpu_init_late(void);
+ 
+ extern void __percpu *__alloc_percpu_gfp(size_t size, size_t align, gfp_t gfp);
+ extern void __percpu *__alloc_percpu(size_t size, size_t align);
+
+commit b1e7d9acac7987ec07990491edcbc8cad4bd224f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:09:57 2018 +0800
+
+    v4.12-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 56939d3..491b3f5 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -110,6 +110,7 @@ extern int __init pcpu_page_first_chunk(size_t reserved_size,
+ #endif
+ 
+ extern void __percpu *__alloc_reserved_percpu(size_t size, size_t align);
++extern bool __is_kernel_percpu_address(unsigned long addr, unsigned long *can_addr);
+ extern bool is_kernel_percpu_address(unsigned long addr);
+ 
+ #if !defined(CONFIG_SMP) || !defined(CONFIG_HAVE_SETUP_PER_CPU_AREA)
+
+commit 54acd06aff64a29d312bde6950b15c86a83b4828
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:08:12 2018 +0800
+
+    v4.7-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 4bc6daf..56939d3 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -129,7 +129,4 @@ extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+ 	(typeof(type) __percpu *)__alloc_percpu(sizeof(type),		\
+ 						__alignof__(type))
+ 
+-/* To avoid include hell, as printk can not declare this, we declare it here */
+-DECLARE_PER_CPU(printk_func_t, printk_func);
+-
+ #endif /* __LINUX_PERCPU_H */
+
+commit dd05ca5d6d91dd5cd734327a9899423e5db26c51
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:07:35 2018 +0800
+
+    v4.5-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index caebf2a..4bc6daf 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -18,12 +18,6 @@
+ #define PERCPU_MODULE_RESERVE		0
+ #endif
+ 
+-#ifndef PERCPU_ENOUGH_ROOM
+-#define PERCPU_ENOUGH_ROOM						\
+-	(ALIGN(__per_cpu_end - __per_cpu_start, SMP_CACHE_BYTES) +	\
+-	 PERCPU_MODULE_RESERVE)
+-#endif
+-
+ /* minimum unit size, also is the maximum supported allocation size */
+ #define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(32 << 10)
+ 
+
+commit e4e2898f58de3d7c45f1c0a354fc4c5686bf8433
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:05:45 2018 +0800
+
+    v3.19-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index a3aa63e..caebf2a 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -5,6 +5,7 @@
+ #include <linux/preempt.h>
+ #include <linux/smp.h>
+ #include <linux/cpumask.h>
++#include <linux/printk.h>
+ #include <linux/pfn.h>
+ #include <linux/init.h>
+ 
+@@ -134,4 +135,7 @@ extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+ 	(typeof(type) __percpu *)__alloc_percpu(sizeof(type),		\
+ 						__alignof__(type))
+ 
++/* To avoid include hell, as printk can not declare this, we declare it here */
++DECLARE_PER_CPU(printk_func_t, printk_func);
++
+ #endif /* __LINUX_PERCPU_H */
+
+commit 3b51c797852563021a9d615dfbf80b3e6bac5561
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:05:27 2018 +0800
+
+    v3.18-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 6f61b61..a3aa63e 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -48,9 +48,9 @@
+  * intelligent way to determine this would be nice.
+  */
+ #if BITS_PER_LONG > 32
+-#define PERCPU_DYNAMIC_RESERVE		(20 << 10)
++#define PERCPU_DYNAMIC_RESERVE		(28 << 10)
+ #else
+-#define PERCPU_DYNAMIC_RESERVE		(12 << 10)
++#define PERCPU_DYNAMIC_RESERVE		(20 << 10)
+ #endif
+ 
+ extern void *pcpu_base_addr;
+@@ -122,11 +122,16 @@ extern void __init setup_per_cpu_areas(void);
+ #endif
+ extern void __init percpu_init_late(void);
+ 
++extern void __percpu *__alloc_percpu_gfp(size_t size, size_t align, gfp_t gfp);
+ extern void __percpu *__alloc_percpu(size_t size, size_t align);
+ extern void free_percpu(void __percpu *__pdata);
+ extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+ 
+-#define alloc_percpu(type)	\
+-	(typeof(type) __percpu *)__alloc_percpu(sizeof(type), __alignof__(type))
++#define alloc_percpu_gfp(type, gfp)					\
++	(typeof(type) __percpu *)__alloc_percpu_gfp(sizeof(type),	\
++						__alignof__(type), gfp)
++#define alloc_percpu(type)						\
++	(typeof(type) __percpu *)__alloc_percpu(sizeof(type),		\
++						__alignof__(type))
+ 
+ #endif /* __LINUX_PERCPU_H */
+
+commit 35740db4d88a7f360c796d37b313b7d0c9cf12d5
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:05:10 2018 +0800
+
+    v3.17-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 8419053..6f61b61 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -23,32 +23,6 @@
+ 	 PERCPU_MODULE_RESERVE)
+ #endif
+ 
+-/*
+- * Must be an lvalue. Since @var must be a simple identifier,
+- * we force a syntax error here if it isn't.
+- */
+-#define get_cpu_var(var) (*({				\
+-	preempt_disable();				\
+-	this_cpu_ptr(&var); }))
+-
+-/*
+- * The weird & is necessary because sparse considers (void)(var) to be
+- * a direct dereference of percpu variable (var).
+- */
+-#define put_cpu_var(var) do {				\
+-	(void)&(var);					\
+-	preempt_enable();				\
+-} while (0)
+-
+-#define get_cpu_ptr(var) ({				\
+-	preempt_disable();				\
+-	this_cpu_ptr(var); })
+-
+-#define put_cpu_ptr(var) do {				\
+-	(void)(var);					\
+-	preempt_enable();				\
+-} while (0)
+-
+ /* minimum unit size, also is the maximum supported allocation size */
+ #define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(32 << 10)
+ 
+@@ -140,17 +114,6 @@ extern int __init pcpu_page_first_chunk(size_t reserved_size,
+ 				pcpu_fc_populate_pte_fn_t populate_pte_fn);
+ #endif
+ 
+-/*
+- * Use this to get to a cpu's version of the per-cpu object
+- * dynamically allocated. Non-atomic access to the current CPU's
+- * version should probably be combined with get_cpu()/put_cpu().
+- */
+-#ifdef CONFIG_SMP
+-#define per_cpu_ptr(ptr, cpu)	SHIFT_PERCPU_PTR((ptr), per_cpu_offset((cpu)))
+-#else
+-#define per_cpu_ptr(ptr, cpu)	({ (void)(cpu); VERIFY_PERCPU_PTR((ptr)); })
+-#endif
+-
+ extern void __percpu *__alloc_reserved_percpu(size_t size, size_t align);
+ extern bool is_kernel_percpu_address(unsigned long addr);
+ 
+@@ -166,640 +129,4 @@ extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+ #define alloc_percpu(type)	\
+ 	(typeof(type) __percpu *)__alloc_percpu(sizeof(type), __alignof__(type))
+ 
+-/*
+- * Branching function to split up a function into a set of functions that
+- * are called for different scalar sizes of the objects handled.
+- */
+-
+-extern void __bad_size_call_parameter(void);
+-
+-#ifdef CONFIG_DEBUG_PREEMPT
+-extern void __this_cpu_preempt_check(const char *op);
+-#else
+-static inline void __this_cpu_preempt_check(const char *op) { }
+-#endif
+-
+-#define __pcpu_size_call_return(stem, variable)				\
+-({	typeof(variable) pscr_ret__;					\
+-	__verify_pcpu_ptr(&(variable));					\
+-	switch(sizeof(variable)) {					\
+-	case 1: pscr_ret__ = stem##1(variable);break;			\
+-	case 2: pscr_ret__ = stem##2(variable);break;			\
+-	case 4: pscr_ret__ = stem##4(variable);break;			\
+-	case 8: pscr_ret__ = stem##8(variable);break;			\
+-	default:							\
+-		__bad_size_call_parameter();break;			\
+-	}								\
+-	pscr_ret__;							\
+-})
+-
+-#define __pcpu_size_call_return2(stem, variable, ...)			\
+-({									\
+-	typeof(variable) pscr2_ret__;					\
+-	__verify_pcpu_ptr(&(variable));					\
+-	switch(sizeof(variable)) {					\
+-	case 1: pscr2_ret__ = stem##1(variable, __VA_ARGS__); break;	\
+-	case 2: pscr2_ret__ = stem##2(variable, __VA_ARGS__); break;	\
+-	case 4: pscr2_ret__ = stem##4(variable, __VA_ARGS__); break;	\
+-	case 8: pscr2_ret__ = stem##8(variable, __VA_ARGS__); break;	\
+-	default:							\
+-		__bad_size_call_parameter(); break;			\
+-	}								\
+-	pscr2_ret__;							\
+-})
+-
+-/*
+- * Special handling for cmpxchg_double.  cmpxchg_double is passed two
+- * percpu variables.  The first has to be aligned to a double word
+- * boundary and the second has to follow directly thereafter.
+- * We enforce this on all architectures even if they don't support
+- * a double cmpxchg instruction, since it's a cheap requirement, and it
+- * avoids breaking the requirement for architectures with the instruction.
+- */
+-#define __pcpu_double_call_return_bool(stem, pcp1, pcp2, ...)		\
+-({									\
+-	bool pdcrb_ret__;						\
+-	__verify_pcpu_ptr(&pcp1);					\
+-	BUILD_BUG_ON(sizeof(pcp1) != sizeof(pcp2));			\
+-	VM_BUG_ON((unsigned long)(&pcp1) % (2 * sizeof(pcp1)));		\
+-	VM_BUG_ON((unsigned long)(&pcp2) !=				\
+-		  (unsigned long)(&pcp1) + sizeof(pcp1));		\
+-	switch(sizeof(pcp1)) {						\
+-	case 1: pdcrb_ret__ = stem##1(pcp1, pcp2, __VA_ARGS__); break;	\
+-	case 2: pdcrb_ret__ = stem##2(pcp1, pcp2, __VA_ARGS__); break;	\
+-	case 4: pdcrb_ret__ = stem##4(pcp1, pcp2, __VA_ARGS__); break;	\
+-	case 8: pdcrb_ret__ = stem##8(pcp1, pcp2, __VA_ARGS__); break;	\
+-	default:							\
+-		__bad_size_call_parameter(); break;			\
+-	}								\
+-	pdcrb_ret__;							\
+-})
+-
+-#define __pcpu_size_call(stem, variable, ...)				\
+-do {									\
+-	__verify_pcpu_ptr(&(variable));					\
+-	switch(sizeof(variable)) {					\
+-		case 1: stem##1(variable, __VA_ARGS__);break;		\
+-		case 2: stem##2(variable, __VA_ARGS__);break;		\
+-		case 4: stem##4(variable, __VA_ARGS__);break;		\
+-		case 8: stem##8(variable, __VA_ARGS__);break;		\
+-		default: 						\
+-			__bad_size_call_parameter();break;		\
+-	}								\
+-} while (0)
+-
+-/*
+- * this_cpu operations (C) 2008-2013 Christoph Lameter <cl@linux.com>
+- *
+- * Optimized manipulation for memory allocated through the per cpu
+- * allocator or for addresses of per cpu variables.
+- *
+- * These operation guarantee exclusivity of access for other operations
+- * on the *same* processor. The assumption is that per cpu data is only
+- * accessed by a single processor instance (the current one).
+- *
+- * The first group is used for accesses that must be done in a
+- * preemption safe way since we know that the context is not preempt
+- * safe. Interrupts may occur. If the interrupt modifies the variable
+- * too then RMW actions will not be reliable.
+- *
+- * The arch code can provide optimized functions in two ways:
+- *
+- * 1. Override the function completely. F.e. define this_cpu_add().
+- *    The arch must then ensure that the various scalar format passed
+- *    are handled correctly.
+- *
+- * 2. Provide functions for certain scalar sizes. F.e. provide
+- *    this_cpu_add_2() to provide per cpu atomic operations for 2 byte
+- *    sized RMW actions. If arch code does not provide operations for
+- *    a scalar size then the fallback in the generic code will be
+- *    used.
+- */
+-
+-#define _this_cpu_generic_read(pcp)					\
+-({	typeof(pcp) ret__;						\
+-	preempt_disable();						\
+-	ret__ = *this_cpu_ptr(&(pcp));					\
+-	preempt_enable();						\
+-	ret__;								\
+-})
+-
+-#ifndef this_cpu_read
+-# ifndef this_cpu_read_1
+-#  define this_cpu_read_1(pcp)	_this_cpu_generic_read(pcp)
+-# endif
+-# ifndef this_cpu_read_2
+-#  define this_cpu_read_2(pcp)	_this_cpu_generic_read(pcp)
+-# endif
+-# ifndef this_cpu_read_4
+-#  define this_cpu_read_4(pcp)	_this_cpu_generic_read(pcp)
+-# endif
+-# ifndef this_cpu_read_8
+-#  define this_cpu_read_8(pcp)	_this_cpu_generic_read(pcp)
+-# endif
+-# define this_cpu_read(pcp)	__pcpu_size_call_return(this_cpu_read_, (pcp))
+-#endif
+-
+-#define _this_cpu_generic_to_op(pcp, val, op)				\
+-do {									\
+-	unsigned long flags;						\
+-	raw_local_irq_save(flags);					\
+-	*raw_cpu_ptr(&(pcp)) op val;					\
+-	raw_local_irq_restore(flags);					\
+-} while (0)
+-
+-#ifndef this_cpu_write
+-# ifndef this_cpu_write_1
+-#  define this_cpu_write_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), =)
+-# endif
+-# ifndef this_cpu_write_2
+-#  define this_cpu_write_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), =)
+-# endif
+-# ifndef this_cpu_write_4
+-#  define this_cpu_write_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), =)
+-# endif
+-# ifndef this_cpu_write_8
+-#  define this_cpu_write_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), =)
+-# endif
+-# define this_cpu_write(pcp, val)	__pcpu_size_call(this_cpu_write_, (pcp), (val))
+-#endif
+-
+-#ifndef this_cpu_add
+-# ifndef this_cpu_add_1
+-#  define this_cpu_add_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# ifndef this_cpu_add_2
+-#  define this_cpu_add_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# ifndef this_cpu_add_4
+-#  define this_cpu_add_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# ifndef this_cpu_add_8
+-#  define this_cpu_add_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# define this_cpu_add(pcp, val)		__pcpu_size_call(this_cpu_add_, (pcp), (val))
+-#endif
+-
+-#ifndef this_cpu_sub
+-# define this_cpu_sub(pcp, val)		this_cpu_add((pcp), -(typeof(pcp))(val))
+-#endif
+-
+-#ifndef this_cpu_inc
+-# define this_cpu_inc(pcp)		this_cpu_add((pcp), 1)
+-#endif
+-
+-#ifndef this_cpu_dec
+-# define this_cpu_dec(pcp)		this_cpu_sub((pcp), 1)
+-#endif
+-
+-#ifndef this_cpu_and
+-# ifndef this_cpu_and_1
+-#  define this_cpu_and_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# ifndef this_cpu_and_2
+-#  define this_cpu_and_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# ifndef this_cpu_and_4
+-#  define this_cpu_and_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# ifndef this_cpu_and_8
+-#  define this_cpu_and_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# define this_cpu_and(pcp, val)		__pcpu_size_call(this_cpu_and_, (pcp), (val))
+-#endif
+-
+-#ifndef this_cpu_or
+-# ifndef this_cpu_or_1
+-#  define this_cpu_or_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# ifndef this_cpu_or_2
+-#  define this_cpu_or_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# ifndef this_cpu_or_4
+-#  define this_cpu_or_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# ifndef this_cpu_or_8
+-#  define this_cpu_or_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# define this_cpu_or(pcp, val)		__pcpu_size_call(this_cpu_or_, (pcp), (val))
+-#endif
+-
+-#define _this_cpu_generic_add_return(pcp, val)				\
+-({									\
+-	typeof(pcp) ret__;						\
+-	unsigned long flags;						\
+-	raw_local_irq_save(flags);					\
+-	raw_cpu_add(pcp, val);					\
+-	ret__ = raw_cpu_read(pcp);					\
+-	raw_local_irq_restore(flags);					\
+-	ret__;								\
+-})
+-
+-#ifndef this_cpu_add_return
+-# ifndef this_cpu_add_return_1
+-#  define this_cpu_add_return_1(pcp, val)	_this_cpu_generic_add_return(pcp, val)
+-# endif
+-# ifndef this_cpu_add_return_2
+-#  define this_cpu_add_return_2(pcp, val)	_this_cpu_generic_add_return(pcp, val)
+-# endif
+-# ifndef this_cpu_add_return_4
+-#  define this_cpu_add_return_4(pcp, val)	_this_cpu_generic_add_return(pcp, val)
+-# endif
+-# ifndef this_cpu_add_return_8
+-#  define this_cpu_add_return_8(pcp, val)	_this_cpu_generic_add_return(pcp, val)
+-# endif
+-# define this_cpu_add_return(pcp, val)	__pcpu_size_call_return2(this_cpu_add_return_, pcp, val)
+-#endif
+-
+-#define this_cpu_sub_return(pcp, val)	this_cpu_add_return(pcp, -(typeof(pcp))(val))
+-#define this_cpu_inc_return(pcp)	this_cpu_add_return(pcp, 1)
+-#define this_cpu_dec_return(pcp)	this_cpu_add_return(pcp, -1)
+-
+-#define _this_cpu_generic_xchg(pcp, nval)				\
+-({	typeof(pcp) ret__;						\
+-	unsigned long flags;						\
+-	raw_local_irq_save(flags);					\
+-	ret__ = raw_cpu_read(pcp);					\
+-	raw_cpu_write(pcp, nval);					\
+-	raw_local_irq_restore(flags);					\
+-	ret__;								\
+-})
+-
+-#ifndef this_cpu_xchg
+-# ifndef this_cpu_xchg_1
+-#  define this_cpu_xchg_1(pcp, nval)	_this_cpu_generic_xchg(pcp, nval)
+-# endif
+-# ifndef this_cpu_xchg_2
+-#  define this_cpu_xchg_2(pcp, nval)	_this_cpu_generic_xchg(pcp, nval)
+-# endif
+-# ifndef this_cpu_xchg_4
+-#  define this_cpu_xchg_4(pcp, nval)	_this_cpu_generic_xchg(pcp, nval)
+-# endif
+-# ifndef this_cpu_xchg_8
+-#  define this_cpu_xchg_8(pcp, nval)	_this_cpu_generic_xchg(pcp, nval)
+-# endif
+-# define this_cpu_xchg(pcp, nval)	\
+-	__pcpu_size_call_return2(this_cpu_xchg_, (pcp), nval)
+-#endif
+-
+-#define _this_cpu_generic_cmpxchg(pcp, oval, nval)			\
+-({									\
+-	typeof(pcp) ret__;						\
+-	unsigned long flags;						\
+-	raw_local_irq_save(flags);					\
+-	ret__ = raw_cpu_read(pcp);					\
+-	if (ret__ == (oval))						\
+-		raw_cpu_write(pcp, nval);				\
+-	raw_local_irq_restore(flags);					\
+-	ret__;								\
+-})
+-
+-#ifndef this_cpu_cmpxchg
+-# ifndef this_cpu_cmpxchg_1
+-#  define this_cpu_cmpxchg_1(pcp, oval, nval)	_this_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# ifndef this_cpu_cmpxchg_2
+-#  define this_cpu_cmpxchg_2(pcp, oval, nval)	_this_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# ifndef this_cpu_cmpxchg_4
+-#  define this_cpu_cmpxchg_4(pcp, oval, nval)	_this_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# ifndef this_cpu_cmpxchg_8
+-#  define this_cpu_cmpxchg_8(pcp, oval, nval)	_this_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# define this_cpu_cmpxchg(pcp, oval, nval)	\
+-	__pcpu_size_call_return2(this_cpu_cmpxchg_, pcp, oval, nval)
+-#endif
+-
+-/*
+- * cmpxchg_double replaces two adjacent scalars at once.  The first
+- * two parameters are per cpu variables which have to be of the same
+- * size.  A truth value is returned to indicate success or failure
+- * (since a double register result is difficult to handle).  There is
+- * very limited hardware support for these operations, so only certain
+- * sizes may work.
+- */
+-#define _this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-({									\
+-	int ret__;							\
+-	unsigned long flags;						\
+-	raw_local_irq_save(flags);					\
+-	ret__ = raw_cpu_generic_cmpxchg_double(pcp1, pcp2,		\
+-			oval1, oval2, nval1, nval2);			\
+-	raw_local_irq_restore(flags);					\
+-	ret__;								\
+-})
+-
+-#ifndef this_cpu_cmpxchg_double
+-# ifndef this_cpu_cmpxchg_double_1
+-#  define this_cpu_cmpxchg_double_1(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	_this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# ifndef this_cpu_cmpxchg_double_2
+-#  define this_cpu_cmpxchg_double_2(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	_this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# ifndef this_cpu_cmpxchg_double_4
+-#  define this_cpu_cmpxchg_double_4(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	_this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# ifndef this_cpu_cmpxchg_double_8
+-#  define this_cpu_cmpxchg_double_8(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	_this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# define this_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	__pcpu_double_call_return_bool(this_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
+-#endif
+-
+-/*
+- * Generic percpu operations for contexts where we do not want to do
+- * any checks for preemptiosn.
+- *
+- * If there is no other protection through preempt disable and/or
+- * disabling interupts then one of these RMW operations can show unexpected
+- * behavior because the execution thread was rescheduled on another processor
+- * or an interrupt occurred and the same percpu variable was modified from
+- * the interrupt context.
+- */
+-#ifndef raw_cpu_read
+-# ifndef raw_cpu_read_1
+-#  define raw_cpu_read_1(pcp)	(*raw_cpu_ptr(&(pcp)))
+-# endif
+-# ifndef raw_cpu_read_2
+-#  define raw_cpu_read_2(pcp)	(*raw_cpu_ptr(&(pcp)))
+-# endif
+-# ifndef raw_cpu_read_4
+-#  define raw_cpu_read_4(pcp)	(*raw_cpu_ptr(&(pcp)))
+-# endif
+-# ifndef raw_cpu_read_8
+-#  define raw_cpu_read_8(pcp)	(*raw_cpu_ptr(&(pcp)))
+-# endif
+-# define raw_cpu_read(pcp)	__pcpu_size_call_return(raw_cpu_read_, (pcp))
+-#endif
+-
+-#define raw_cpu_generic_to_op(pcp, val, op)				\
+-do {									\
+-	*raw_cpu_ptr(&(pcp)) op val;					\
+-} while (0)
+-
+-
+-#ifndef raw_cpu_write
+-# ifndef raw_cpu_write_1
+-#  define raw_cpu_write_1(pcp, val)	raw_cpu_generic_to_op((pcp), (val), =)
+-# endif
+-# ifndef raw_cpu_write_2
+-#  define raw_cpu_write_2(pcp, val)	raw_cpu_generic_to_op((pcp), (val), =)
+-# endif
+-# ifndef raw_cpu_write_4
+-#  define raw_cpu_write_4(pcp, val)	raw_cpu_generic_to_op((pcp), (val), =)
+-# endif
+-# ifndef raw_cpu_write_8
+-#  define raw_cpu_write_8(pcp, val)	raw_cpu_generic_to_op((pcp), (val), =)
+-# endif
+-# define raw_cpu_write(pcp, val)	__pcpu_size_call(raw_cpu_write_, (pcp), (val))
+-#endif
+-
+-#ifndef raw_cpu_add
+-# ifndef raw_cpu_add_1
+-#  define raw_cpu_add_1(pcp, val)	raw_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# ifndef raw_cpu_add_2
+-#  define raw_cpu_add_2(pcp, val)	raw_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# ifndef raw_cpu_add_4
+-#  define raw_cpu_add_4(pcp, val)	raw_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# ifndef raw_cpu_add_8
+-#  define raw_cpu_add_8(pcp, val)	raw_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# define raw_cpu_add(pcp, val)	__pcpu_size_call(raw_cpu_add_, (pcp), (val))
+-#endif
+-
+-#ifndef raw_cpu_sub
+-# define raw_cpu_sub(pcp, val)	raw_cpu_add((pcp), -(val))
+-#endif
+-
+-#ifndef raw_cpu_inc
+-# define raw_cpu_inc(pcp)		raw_cpu_add((pcp), 1)
+-#endif
+-
+-#ifndef raw_cpu_dec
+-# define raw_cpu_dec(pcp)		raw_cpu_sub((pcp), 1)
+-#endif
+-
+-#ifndef raw_cpu_and
+-# ifndef raw_cpu_and_1
+-#  define raw_cpu_and_1(pcp, val)	raw_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# ifndef raw_cpu_and_2
+-#  define raw_cpu_and_2(pcp, val)	raw_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# ifndef raw_cpu_and_4
+-#  define raw_cpu_and_4(pcp, val)	raw_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# ifndef raw_cpu_and_8
+-#  define raw_cpu_and_8(pcp, val)	raw_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# define raw_cpu_and(pcp, val)	__pcpu_size_call(raw_cpu_and_, (pcp), (val))
+-#endif
+-
+-#ifndef raw_cpu_or
+-# ifndef raw_cpu_or_1
+-#  define raw_cpu_or_1(pcp, val)	raw_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# ifndef raw_cpu_or_2
+-#  define raw_cpu_or_2(pcp, val)	raw_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# ifndef raw_cpu_or_4
+-#  define raw_cpu_or_4(pcp, val)	raw_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# ifndef raw_cpu_or_8
+-#  define raw_cpu_or_8(pcp, val)	raw_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# define raw_cpu_or(pcp, val)	__pcpu_size_call(raw_cpu_or_, (pcp), (val))
+-#endif
+-
+-#define raw_cpu_generic_add_return(pcp, val)				\
+-({									\
+-	raw_cpu_add(pcp, val);						\
+-	raw_cpu_read(pcp);						\
+-})
+-
+-#ifndef raw_cpu_add_return
+-# ifndef raw_cpu_add_return_1
+-#  define raw_cpu_add_return_1(pcp, val)	raw_cpu_generic_add_return(pcp, val)
+-# endif
+-# ifndef raw_cpu_add_return_2
+-#  define raw_cpu_add_return_2(pcp, val)	raw_cpu_generic_add_return(pcp, val)
+-# endif
+-# ifndef raw_cpu_add_return_4
+-#  define raw_cpu_add_return_4(pcp, val)	raw_cpu_generic_add_return(pcp, val)
+-# endif
+-# ifndef raw_cpu_add_return_8
+-#  define raw_cpu_add_return_8(pcp, val)	raw_cpu_generic_add_return(pcp, val)
+-# endif
+-# define raw_cpu_add_return(pcp, val)	\
+-	__pcpu_size_call_return2(raw_cpu_add_return_, pcp, val)
+-#endif
+-
+-#define raw_cpu_sub_return(pcp, val)	raw_cpu_add_return(pcp, -(typeof(pcp))(val))
+-#define raw_cpu_inc_return(pcp)	raw_cpu_add_return(pcp, 1)
+-#define raw_cpu_dec_return(pcp)	raw_cpu_add_return(pcp, -1)
+-
+-#define raw_cpu_generic_xchg(pcp, nval)					\
+-({	typeof(pcp) ret__;						\
+-	ret__ = raw_cpu_read(pcp);					\
+-	raw_cpu_write(pcp, nval);					\
+-	ret__;								\
+-})
+-
+-#ifndef raw_cpu_xchg
+-# ifndef raw_cpu_xchg_1
+-#  define raw_cpu_xchg_1(pcp, nval)	raw_cpu_generic_xchg(pcp, nval)
+-# endif
+-# ifndef raw_cpu_xchg_2
+-#  define raw_cpu_xchg_2(pcp, nval)	raw_cpu_generic_xchg(pcp, nval)
+-# endif
+-# ifndef raw_cpu_xchg_4
+-#  define raw_cpu_xchg_4(pcp, nval)	raw_cpu_generic_xchg(pcp, nval)
+-# endif
+-# ifndef raw_cpu_xchg_8
+-#  define raw_cpu_xchg_8(pcp, nval)	raw_cpu_generic_xchg(pcp, nval)
+-# endif
+-# define raw_cpu_xchg(pcp, nval)	\
+-	__pcpu_size_call_return2(raw_cpu_xchg_, (pcp), nval)
+-#endif
+-
+-#define raw_cpu_generic_cmpxchg(pcp, oval, nval)			\
+-({									\
+-	typeof(pcp) ret__;						\
+-	ret__ = raw_cpu_read(pcp);					\
+-	if (ret__ == (oval))						\
+-		raw_cpu_write(pcp, nval);				\
+-	ret__;								\
+-})
+-
+-#ifndef raw_cpu_cmpxchg
+-# ifndef raw_cpu_cmpxchg_1
+-#  define raw_cpu_cmpxchg_1(pcp, oval, nval)	raw_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# ifndef raw_cpu_cmpxchg_2
+-#  define raw_cpu_cmpxchg_2(pcp, oval, nval)	raw_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# ifndef raw_cpu_cmpxchg_4
+-#  define raw_cpu_cmpxchg_4(pcp, oval, nval)	raw_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# ifndef raw_cpu_cmpxchg_8
+-#  define raw_cpu_cmpxchg_8(pcp, oval, nval)	raw_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# define raw_cpu_cmpxchg(pcp, oval, nval)	\
+-	__pcpu_size_call_return2(raw_cpu_cmpxchg_, pcp, oval, nval)
+-#endif
+-
+-#define raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-({									\
+-	int __ret = 0;							\
+-	if (raw_cpu_read(pcp1) == (oval1) &&				\
+-			 raw_cpu_read(pcp2)  == (oval2)) {		\
+-		raw_cpu_write(pcp1, (nval1));				\
+-		raw_cpu_write(pcp2, (nval2));				\
+-		__ret = 1;						\
+-	}								\
+-	(__ret);							\
+-})
+-
+-#ifndef raw_cpu_cmpxchg_double
+-# ifndef raw_cpu_cmpxchg_double_1
+-#  define raw_cpu_cmpxchg_double_1(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# ifndef raw_cpu_cmpxchg_double_2
+-#  define raw_cpu_cmpxchg_double_2(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# ifndef raw_cpu_cmpxchg_double_4
+-#  define raw_cpu_cmpxchg_double_4(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# ifndef raw_cpu_cmpxchg_double_8
+-#  define raw_cpu_cmpxchg_double_8(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# define raw_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	__pcpu_double_call_return_bool(raw_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
+-#endif
+-
+-/*
+- * Generic percpu operations for context that are safe from preemption/interrupts.
+- */
+-#ifndef __this_cpu_read
+-# define __this_cpu_read(pcp) \
+-	(__this_cpu_preempt_check("read"),__pcpu_size_call_return(raw_cpu_read_, (pcp)))
+-#endif
+-
+-#ifndef __this_cpu_write
+-# define __this_cpu_write(pcp, val)					\
+-do { __this_cpu_preempt_check("write");					\
+-     __pcpu_size_call(raw_cpu_write_, (pcp), (val));			\
+-} while (0)
+-#endif
+-
+-#ifndef __this_cpu_add
+-# define __this_cpu_add(pcp, val)					 \
+-do { __this_cpu_preempt_check("add");					\
+-	__pcpu_size_call(raw_cpu_add_, (pcp), (val));			\
+-} while (0)
+-#endif
+-
+-#ifndef __this_cpu_sub
+-# define __this_cpu_sub(pcp, val)	__this_cpu_add((pcp), -(typeof(pcp))(val))
+-#endif
+-
+-#ifndef __this_cpu_inc
+-# define __this_cpu_inc(pcp)		__this_cpu_add((pcp), 1)
+-#endif
+-
+-#ifndef __this_cpu_dec
+-# define __this_cpu_dec(pcp)		__this_cpu_sub((pcp), 1)
+-#endif
+-
+-#ifndef __this_cpu_and
+-# define __this_cpu_and(pcp, val)					\
+-do { __this_cpu_preempt_check("and");					\
+-	__pcpu_size_call(raw_cpu_and_, (pcp), (val));			\
+-} while (0)
+-
+-#endif
+-
+-#ifndef __this_cpu_or
+-# define __this_cpu_or(pcp, val)					\
+-do { __this_cpu_preempt_check("or");					\
+-	__pcpu_size_call(raw_cpu_or_, (pcp), (val));			\
+-} while (0)
+-#endif
+-
+-#ifndef __this_cpu_add_return
+-# define __this_cpu_add_return(pcp, val)	\
+-	(__this_cpu_preempt_check("add_return"),__pcpu_size_call_return2(raw_cpu_add_return_, pcp, val))
+-#endif
+-
+-#define __this_cpu_sub_return(pcp, val)	__this_cpu_add_return(pcp, -(typeof(pcp))(val))
+-#define __this_cpu_inc_return(pcp)	__this_cpu_add_return(pcp, 1)
+-#define __this_cpu_dec_return(pcp)	__this_cpu_add_return(pcp, -1)
+-
+-#ifndef __this_cpu_xchg
+-# define __this_cpu_xchg(pcp, nval)	\
+-	(__this_cpu_preempt_check("xchg"),__pcpu_size_call_return2(raw_cpu_xchg_, (pcp), nval))
+-#endif
+-
+-#ifndef __this_cpu_cmpxchg
+-# define __this_cpu_cmpxchg(pcp, oval, nval)	\
+-	(__this_cpu_preempt_check("cmpxchg"),__pcpu_size_call_return2(raw_cpu_cmpxchg_, pcp, oval, nval))
+-#endif
+-
+-#ifndef __this_cpu_cmpxchg_double
+-# define __this_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	(__this_cpu_preempt_check("cmpxchg_double"),__pcpu_double_call_return_bool(raw_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2)))
+-#endif
+-
+ #endif /* __LINUX_PERCPU_H */
+
+commit 7d207b6ceffb9a1364d0349dc0e2f05a94831f17
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:04:53 2018 +0800
+
+    v3.16-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index e7a0b95..8419053 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -29,7 +29,7 @@
+  */
+ #define get_cpu_var(var) (*({				\
+ 	preempt_disable();				\
+-	&__get_cpu_var(var); }))
++	this_cpu_ptr(&var); }))
+ 
+ /*
+  * The weird & is necessary because sparse considers (void)(var) to be
+@@ -639,7 +639,7 @@ do {									\
+ #  define raw_cpu_add_return_8(pcp, val)	raw_cpu_generic_add_return(pcp, val)
+ # endif
+ # define raw_cpu_add_return(pcp, val)	\
+-	__pcpu_size_call_return2(raw_add_return_, pcp, val)
++	__pcpu_size_call_return2(raw_cpu_add_return_, pcp, val)
+ #endif
+ 
+ #define raw_cpu_sub_return(pcp, val)	raw_cpu_add_return(pcp, -(typeof(pcp))(val))
+
+commit ae10489de55dcc43005315366da562ae1dcbc722
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:04:34 2018 +0800
+
+    v3.15-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index e3817d2..e7a0b95 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -173,6 +173,12 @@ extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+ 
+ extern void __bad_size_call_parameter(void);
+ 
++#ifdef CONFIG_DEBUG_PREEMPT
++extern void __this_cpu_preempt_check(const char *op);
++#else
++static inline void __this_cpu_preempt_check(const char *op) { }
++#endif
++
+ #define __pcpu_size_call_return(stem, variable)				\
+ ({	typeof(variable) pscr_ret__;					\
+ 	__verify_pcpu_ptr(&(variable));					\
+@@ -243,6 +249,8 @@ do {									\
+ } while (0)
+ 
+ /*
++ * this_cpu operations (C) 2008-2013 Christoph Lameter <cl@linux.com>
++ *
+  * Optimized manipulation for memory allocated through the per cpu
+  * allocator or for addresses of per cpu variables.
+  *
+@@ -296,7 +304,7 @@ do {									\
+ do {									\
+ 	unsigned long flags;						\
+ 	raw_local_irq_save(flags);					\
+-	*__this_cpu_ptr(&(pcp)) op val;					\
++	*raw_cpu_ptr(&(pcp)) op val;					\
+ 	raw_local_irq_restore(flags);					\
+ } while (0)
+ 
+@@ -381,8 +389,8 @@ do {									\
+ 	typeof(pcp) ret__;						\
+ 	unsigned long flags;						\
+ 	raw_local_irq_save(flags);					\
+-	__this_cpu_add(pcp, val);					\
+-	ret__ = __this_cpu_read(pcp);					\
++	raw_cpu_add(pcp, val);					\
++	ret__ = raw_cpu_read(pcp);					\
+ 	raw_local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+@@ -411,8 +419,8 @@ do {									\
+ ({	typeof(pcp) ret__;						\
+ 	unsigned long flags;						\
+ 	raw_local_irq_save(flags);					\
+-	ret__ = __this_cpu_read(pcp);					\
+-	__this_cpu_write(pcp, nval);					\
++	ret__ = raw_cpu_read(pcp);					\
++	raw_cpu_write(pcp, nval);					\
+ 	raw_local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+@@ -439,9 +447,9 @@ do {									\
+ 	typeof(pcp) ret__;						\
+ 	unsigned long flags;						\
+ 	raw_local_irq_save(flags);					\
+-	ret__ = __this_cpu_read(pcp);					\
++	ret__ = raw_cpu_read(pcp);					\
+ 	if (ret__ == (oval))						\
+-		__this_cpu_write(pcp, nval);				\
++		raw_cpu_write(pcp, nval);				\
+ 	raw_local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+@@ -476,7 +484,7 @@ do {									\
+ 	int ret__;							\
+ 	unsigned long flags;						\
+ 	raw_local_irq_save(flags);					\
+-	ret__ = __this_cpu_generic_cmpxchg_double(pcp1, pcp2,		\
++	ret__ = raw_cpu_generic_cmpxchg_double(pcp1, pcp2,		\
+ 			oval1, oval2, nval1, nval2);			\
+ 	raw_local_irq_restore(flags);					\
+ 	ret__;								\
+@@ -504,12 +512,8 @@ do {									\
+ #endif
+ 
+ /*
+- * Generic percpu operations for context that are safe from preemption/interrupts.
+- * Either we do not care about races or the caller has the
+- * responsibility of handling preemption/interrupt issues. Arch code can still
+- * override these instructions since the arch per cpu code may be more
+- * efficient and may actually get race freeness for free (that is the
+- * case for x86 for example).
++ * Generic percpu operations for contexts where we do not want to do
++ * any checks for preemptiosn.
+  *
+  * If there is no other protection through preempt disable and/or
+  * disabling interupts then one of these RMW operations can show unexpected
+@@ -517,211 +521,285 @@ do {									\
+  * or an interrupt occurred and the same percpu variable was modified from
+  * the interrupt context.
+  */
+-#ifndef __this_cpu_read
+-# ifndef __this_cpu_read_1
+-#  define __this_cpu_read_1(pcp)	(*__this_cpu_ptr(&(pcp)))
++#ifndef raw_cpu_read
++# ifndef raw_cpu_read_1
++#  define raw_cpu_read_1(pcp)	(*raw_cpu_ptr(&(pcp)))
+ # endif
+-# ifndef __this_cpu_read_2
+-#  define __this_cpu_read_2(pcp)	(*__this_cpu_ptr(&(pcp)))
++# ifndef raw_cpu_read_2
++#  define raw_cpu_read_2(pcp)	(*raw_cpu_ptr(&(pcp)))
+ # endif
+-# ifndef __this_cpu_read_4
+-#  define __this_cpu_read_4(pcp)	(*__this_cpu_ptr(&(pcp)))
++# ifndef raw_cpu_read_4
++#  define raw_cpu_read_4(pcp)	(*raw_cpu_ptr(&(pcp)))
+ # endif
+-# ifndef __this_cpu_read_8
+-#  define __this_cpu_read_8(pcp)	(*__this_cpu_ptr(&(pcp)))
++# ifndef raw_cpu_read_8
++#  define raw_cpu_read_8(pcp)	(*raw_cpu_ptr(&(pcp)))
+ # endif
+-# define __this_cpu_read(pcp)	__pcpu_size_call_return(__this_cpu_read_, (pcp))
++# define raw_cpu_read(pcp)	__pcpu_size_call_return(raw_cpu_read_, (pcp))
+ #endif
+ 
+-#define __this_cpu_generic_to_op(pcp, val, op)				\
++#define raw_cpu_generic_to_op(pcp, val, op)				\
+ do {									\
+-	*__this_cpu_ptr(&(pcp)) op val;					\
++	*raw_cpu_ptr(&(pcp)) op val;					\
+ } while (0)
+ 
+-#ifndef __this_cpu_write
+-# ifndef __this_cpu_write_1
+-#  define __this_cpu_write_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), =)
++
++#ifndef raw_cpu_write
++# ifndef raw_cpu_write_1
++#  define raw_cpu_write_1(pcp, val)	raw_cpu_generic_to_op((pcp), (val), =)
+ # endif
+-# ifndef __this_cpu_write_2
+-#  define __this_cpu_write_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), =)
++# ifndef raw_cpu_write_2
++#  define raw_cpu_write_2(pcp, val)	raw_cpu_generic_to_op((pcp), (val), =)
+ # endif
+-# ifndef __this_cpu_write_4
+-#  define __this_cpu_write_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), =)
++# ifndef raw_cpu_write_4
++#  define raw_cpu_write_4(pcp, val)	raw_cpu_generic_to_op((pcp), (val), =)
+ # endif
+-# ifndef __this_cpu_write_8
+-#  define __this_cpu_write_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), =)
++# ifndef raw_cpu_write_8
++#  define raw_cpu_write_8(pcp, val)	raw_cpu_generic_to_op((pcp), (val), =)
+ # endif
+-# define __this_cpu_write(pcp, val)	__pcpu_size_call(__this_cpu_write_, (pcp), (val))
++# define raw_cpu_write(pcp, val)	__pcpu_size_call(raw_cpu_write_, (pcp), (val))
+ #endif
+ 
+-#ifndef __this_cpu_add
+-# ifndef __this_cpu_add_1
+-#  define __this_cpu_add_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), +=)
++#ifndef raw_cpu_add
++# ifndef raw_cpu_add_1
++#  define raw_cpu_add_1(pcp, val)	raw_cpu_generic_to_op((pcp), (val), +=)
+ # endif
+-# ifndef __this_cpu_add_2
+-#  define __this_cpu_add_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), +=)
++# ifndef raw_cpu_add_2
++#  define raw_cpu_add_2(pcp, val)	raw_cpu_generic_to_op((pcp), (val), +=)
+ # endif
+-# ifndef __this_cpu_add_4
+-#  define __this_cpu_add_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), +=)
++# ifndef raw_cpu_add_4
++#  define raw_cpu_add_4(pcp, val)	raw_cpu_generic_to_op((pcp), (val), +=)
+ # endif
+-# ifndef __this_cpu_add_8
+-#  define __this_cpu_add_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), +=)
++# ifndef raw_cpu_add_8
++#  define raw_cpu_add_8(pcp, val)	raw_cpu_generic_to_op((pcp), (val), +=)
+ # endif
+-# define __this_cpu_add(pcp, val)	__pcpu_size_call(__this_cpu_add_, (pcp), (val))
++# define raw_cpu_add(pcp, val)	__pcpu_size_call(raw_cpu_add_, (pcp), (val))
+ #endif
+ 
+-#ifndef __this_cpu_sub
+-# define __this_cpu_sub(pcp, val)	__this_cpu_add((pcp), -(typeof(pcp))(val))
++#ifndef raw_cpu_sub
++# define raw_cpu_sub(pcp, val)	raw_cpu_add((pcp), -(val))
+ #endif
+ 
+-#ifndef __this_cpu_inc
+-# define __this_cpu_inc(pcp)		__this_cpu_add((pcp), 1)
++#ifndef raw_cpu_inc
++# define raw_cpu_inc(pcp)		raw_cpu_add((pcp), 1)
+ #endif
+ 
+-#ifndef __this_cpu_dec
+-# define __this_cpu_dec(pcp)		__this_cpu_sub((pcp), 1)
++#ifndef raw_cpu_dec
++# define raw_cpu_dec(pcp)		raw_cpu_sub((pcp), 1)
+ #endif
+ 
+-#ifndef __this_cpu_and
+-# ifndef __this_cpu_and_1
+-#  define __this_cpu_and_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), &=)
++#ifndef raw_cpu_and
++# ifndef raw_cpu_and_1
++#  define raw_cpu_and_1(pcp, val)	raw_cpu_generic_to_op((pcp), (val), &=)
+ # endif
+-# ifndef __this_cpu_and_2
+-#  define __this_cpu_and_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), &=)
++# ifndef raw_cpu_and_2
++#  define raw_cpu_and_2(pcp, val)	raw_cpu_generic_to_op((pcp), (val), &=)
+ # endif
+-# ifndef __this_cpu_and_4
+-#  define __this_cpu_and_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), &=)
++# ifndef raw_cpu_and_4
++#  define raw_cpu_and_4(pcp, val)	raw_cpu_generic_to_op((pcp), (val), &=)
+ # endif
+-# ifndef __this_cpu_and_8
+-#  define __this_cpu_and_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), &=)
++# ifndef raw_cpu_and_8
++#  define raw_cpu_and_8(pcp, val)	raw_cpu_generic_to_op((pcp), (val), &=)
+ # endif
+-# define __this_cpu_and(pcp, val)	__pcpu_size_call(__this_cpu_and_, (pcp), (val))
++# define raw_cpu_and(pcp, val)	__pcpu_size_call(raw_cpu_and_, (pcp), (val))
+ #endif
+ 
+-#ifndef __this_cpu_or
+-# ifndef __this_cpu_or_1
+-#  define __this_cpu_or_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), |=)
++#ifndef raw_cpu_or
++# ifndef raw_cpu_or_1
++#  define raw_cpu_or_1(pcp, val)	raw_cpu_generic_to_op((pcp), (val), |=)
+ # endif
+-# ifndef __this_cpu_or_2
+-#  define __this_cpu_or_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), |=)
++# ifndef raw_cpu_or_2
++#  define raw_cpu_or_2(pcp, val)	raw_cpu_generic_to_op((pcp), (val), |=)
+ # endif
+-# ifndef __this_cpu_or_4
+-#  define __this_cpu_or_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), |=)
++# ifndef raw_cpu_or_4
++#  define raw_cpu_or_4(pcp, val)	raw_cpu_generic_to_op((pcp), (val), |=)
+ # endif
+-# ifndef __this_cpu_or_8
+-#  define __this_cpu_or_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), |=)
++# ifndef raw_cpu_or_8
++#  define raw_cpu_or_8(pcp, val)	raw_cpu_generic_to_op((pcp), (val), |=)
+ # endif
+-# define __this_cpu_or(pcp, val)	__pcpu_size_call(__this_cpu_or_, (pcp), (val))
++# define raw_cpu_or(pcp, val)	__pcpu_size_call(raw_cpu_or_, (pcp), (val))
+ #endif
+ 
+-#define __this_cpu_generic_add_return(pcp, val)				\
++#define raw_cpu_generic_add_return(pcp, val)				\
+ ({									\
+-	__this_cpu_add(pcp, val);					\
+-	__this_cpu_read(pcp);						\
++	raw_cpu_add(pcp, val);						\
++	raw_cpu_read(pcp);						\
+ })
+ 
+-#ifndef __this_cpu_add_return
+-# ifndef __this_cpu_add_return_1
+-#  define __this_cpu_add_return_1(pcp, val)	__this_cpu_generic_add_return(pcp, val)
++#ifndef raw_cpu_add_return
++# ifndef raw_cpu_add_return_1
++#  define raw_cpu_add_return_1(pcp, val)	raw_cpu_generic_add_return(pcp, val)
+ # endif
+-# ifndef __this_cpu_add_return_2
+-#  define __this_cpu_add_return_2(pcp, val)	__this_cpu_generic_add_return(pcp, val)
++# ifndef raw_cpu_add_return_2
++#  define raw_cpu_add_return_2(pcp, val)	raw_cpu_generic_add_return(pcp, val)
+ # endif
+-# ifndef __this_cpu_add_return_4
+-#  define __this_cpu_add_return_4(pcp, val)	__this_cpu_generic_add_return(pcp, val)
++# ifndef raw_cpu_add_return_4
++#  define raw_cpu_add_return_4(pcp, val)	raw_cpu_generic_add_return(pcp, val)
+ # endif
+-# ifndef __this_cpu_add_return_8
+-#  define __this_cpu_add_return_8(pcp, val)	__this_cpu_generic_add_return(pcp, val)
++# ifndef raw_cpu_add_return_8
++#  define raw_cpu_add_return_8(pcp, val)	raw_cpu_generic_add_return(pcp, val)
+ # endif
+-# define __this_cpu_add_return(pcp, val)	\
+-	__pcpu_size_call_return2(__this_cpu_add_return_, pcp, val)
++# define raw_cpu_add_return(pcp, val)	\
++	__pcpu_size_call_return2(raw_add_return_, pcp, val)
+ #endif
+ 
+-#define __this_cpu_sub_return(pcp, val)	__this_cpu_add_return(pcp, -(typeof(pcp))(val))
+-#define __this_cpu_inc_return(pcp)	__this_cpu_add_return(pcp, 1)
+-#define __this_cpu_dec_return(pcp)	__this_cpu_add_return(pcp, -1)
++#define raw_cpu_sub_return(pcp, val)	raw_cpu_add_return(pcp, -(typeof(pcp))(val))
++#define raw_cpu_inc_return(pcp)	raw_cpu_add_return(pcp, 1)
++#define raw_cpu_dec_return(pcp)	raw_cpu_add_return(pcp, -1)
+ 
+-#define __this_cpu_generic_xchg(pcp, nval)				\
++#define raw_cpu_generic_xchg(pcp, nval)					\
+ ({	typeof(pcp) ret__;						\
+-	ret__ = __this_cpu_read(pcp);					\
+-	__this_cpu_write(pcp, nval);					\
++	ret__ = raw_cpu_read(pcp);					\
++	raw_cpu_write(pcp, nval);					\
+ 	ret__;								\
+ })
+ 
+-#ifndef __this_cpu_xchg
+-# ifndef __this_cpu_xchg_1
+-#  define __this_cpu_xchg_1(pcp, nval)	__this_cpu_generic_xchg(pcp, nval)
++#ifndef raw_cpu_xchg
++# ifndef raw_cpu_xchg_1
++#  define raw_cpu_xchg_1(pcp, nval)	raw_cpu_generic_xchg(pcp, nval)
+ # endif
+-# ifndef __this_cpu_xchg_2
+-#  define __this_cpu_xchg_2(pcp, nval)	__this_cpu_generic_xchg(pcp, nval)
++# ifndef raw_cpu_xchg_2
++#  define raw_cpu_xchg_2(pcp, nval)	raw_cpu_generic_xchg(pcp, nval)
+ # endif
+-# ifndef __this_cpu_xchg_4
+-#  define __this_cpu_xchg_4(pcp, nval)	__this_cpu_generic_xchg(pcp, nval)
++# ifndef raw_cpu_xchg_4
++#  define raw_cpu_xchg_4(pcp, nval)	raw_cpu_generic_xchg(pcp, nval)
+ # endif
+-# ifndef __this_cpu_xchg_8
+-#  define __this_cpu_xchg_8(pcp, nval)	__this_cpu_generic_xchg(pcp, nval)
++# ifndef raw_cpu_xchg_8
++#  define raw_cpu_xchg_8(pcp, nval)	raw_cpu_generic_xchg(pcp, nval)
+ # endif
+-# define __this_cpu_xchg(pcp, nval)	\
+-	__pcpu_size_call_return2(__this_cpu_xchg_, (pcp), nval)
++# define raw_cpu_xchg(pcp, nval)	\
++	__pcpu_size_call_return2(raw_cpu_xchg_, (pcp), nval)
+ #endif
+ 
+-#define __this_cpu_generic_cmpxchg(pcp, oval, nval)			\
++#define raw_cpu_generic_cmpxchg(pcp, oval, nval)			\
+ ({									\
+ 	typeof(pcp) ret__;						\
+-	ret__ = __this_cpu_read(pcp);					\
++	ret__ = raw_cpu_read(pcp);					\
+ 	if (ret__ == (oval))						\
+-		__this_cpu_write(pcp, nval);				\
++		raw_cpu_write(pcp, nval);				\
+ 	ret__;								\
+ })
+ 
+-#ifndef __this_cpu_cmpxchg
+-# ifndef __this_cpu_cmpxchg_1
+-#  define __this_cpu_cmpxchg_1(pcp, oval, nval)	__this_cpu_generic_cmpxchg(pcp, oval, nval)
++#ifndef raw_cpu_cmpxchg
++# ifndef raw_cpu_cmpxchg_1
++#  define raw_cpu_cmpxchg_1(pcp, oval, nval)	raw_cpu_generic_cmpxchg(pcp, oval, nval)
+ # endif
+-# ifndef __this_cpu_cmpxchg_2
+-#  define __this_cpu_cmpxchg_2(pcp, oval, nval)	__this_cpu_generic_cmpxchg(pcp, oval, nval)
++# ifndef raw_cpu_cmpxchg_2
++#  define raw_cpu_cmpxchg_2(pcp, oval, nval)	raw_cpu_generic_cmpxchg(pcp, oval, nval)
+ # endif
+-# ifndef __this_cpu_cmpxchg_4
+-#  define __this_cpu_cmpxchg_4(pcp, oval, nval)	__this_cpu_generic_cmpxchg(pcp, oval, nval)
++# ifndef raw_cpu_cmpxchg_4
++#  define raw_cpu_cmpxchg_4(pcp, oval, nval)	raw_cpu_generic_cmpxchg(pcp, oval, nval)
+ # endif
+-# ifndef __this_cpu_cmpxchg_8
+-#  define __this_cpu_cmpxchg_8(pcp, oval, nval)	__this_cpu_generic_cmpxchg(pcp, oval, nval)
++# ifndef raw_cpu_cmpxchg_8
++#  define raw_cpu_cmpxchg_8(pcp, oval, nval)	raw_cpu_generic_cmpxchg(pcp, oval, nval)
+ # endif
+-# define __this_cpu_cmpxchg(pcp, oval, nval)	\
+-	__pcpu_size_call_return2(__this_cpu_cmpxchg_, pcp, oval, nval)
++# define raw_cpu_cmpxchg(pcp, oval, nval)	\
++	__pcpu_size_call_return2(raw_cpu_cmpxchg_, pcp, oval, nval)
+ #endif
+ 
+-#define __this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++#define raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+ ({									\
+ 	int __ret = 0;							\
+-	if (__this_cpu_read(pcp1) == (oval1) &&				\
+-			 __this_cpu_read(pcp2)  == (oval2)) {		\
+-		__this_cpu_write(pcp1, (nval1));			\
+-		__this_cpu_write(pcp2, (nval2));			\
++	if (raw_cpu_read(pcp1) == (oval1) &&				\
++			 raw_cpu_read(pcp2)  == (oval2)) {		\
++		raw_cpu_write(pcp1, (nval1));				\
++		raw_cpu_write(pcp2, (nval2));				\
+ 		__ret = 1;						\
+ 	}								\
+ 	(__ret);							\
+ })
+ 
+-#ifndef __this_cpu_cmpxchg_double
+-# ifndef __this_cpu_cmpxchg_double_1
+-#  define __this_cpu_cmpxchg_double_1(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	__this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++#ifndef raw_cpu_cmpxchg_double
++# ifndef raw_cpu_cmpxchg_double_1
++#  define raw_cpu_cmpxchg_double_1(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+ # endif
+-# ifndef __this_cpu_cmpxchg_double_2
+-#  define __this_cpu_cmpxchg_double_2(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	__this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# ifndef raw_cpu_cmpxchg_double_2
++#  define raw_cpu_cmpxchg_double_2(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+ # endif
+-# ifndef __this_cpu_cmpxchg_double_4
+-#  define __this_cpu_cmpxchg_double_4(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	__this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# ifndef raw_cpu_cmpxchg_double_4
++#  define raw_cpu_cmpxchg_double_4(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+ # endif
+-# ifndef __this_cpu_cmpxchg_double_8
+-#  define __this_cpu_cmpxchg_double_8(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	__this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# ifndef raw_cpu_cmpxchg_double_8
++#  define raw_cpu_cmpxchg_double_8(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	raw_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+ # endif
++# define raw_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	__pcpu_double_call_return_bool(raw_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
++#endif
++
++/*
++ * Generic percpu operations for context that are safe from preemption/interrupts.
++ */
++#ifndef __this_cpu_read
++# define __this_cpu_read(pcp) \
++	(__this_cpu_preempt_check("read"),__pcpu_size_call_return(raw_cpu_read_, (pcp)))
++#endif
++
++#ifndef __this_cpu_write
++# define __this_cpu_write(pcp, val)					\
++do { __this_cpu_preempt_check("write");					\
++     __pcpu_size_call(raw_cpu_write_, (pcp), (val));			\
++} while (0)
++#endif
++
++#ifndef __this_cpu_add
++# define __this_cpu_add(pcp, val)					 \
++do { __this_cpu_preempt_check("add");					\
++	__pcpu_size_call(raw_cpu_add_, (pcp), (val));			\
++} while (0)
++#endif
++
++#ifndef __this_cpu_sub
++# define __this_cpu_sub(pcp, val)	__this_cpu_add((pcp), -(typeof(pcp))(val))
++#endif
++
++#ifndef __this_cpu_inc
++# define __this_cpu_inc(pcp)		__this_cpu_add((pcp), 1)
++#endif
++
++#ifndef __this_cpu_dec
++# define __this_cpu_dec(pcp)		__this_cpu_sub((pcp), 1)
++#endif
++
++#ifndef __this_cpu_and
++# define __this_cpu_and(pcp, val)					\
++do { __this_cpu_preempt_check("and");					\
++	__pcpu_size_call(raw_cpu_and_, (pcp), (val));			\
++} while (0)
++
++#endif
++
++#ifndef __this_cpu_or
++# define __this_cpu_or(pcp, val)					\
++do { __this_cpu_preempt_check("or");					\
++	__pcpu_size_call(raw_cpu_or_, (pcp), (val));			\
++} while (0)
++#endif
++
++#ifndef __this_cpu_add_return
++# define __this_cpu_add_return(pcp, val)	\
++	(__this_cpu_preempt_check("add_return"),__pcpu_size_call_return2(raw_cpu_add_return_, pcp, val))
++#endif
++
++#define __this_cpu_sub_return(pcp, val)	__this_cpu_add_return(pcp, -(typeof(pcp))(val))
++#define __this_cpu_inc_return(pcp)	__this_cpu_add_return(pcp, 1)
++#define __this_cpu_dec_return(pcp)	__this_cpu_add_return(pcp, -1)
++
++#ifndef __this_cpu_xchg
++# define __this_cpu_xchg(pcp, nval)	\
++	(__this_cpu_preempt_check("xchg"),__pcpu_size_call_return2(raw_cpu_xchg_, (pcp), nval))
++#endif
++
++#ifndef __this_cpu_cmpxchg
++# define __this_cpu_cmpxchg(pcp, oval, nval)	\
++	(__this_cpu_preempt_check("cmpxchg"),__pcpu_size_call_return2(raw_cpu_cmpxchg_, pcp, oval, nval))
++#endif
++
++#ifndef __this_cpu_cmpxchg_double
+ # define __this_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	__pcpu_double_call_return_bool(__this_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
++	(__this_cpu_preempt_check("cmpxchg_double"),__pcpu_double_call_return_bool(raw_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2)))
+ #endif
+ 
+ #endif /* __LINUX_PERCPU_H */
+
+commit 498ce7d70d52c07b5f2ea5fdb0454dec56d9f73d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:04:16 2018 +0800
+
+    v3.14-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 9e4761c..e3817d2 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -1,6 +1,7 @@
+ #ifndef __LINUX_PERCPU_H
+ #define __LINUX_PERCPU_H
+ 
++#include <linux/mmdebug.h>
+ #include <linux/preempt.h>
+ #include <linux/smp.h>
+ #include <linux/cpumask.h>
+
+commit 3dfcb9b1236c2a9cef155aaeb1e28da728a1e5b3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:03:57 2018 +0800
+
+    v3.13-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index c74088a..9e4761c 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -375,22 +375,6 @@ do {									\
+ # define this_cpu_or(pcp, val)		__pcpu_size_call(this_cpu_or_, (pcp), (val))
+ #endif
+ 
+-#ifndef this_cpu_xor
+-# ifndef this_cpu_xor_1
+-#  define this_cpu_xor_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# ifndef this_cpu_xor_2
+-#  define this_cpu_xor_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# ifndef this_cpu_xor_4
+-#  define this_cpu_xor_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# ifndef this_cpu_xor_8
+-#  define this_cpu_xor_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# define this_cpu_xor(pcp, val)		__pcpu_size_call(this_cpu_or_, (pcp), (val))
+-#endif
+-
+ #define _this_cpu_generic_add_return(pcp, val)				\
+ ({									\
+ 	typeof(pcp) ret__;						\
+@@ -629,22 +613,6 @@ do {									\
+ # define __this_cpu_or(pcp, val)	__pcpu_size_call(__this_cpu_or_, (pcp), (val))
+ #endif
+ 
+-#ifndef __this_cpu_xor
+-# ifndef __this_cpu_xor_1
+-#  define __this_cpu_xor_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# ifndef __this_cpu_xor_2
+-#  define __this_cpu_xor_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# ifndef __this_cpu_xor_4
+-#  define __this_cpu_xor_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# ifndef __this_cpu_xor_8
+-#  define __this_cpu_xor_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# define __this_cpu_xor(pcp, val)	__pcpu_size_call(__this_cpu_xor_, (pcp), (val))
+-#endif
+-
+ #define __this_cpu_generic_add_return(pcp, val)				\
+ ({									\
+ 	__this_cpu_add(pcp, val);					\
+
+commit ec746d2f558c469229caa030849f009cd6780ded
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:03:52 2018 +0800
+
+    v3.12
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index cc88172..c74088a 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -332,7 +332,7 @@ do {									\
+ #endif
+ 
+ #ifndef this_cpu_sub
+-# define this_cpu_sub(pcp, val)		this_cpu_add((pcp), -(val))
++# define this_cpu_sub(pcp, val)		this_cpu_add((pcp), -(typeof(pcp))(val))
+ #endif
+ 
+ #ifndef this_cpu_inc
+@@ -418,7 +418,7 @@ do {									\
+ # define this_cpu_add_return(pcp, val)	__pcpu_size_call_return2(this_cpu_add_return_, pcp, val)
+ #endif
+ 
+-#define this_cpu_sub_return(pcp, val)	this_cpu_add_return(pcp, -(val))
++#define this_cpu_sub_return(pcp, val)	this_cpu_add_return(pcp, -(typeof(pcp))(val))
+ #define this_cpu_inc_return(pcp)	this_cpu_add_return(pcp, 1)
+ #define this_cpu_dec_return(pcp)	this_cpu_add_return(pcp, -1)
+ 
+@@ -586,7 +586,7 @@ do {									\
+ #endif
+ 
+ #ifndef __this_cpu_sub
+-# define __this_cpu_sub(pcp, val)	__this_cpu_add((pcp), -(val))
++# define __this_cpu_sub(pcp, val)	__this_cpu_add((pcp), -(typeof(pcp))(val))
+ #endif
+ 
+ #ifndef __this_cpu_inc
+@@ -668,7 +668,7 @@ do {									\
+ 	__pcpu_size_call_return2(__this_cpu_add_return_, pcp, val)
+ #endif
+ 
+-#define __this_cpu_sub_return(pcp, val)	__this_cpu_add_return(pcp, -(val))
++#define __this_cpu_sub_return(pcp, val)	__this_cpu_add_return(pcp, -(typeof(pcp))(val))
+ #define __this_cpu_inc_return(pcp)	__this_cpu_add_return(pcp, 1)
+ #define __this_cpu_dec_return(pcp)	__this_cpu_add_return(pcp, -1)
+ 
+
+commit 0f8955f806cf1ec6ee2ab6ab9184d3b54fe7b7eb
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:02:17 2018 +0800
+
+    v3.7-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 2b9f82c..cc88172 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -107,7 +107,7 @@ enum pcpu_fc {
+ 
+ 	PCPU_FC_NR,
+ };
+-extern const char *pcpu_fc_names[PCPU_FC_NR];
++extern const char * const pcpu_fc_names[PCPU_FC_NR];
+ 
+ extern enum pcpu_fc pcpu_chosen_fc;
+ 
+
+commit ff9fec7bdfc747a0b5fd8851face14ad6b973def
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:45 2018 +0800
+
+    v3.5-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 21638ae..2b9f82c 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -166,60 +166,6 @@ extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+ 	(typeof(type) __percpu *)__alloc_percpu(sizeof(type), __alignof__(type))
+ 
+ /*
+- * Optional methods for optimized non-lvalue per-cpu variable access.
+- *
+- * @var can be a percpu variable or a field of it and its size should
+- * equal char, int or long.  percpu_read() evaluates to a lvalue and
+- * all others to void.
+- *
+- * These operations are guaranteed to be atomic.
+- * The generic versions disable interrupts.  Archs are
+- * encouraged to implement single-instruction alternatives which don't
+- * require protection.
+- */
+-#ifndef percpu_read
+-# define percpu_read(var)						\
+-  ({									\
+-	typeof(var) *pr_ptr__ = &(var);					\
+-	typeof(var) pr_ret__;						\
+-	pr_ret__ = get_cpu_var(*pr_ptr__);				\
+-	put_cpu_var(*pr_ptr__);						\
+-	pr_ret__;							\
+-  })
+-#endif
+-
+-#define __percpu_generic_to_op(var, val, op)				\
+-do {									\
+-	typeof(var) *pgto_ptr__ = &(var);				\
+-	get_cpu_var(*pgto_ptr__) op val;				\
+-	put_cpu_var(*pgto_ptr__);					\
+-} while (0)
+-
+-#ifndef percpu_write
+-# define percpu_write(var, val)		__percpu_generic_to_op(var, (val), =)
+-#endif
+-
+-#ifndef percpu_add
+-# define percpu_add(var, val)		__percpu_generic_to_op(var, (val), +=)
+-#endif
+-
+-#ifndef percpu_sub
+-# define percpu_sub(var, val)		__percpu_generic_to_op(var, (val), -=)
+-#endif
+-
+-#ifndef percpu_and
+-# define percpu_and(var, val)		__percpu_generic_to_op(var, (val), &=)
+-#endif
+-
+-#ifndef percpu_or
+-# define percpu_or(var, val)		__percpu_generic_to_op(var, (val), |=)
+-#endif
+-
+-#ifndef percpu_xor
+-# define percpu_xor(var, val)		__percpu_generic_to_op(var, (val), ^=)
+-#endif
+-
+-/*
+  * Branching function to split up a function into a set of functions that
+  * are called for different scalar sizes of the objects handled.
+  */
+
+commit f769e6b2e48904909eee03217d1484d09306560c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:22 2018 +0800
+
+    v3.3-rc7
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 32cd1f6..21638ae 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -348,9 +348,9 @@ do {									\
+ #define _this_cpu_generic_to_op(pcp, val, op)				\
+ do {									\
+ 	unsigned long flags;						\
+-	local_irq_save(flags);						\
++	raw_local_irq_save(flags);					\
+ 	*__this_cpu_ptr(&(pcp)) op val;					\
+-	local_irq_restore(flags);					\
++	raw_local_irq_restore(flags);					\
+ } while (0)
+ 
+ #ifndef this_cpu_write
+@@ -449,10 +449,10 @@ do {									\
+ ({									\
+ 	typeof(pcp) ret__;						\
+ 	unsigned long flags;						\
+-	local_irq_save(flags);						\
++	raw_local_irq_save(flags);					\
+ 	__this_cpu_add(pcp, val);					\
+ 	ret__ = __this_cpu_read(pcp);					\
+-	local_irq_restore(flags);					\
++	raw_local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+ 
+@@ -479,10 +479,10 @@ do {									\
+ #define _this_cpu_generic_xchg(pcp, nval)				\
+ ({	typeof(pcp) ret__;						\
+ 	unsigned long flags;						\
+-	local_irq_save(flags);						\
++	raw_local_irq_save(flags);					\
+ 	ret__ = __this_cpu_read(pcp);					\
+ 	__this_cpu_write(pcp, nval);					\
+-	local_irq_restore(flags);					\
++	raw_local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+ 
+@@ -507,11 +507,11 @@ do {									\
+ ({									\
+ 	typeof(pcp) ret__;						\
+ 	unsigned long flags;						\
+-	local_irq_save(flags);						\
++	raw_local_irq_save(flags);					\
+ 	ret__ = __this_cpu_read(pcp);					\
+ 	if (ret__ == (oval))						\
+ 		__this_cpu_write(pcp, nval);				\
+-	local_irq_restore(flags);					\
++	raw_local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+ 
+@@ -544,10 +544,10 @@ do {									\
+ ({									\
+ 	int ret__;							\
+ 	unsigned long flags;						\
+-	local_irq_save(flags);						\
++	raw_local_irq_save(flags);					\
+ 	ret__ = __this_cpu_generic_cmpxchg_double(pcp1, pcp2,		\
+ 			oval1, oval2, nval1, nval2);			\
+-	local_irq_restore(flags);					\
++	raw_local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+ 
+@@ -718,12 +718,13 @@ do {									\
+ # ifndef __this_cpu_add_return_8
+ #  define __this_cpu_add_return_8(pcp, val)	__this_cpu_generic_add_return(pcp, val)
+ # endif
+-# define __this_cpu_add_return(pcp, val)	__pcpu_size_call_return2(this_cpu_add_return_, pcp, val)
++# define __this_cpu_add_return(pcp, val)	\
++	__pcpu_size_call_return2(__this_cpu_add_return_, pcp, val)
+ #endif
+ 
+-#define __this_cpu_sub_return(pcp, val)	this_cpu_add_return(pcp, -(val))
+-#define __this_cpu_inc_return(pcp)	this_cpu_add_return(pcp, 1)
+-#define __this_cpu_dec_return(pcp)	this_cpu_add_return(pcp, -1)
++#define __this_cpu_sub_return(pcp, val)	__this_cpu_add_return(pcp, -(val))
++#define __this_cpu_inc_return(pcp)	__this_cpu_add_return(pcp, 1)
++#define __this_cpu_dec_return(pcp)	__this_cpu_add_return(pcp, -1)
+ 
+ #define __this_cpu_generic_xchg(pcp, nval)				\
+ ({	typeof(pcp) ret__;						\
+
+commit bef43917a0750c921de3205784b3a6504f0fa3b2
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:01:12 2018 +0800
+
+    v3.3-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 9ca008f..32cd1f6 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -172,10 +172,10 @@ extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+  * equal char, int or long.  percpu_read() evaluates to a lvalue and
+  * all others to void.
+  *
+- * These operations are guaranteed to be atomic w.r.t. preemption.
+- * The generic versions use plain get/put_cpu_var().  Archs are
++ * These operations are guaranteed to be atomic.
++ * The generic versions disable interrupts.  Archs are
+  * encouraged to implement single-instruction alternatives which don't
+- * require preemption protection.
++ * require protection.
+  */
+ #ifndef percpu_read
+ # define percpu_read(var)						\
+@@ -347,9 +347,10 @@ do {									\
+ 
+ #define _this_cpu_generic_to_op(pcp, val, op)				\
+ do {									\
+-	preempt_disable();						\
++	unsigned long flags;						\
++	local_irq_save(flags);						\
+ 	*__this_cpu_ptr(&(pcp)) op val;					\
+-	preempt_enable();						\
++	local_irq_restore(flags);					\
+ } while (0)
+ 
+ #ifndef this_cpu_write
+@@ -447,10 +448,11 @@ do {									\
+ #define _this_cpu_generic_add_return(pcp, val)				\
+ ({									\
+ 	typeof(pcp) ret__;						\
+-	preempt_disable();						\
++	unsigned long flags;						\
++	local_irq_save(flags);						\
+ 	__this_cpu_add(pcp, val);					\
+ 	ret__ = __this_cpu_read(pcp);					\
+-	preempt_enable();						\
++	local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+ 
+@@ -476,10 +478,11 @@ do {									\
+ 
+ #define _this_cpu_generic_xchg(pcp, nval)				\
+ ({	typeof(pcp) ret__;						\
+-	preempt_disable();						\
++	unsigned long flags;						\
++	local_irq_save(flags);						\
+ 	ret__ = __this_cpu_read(pcp);					\
+ 	__this_cpu_write(pcp, nval);					\
+-	preempt_enable();						\
++	local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+ 
+@@ -501,12 +504,14 @@ do {									\
+ #endif
+ 
+ #define _this_cpu_generic_cmpxchg(pcp, oval, nval)			\
+-({	typeof(pcp) ret__;						\
+-	preempt_disable();						\
++({									\
++	typeof(pcp) ret__;						\
++	unsigned long flags;						\
++	local_irq_save(flags);						\
+ 	ret__ = __this_cpu_read(pcp);					\
+ 	if (ret__ == (oval))						\
+ 		__this_cpu_write(pcp, nval);				\
+-	preempt_enable();						\
++	local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+ 
+@@ -538,10 +543,11 @@ do {									\
+ #define _this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+ ({									\
+ 	int ret__;							\
+-	preempt_disable();						\
++	unsigned long flags;						\
++	local_irq_save(flags);						\
+ 	ret__ = __this_cpu_generic_cmpxchg_double(pcp1, pcp2,		\
+ 			oval1, oval2, nval1, nval2);			\
+-	preempt_enable();						\
++	local_irq_restore(flags);					\
+ 	ret__;								\
+ })
+ 
+@@ -567,9 +573,9 @@ do {									\
+ #endif
+ 
+ /*
+- * Generic percpu operations that do not require preemption handling.
++ * Generic percpu operations for context that are safe from preemption/interrupts.
+  * Either we do not care about races or the caller has the
+- * responsibility of handling preemptions issues. Arch code can still
++ * responsibility of handling preemption/interrupt issues. Arch code can still
+  * override these instructions since the arch per cpu code may be more
+  * efficient and may actually get race freeness for free (that is the
+  * case for x86 for example).
+@@ -802,156 +808,4 @@ do {									\
+ 	__pcpu_double_call_return_bool(__this_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
+ #endif
+ 
+-/*
+- * IRQ safe versions of the per cpu RMW operations. Note that these operations
+- * are *not* safe against modification of the same variable from another
+- * processors (which one gets when using regular atomic operations)
+- * They are guaranteed to be atomic vs. local interrupts and
+- * preemption only.
+- */
+-#define irqsafe_cpu_generic_to_op(pcp, val, op)				\
+-do {									\
+-	unsigned long flags;						\
+-	local_irq_save(flags);						\
+-	*__this_cpu_ptr(&(pcp)) op val;					\
+-	local_irq_restore(flags);					\
+-} while (0)
+-
+-#ifndef irqsafe_cpu_add
+-# ifndef irqsafe_cpu_add_1
+-#  define irqsafe_cpu_add_1(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# ifndef irqsafe_cpu_add_2
+-#  define irqsafe_cpu_add_2(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# ifndef irqsafe_cpu_add_4
+-#  define irqsafe_cpu_add_4(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# ifndef irqsafe_cpu_add_8
+-#  define irqsafe_cpu_add_8(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), +=)
+-# endif
+-# define irqsafe_cpu_add(pcp, val) __pcpu_size_call(irqsafe_cpu_add_, (pcp), (val))
+-#endif
+-
+-#ifndef irqsafe_cpu_sub
+-# define irqsafe_cpu_sub(pcp, val)	irqsafe_cpu_add((pcp), -(val))
+-#endif
+-
+-#ifndef irqsafe_cpu_inc
+-# define irqsafe_cpu_inc(pcp)	irqsafe_cpu_add((pcp), 1)
+-#endif
+-
+-#ifndef irqsafe_cpu_dec
+-# define irqsafe_cpu_dec(pcp)	irqsafe_cpu_sub((pcp), 1)
+-#endif
+-
+-#ifndef irqsafe_cpu_and
+-# ifndef irqsafe_cpu_and_1
+-#  define irqsafe_cpu_and_1(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# ifndef irqsafe_cpu_and_2
+-#  define irqsafe_cpu_and_2(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# ifndef irqsafe_cpu_and_4
+-#  define irqsafe_cpu_and_4(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# ifndef irqsafe_cpu_and_8
+-#  define irqsafe_cpu_and_8(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), &=)
+-# endif
+-# define irqsafe_cpu_and(pcp, val) __pcpu_size_call(irqsafe_cpu_and_, (val))
+-#endif
+-
+-#ifndef irqsafe_cpu_or
+-# ifndef irqsafe_cpu_or_1
+-#  define irqsafe_cpu_or_1(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# ifndef irqsafe_cpu_or_2
+-#  define irqsafe_cpu_or_2(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# ifndef irqsafe_cpu_or_4
+-#  define irqsafe_cpu_or_4(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# ifndef irqsafe_cpu_or_8
+-#  define irqsafe_cpu_or_8(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), |=)
+-# endif
+-# define irqsafe_cpu_or(pcp, val) __pcpu_size_call(irqsafe_cpu_or_, (val))
+-#endif
+-
+-#ifndef irqsafe_cpu_xor
+-# ifndef irqsafe_cpu_xor_1
+-#  define irqsafe_cpu_xor_1(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# ifndef irqsafe_cpu_xor_2
+-#  define irqsafe_cpu_xor_2(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# ifndef irqsafe_cpu_xor_4
+-#  define irqsafe_cpu_xor_4(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# ifndef irqsafe_cpu_xor_8
+-#  define irqsafe_cpu_xor_8(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), ^=)
+-# endif
+-# define irqsafe_cpu_xor(pcp, val) __pcpu_size_call(irqsafe_cpu_xor_, (val))
+-#endif
+-
+-#define irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)			\
+-({									\
+-	typeof(pcp) ret__;						\
+-	unsigned long flags;						\
+-	local_irq_save(flags);						\
+-	ret__ = __this_cpu_read(pcp);					\
+-	if (ret__ == (oval))						\
+-		__this_cpu_write(pcp, nval);				\
+-	local_irq_restore(flags);					\
+-	ret__;								\
+-})
+-
+-#ifndef irqsafe_cpu_cmpxchg
+-# ifndef irqsafe_cpu_cmpxchg_1
+-#  define irqsafe_cpu_cmpxchg_1(pcp, oval, nval)	irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# ifndef irqsafe_cpu_cmpxchg_2
+-#  define irqsafe_cpu_cmpxchg_2(pcp, oval, nval)	irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# ifndef irqsafe_cpu_cmpxchg_4
+-#  define irqsafe_cpu_cmpxchg_4(pcp, oval, nval)	irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# ifndef irqsafe_cpu_cmpxchg_8
+-#  define irqsafe_cpu_cmpxchg_8(pcp, oval, nval)	irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)
+-# endif
+-# define irqsafe_cpu_cmpxchg(pcp, oval, nval)		\
+-	__pcpu_size_call_return2(irqsafe_cpu_cmpxchg_, (pcp), oval, nval)
+-#endif
+-
+-#define irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-({									\
+-	int ret__;							\
+-	unsigned long flags;						\
+-	local_irq_save(flags);						\
+-	ret__ = __this_cpu_generic_cmpxchg_double(pcp1, pcp2,		\
+-			oval1, oval2, nval1, nval2);			\
+-	local_irq_restore(flags);					\
+-	ret__;								\
+-})
+-
+-#ifndef irqsafe_cpu_cmpxchg_double
+-# ifndef irqsafe_cpu_cmpxchg_double_1
+-#  define irqsafe_cpu_cmpxchg_double_1(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# ifndef irqsafe_cpu_cmpxchg_double_2
+-#  define irqsafe_cpu_cmpxchg_double_2(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# ifndef irqsafe_cpu_cmpxchg_double_4
+-#  define irqsafe_cpu_cmpxchg_double_4(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# ifndef irqsafe_cpu_cmpxchg_double_8
+-#  define irqsafe_cpu_cmpxchg_double_8(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+-# endif
+-# define irqsafe_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	__pcpu_double_call_return_bool(irqsafe_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
+-#endif
+-
+ #endif /* __LINUX_PERCPU_H */
+
+commit 76425f7b588f43b5d6a683f5dd383d801d2996cf
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:24 2018 +0800
+
+    v3.0-rc3
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 8b97308..9ca008f 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -259,6 +259,9 @@ extern void __bad_size_call_parameter(void);
+  * Special handling for cmpxchg_double.  cmpxchg_double is passed two
+  * percpu variables.  The first has to be aligned to a double word
+  * boundary and the second has to follow directly thereafter.
++ * We enforce this on all architectures even if they don't support
++ * a double cmpxchg instruction, since it's a cheap requirement, and it
++ * avoids breaking the requirement for architectures with the instruction.
+  */
+ #define __pcpu_double_call_return_bool(stem, pcp1, pcp2, ...)		\
+ ({									\
+
+commit 7bf55836441f6effe1ef855deb23939be81fc020
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:15 2018 +0800
+
+    v2.6.39-rc7
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 3a5c444..8b97308 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -948,7 +948,7 @@ do {									\
+ 	irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
+ # endif
+ # define irqsafe_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
+-	__pcpu_double_call_return_int(irqsafe_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
++	__pcpu_double_call_return_bool(irqsafe_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
+ #endif
+ 
+ #endif /* __LINUX_PERCPU_H */
+
+commit beb993c776fbe9fa076b10f9faaa1b1dd9397c96
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 06:00:04 2018 +0800
+
+    v2.6.39-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 27c3c6f..3a5c444 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -255,6 +255,30 @@ extern void __bad_size_call_parameter(void);
+ 	pscr2_ret__;							\
+ })
+ 
++/*
++ * Special handling for cmpxchg_double.  cmpxchg_double is passed two
++ * percpu variables.  The first has to be aligned to a double word
++ * boundary and the second has to follow directly thereafter.
++ */
++#define __pcpu_double_call_return_bool(stem, pcp1, pcp2, ...)		\
++({									\
++	bool pdcrb_ret__;						\
++	__verify_pcpu_ptr(&pcp1);					\
++	BUILD_BUG_ON(sizeof(pcp1) != sizeof(pcp2));			\
++	VM_BUG_ON((unsigned long)(&pcp1) % (2 * sizeof(pcp1)));		\
++	VM_BUG_ON((unsigned long)(&pcp2) !=				\
++		  (unsigned long)(&pcp1) + sizeof(pcp1));		\
++	switch(sizeof(pcp1)) {						\
++	case 1: pdcrb_ret__ = stem##1(pcp1, pcp2, __VA_ARGS__); break;	\
++	case 2: pdcrb_ret__ = stem##2(pcp1, pcp2, __VA_ARGS__); break;	\
++	case 4: pdcrb_ret__ = stem##4(pcp1, pcp2, __VA_ARGS__); break;	\
++	case 8: pdcrb_ret__ = stem##8(pcp1, pcp2, __VA_ARGS__); break;	\
++	default:							\
++		__bad_size_call_parameter(); break;			\
++	}								\
++	pdcrb_ret__;							\
++})
++
+ #define __pcpu_size_call(stem, variable, ...)				\
+ do {									\
+ 	__verify_pcpu_ptr(&(variable));					\
+@@ -501,6 +525,45 @@ do {									\
+ #endif
+ 
+ /*
++ * cmpxchg_double replaces two adjacent scalars at once.  The first
++ * two parameters are per cpu variables which have to be of the same
++ * size.  A truth value is returned to indicate success or failure
++ * (since a double register result is difficult to handle).  There is
++ * very limited hardware support for these operations, so only certain
++ * sizes may work.
++ */
++#define _this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++({									\
++	int ret__;							\
++	preempt_disable();						\
++	ret__ = __this_cpu_generic_cmpxchg_double(pcp1, pcp2,		\
++			oval1, oval2, nval1, nval2);			\
++	preempt_enable();						\
++	ret__;								\
++})
++
++#ifndef this_cpu_cmpxchg_double
++# ifndef this_cpu_cmpxchg_double_1
++#  define this_cpu_cmpxchg_double_1(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	_this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# ifndef this_cpu_cmpxchg_double_2
++#  define this_cpu_cmpxchg_double_2(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	_this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# ifndef this_cpu_cmpxchg_double_4
++#  define this_cpu_cmpxchg_double_4(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	_this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# ifndef this_cpu_cmpxchg_double_8
++#  define this_cpu_cmpxchg_double_8(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	_this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# define this_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	__pcpu_double_call_return_bool(this_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
++#endif
++
++/*
+  * Generic percpu operations that do not require preemption handling.
+  * Either we do not care about races or the caller has the
+  * responsibility of handling preemptions issues. Arch code can still
+@@ -703,6 +766,39 @@ do {									\
+ 	__pcpu_size_call_return2(__this_cpu_cmpxchg_, pcp, oval, nval)
+ #endif
+ 
++#define __this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++({									\
++	int __ret = 0;							\
++	if (__this_cpu_read(pcp1) == (oval1) &&				\
++			 __this_cpu_read(pcp2)  == (oval2)) {		\
++		__this_cpu_write(pcp1, (nval1));			\
++		__this_cpu_write(pcp2, (nval2));			\
++		__ret = 1;						\
++	}								\
++	(__ret);							\
++})
++
++#ifndef __this_cpu_cmpxchg_double
++# ifndef __this_cpu_cmpxchg_double_1
++#  define __this_cpu_cmpxchg_double_1(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	__this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# ifndef __this_cpu_cmpxchg_double_2
++#  define __this_cpu_cmpxchg_double_2(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	__this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# ifndef __this_cpu_cmpxchg_double_4
++#  define __this_cpu_cmpxchg_double_4(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	__this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# ifndef __this_cpu_cmpxchg_double_8
++#  define __this_cpu_cmpxchg_double_8(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	__this_cpu_generic_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# define __this_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	__pcpu_double_call_return_bool(__this_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
++#endif
++
+ /*
+  * IRQ safe versions of the per cpu RMW operations. Note that these operations
+  * are *not* safe against modification of the same variable from another
+@@ -823,4 +919,36 @@ do {									\
+ 	__pcpu_size_call_return2(irqsafe_cpu_cmpxchg_, (pcp), oval, nval)
+ #endif
+ 
++#define irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++({									\
++	int ret__;							\
++	unsigned long flags;						\
++	local_irq_save(flags);						\
++	ret__ = __this_cpu_generic_cmpxchg_double(pcp1, pcp2,		\
++			oval1, oval2, nval1, nval2);			\
++	local_irq_restore(flags);					\
++	ret__;								\
++})
++
++#ifndef irqsafe_cpu_cmpxchg_double
++# ifndef irqsafe_cpu_cmpxchg_double_1
++#  define irqsafe_cpu_cmpxchg_double_1(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# ifndef irqsafe_cpu_cmpxchg_double_2
++#  define irqsafe_cpu_cmpxchg_double_2(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# ifndef irqsafe_cpu_cmpxchg_double_4
++#  define irqsafe_cpu_cmpxchg_double_4(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# ifndef irqsafe_cpu_cmpxchg_double_8
++#  define irqsafe_cpu_cmpxchg_double_8(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	irqsafe_generic_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)
++# endif
++# define irqsafe_cpu_cmpxchg_double(pcp1, pcp2, oval1, oval2, nval1, nval2)	\
++	__pcpu_double_call_return_int(irqsafe_cpu_cmpxchg_double_, (pcp1), (pcp2), (oval1), (oval2), (nval1), (nval2))
++#endif
++
+ #endif /* __LINUX_PERCPU_H */
+
+commit 0d8b2c9da5608fcee07bded8a04723987b78fcb9
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:47 2018 +0800
+
+    v2.6.38-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 5095b83..27c3c6f 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -240,6 +240,21 @@ extern void __bad_size_call_parameter(void);
+ 	pscr_ret__;							\
+ })
+ 
++#define __pcpu_size_call_return2(stem, variable, ...)			\
++({									\
++	typeof(variable) pscr2_ret__;					\
++	__verify_pcpu_ptr(&(variable));					\
++	switch(sizeof(variable)) {					\
++	case 1: pscr2_ret__ = stem##1(variable, __VA_ARGS__); break;	\
++	case 2: pscr2_ret__ = stem##2(variable, __VA_ARGS__); break;	\
++	case 4: pscr2_ret__ = stem##4(variable, __VA_ARGS__); break;	\
++	case 8: pscr2_ret__ = stem##8(variable, __VA_ARGS__); break;	\
++	default:							\
++		__bad_size_call_parameter(); break;			\
++	}								\
++	pscr2_ret__;							\
++})
++
+ #define __pcpu_size_call(stem, variable, ...)				\
+ do {									\
+ 	__verify_pcpu_ptr(&(variable));					\
+@@ -402,6 +417,89 @@ do {									\
+ # define this_cpu_xor(pcp, val)		__pcpu_size_call(this_cpu_or_, (pcp), (val))
+ #endif
+ 
++#define _this_cpu_generic_add_return(pcp, val)				\
++({									\
++	typeof(pcp) ret__;						\
++	preempt_disable();						\
++	__this_cpu_add(pcp, val);					\
++	ret__ = __this_cpu_read(pcp);					\
++	preempt_enable();						\
++	ret__;								\
++})
++
++#ifndef this_cpu_add_return
++# ifndef this_cpu_add_return_1
++#  define this_cpu_add_return_1(pcp, val)	_this_cpu_generic_add_return(pcp, val)
++# endif
++# ifndef this_cpu_add_return_2
++#  define this_cpu_add_return_2(pcp, val)	_this_cpu_generic_add_return(pcp, val)
++# endif
++# ifndef this_cpu_add_return_4
++#  define this_cpu_add_return_4(pcp, val)	_this_cpu_generic_add_return(pcp, val)
++# endif
++# ifndef this_cpu_add_return_8
++#  define this_cpu_add_return_8(pcp, val)	_this_cpu_generic_add_return(pcp, val)
++# endif
++# define this_cpu_add_return(pcp, val)	__pcpu_size_call_return2(this_cpu_add_return_, pcp, val)
++#endif
++
++#define this_cpu_sub_return(pcp, val)	this_cpu_add_return(pcp, -(val))
++#define this_cpu_inc_return(pcp)	this_cpu_add_return(pcp, 1)
++#define this_cpu_dec_return(pcp)	this_cpu_add_return(pcp, -1)
++
++#define _this_cpu_generic_xchg(pcp, nval)				\
++({	typeof(pcp) ret__;						\
++	preempt_disable();						\
++	ret__ = __this_cpu_read(pcp);					\
++	__this_cpu_write(pcp, nval);					\
++	preempt_enable();						\
++	ret__;								\
++})
++
++#ifndef this_cpu_xchg
++# ifndef this_cpu_xchg_1
++#  define this_cpu_xchg_1(pcp, nval)	_this_cpu_generic_xchg(pcp, nval)
++# endif
++# ifndef this_cpu_xchg_2
++#  define this_cpu_xchg_2(pcp, nval)	_this_cpu_generic_xchg(pcp, nval)
++# endif
++# ifndef this_cpu_xchg_4
++#  define this_cpu_xchg_4(pcp, nval)	_this_cpu_generic_xchg(pcp, nval)
++# endif
++# ifndef this_cpu_xchg_8
++#  define this_cpu_xchg_8(pcp, nval)	_this_cpu_generic_xchg(pcp, nval)
++# endif
++# define this_cpu_xchg(pcp, nval)	\
++	__pcpu_size_call_return2(this_cpu_xchg_, (pcp), nval)
++#endif
++
++#define _this_cpu_generic_cmpxchg(pcp, oval, nval)			\
++({	typeof(pcp) ret__;						\
++	preempt_disable();						\
++	ret__ = __this_cpu_read(pcp);					\
++	if (ret__ == (oval))						\
++		__this_cpu_write(pcp, nval);				\
++	preempt_enable();						\
++	ret__;								\
++})
++
++#ifndef this_cpu_cmpxchg
++# ifndef this_cpu_cmpxchg_1
++#  define this_cpu_cmpxchg_1(pcp, oval, nval)	_this_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# ifndef this_cpu_cmpxchg_2
++#  define this_cpu_cmpxchg_2(pcp, oval, nval)	_this_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# ifndef this_cpu_cmpxchg_4
++#  define this_cpu_cmpxchg_4(pcp, oval, nval)	_this_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# ifndef this_cpu_cmpxchg_8
++#  define this_cpu_cmpxchg_8(pcp, oval, nval)	_this_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# define this_cpu_cmpxchg(pcp, oval, nval)	\
++	__pcpu_size_call_return2(this_cpu_cmpxchg_, pcp, oval, nval)
++#endif
++
+ /*
+  * Generic percpu operations that do not require preemption handling.
+  * Either we do not care about races or the caller has the
+@@ -529,11 +627,87 @@ do {									\
+ # define __this_cpu_xor(pcp, val)	__pcpu_size_call(__this_cpu_xor_, (pcp), (val))
+ #endif
+ 
++#define __this_cpu_generic_add_return(pcp, val)				\
++({									\
++	__this_cpu_add(pcp, val);					\
++	__this_cpu_read(pcp);						\
++})
++
++#ifndef __this_cpu_add_return
++# ifndef __this_cpu_add_return_1
++#  define __this_cpu_add_return_1(pcp, val)	__this_cpu_generic_add_return(pcp, val)
++# endif
++# ifndef __this_cpu_add_return_2
++#  define __this_cpu_add_return_2(pcp, val)	__this_cpu_generic_add_return(pcp, val)
++# endif
++# ifndef __this_cpu_add_return_4
++#  define __this_cpu_add_return_4(pcp, val)	__this_cpu_generic_add_return(pcp, val)
++# endif
++# ifndef __this_cpu_add_return_8
++#  define __this_cpu_add_return_8(pcp, val)	__this_cpu_generic_add_return(pcp, val)
++# endif
++# define __this_cpu_add_return(pcp, val)	__pcpu_size_call_return2(this_cpu_add_return_, pcp, val)
++#endif
++
++#define __this_cpu_sub_return(pcp, val)	this_cpu_add_return(pcp, -(val))
++#define __this_cpu_inc_return(pcp)	this_cpu_add_return(pcp, 1)
++#define __this_cpu_dec_return(pcp)	this_cpu_add_return(pcp, -1)
++
++#define __this_cpu_generic_xchg(pcp, nval)				\
++({	typeof(pcp) ret__;						\
++	ret__ = __this_cpu_read(pcp);					\
++	__this_cpu_write(pcp, nval);					\
++	ret__;								\
++})
++
++#ifndef __this_cpu_xchg
++# ifndef __this_cpu_xchg_1
++#  define __this_cpu_xchg_1(pcp, nval)	__this_cpu_generic_xchg(pcp, nval)
++# endif
++# ifndef __this_cpu_xchg_2
++#  define __this_cpu_xchg_2(pcp, nval)	__this_cpu_generic_xchg(pcp, nval)
++# endif
++# ifndef __this_cpu_xchg_4
++#  define __this_cpu_xchg_4(pcp, nval)	__this_cpu_generic_xchg(pcp, nval)
++# endif
++# ifndef __this_cpu_xchg_8
++#  define __this_cpu_xchg_8(pcp, nval)	__this_cpu_generic_xchg(pcp, nval)
++# endif
++# define __this_cpu_xchg(pcp, nval)	\
++	__pcpu_size_call_return2(__this_cpu_xchg_, (pcp), nval)
++#endif
++
++#define __this_cpu_generic_cmpxchg(pcp, oval, nval)			\
++({									\
++	typeof(pcp) ret__;						\
++	ret__ = __this_cpu_read(pcp);					\
++	if (ret__ == (oval))						\
++		__this_cpu_write(pcp, nval);				\
++	ret__;								\
++})
++
++#ifndef __this_cpu_cmpxchg
++# ifndef __this_cpu_cmpxchg_1
++#  define __this_cpu_cmpxchg_1(pcp, oval, nval)	__this_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# ifndef __this_cpu_cmpxchg_2
++#  define __this_cpu_cmpxchg_2(pcp, oval, nval)	__this_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# ifndef __this_cpu_cmpxchg_4
++#  define __this_cpu_cmpxchg_4(pcp, oval, nval)	__this_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# ifndef __this_cpu_cmpxchg_8
++#  define __this_cpu_cmpxchg_8(pcp, oval, nval)	__this_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# define __this_cpu_cmpxchg(pcp, oval, nval)	\
++	__pcpu_size_call_return2(__this_cpu_cmpxchg_, pcp, oval, nval)
++#endif
++
+ /*
+  * IRQ safe versions of the per cpu RMW operations. Note that these operations
+  * are *not* safe against modification of the same variable from another
+  * processors (which one gets when using regular atomic operations)
+- . They are guaranteed to be atomic vs. local interrupts and
++ * They are guaranteed to be atomic vs. local interrupts and
+  * preemption only.
+  */
+ #define irqsafe_cpu_generic_to_op(pcp, val, op)				\
+@@ -620,4 +794,33 @@ do {									\
+ # define irqsafe_cpu_xor(pcp, val) __pcpu_size_call(irqsafe_cpu_xor_, (val))
+ #endif
+ 
++#define irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)			\
++({									\
++	typeof(pcp) ret__;						\
++	unsigned long flags;						\
++	local_irq_save(flags);						\
++	ret__ = __this_cpu_read(pcp);					\
++	if (ret__ == (oval))						\
++		__this_cpu_write(pcp, nval);				\
++	local_irq_restore(flags);					\
++	ret__;								\
++})
++
++#ifndef irqsafe_cpu_cmpxchg
++# ifndef irqsafe_cpu_cmpxchg_1
++#  define irqsafe_cpu_cmpxchg_1(pcp, oval, nval)	irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# ifndef irqsafe_cpu_cmpxchg_2
++#  define irqsafe_cpu_cmpxchg_2(pcp, oval, nval)	irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# ifndef irqsafe_cpu_cmpxchg_4
++#  define irqsafe_cpu_cmpxchg_4(pcp, oval, nval)	irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# ifndef irqsafe_cpu_cmpxchg_8
++#  define irqsafe_cpu_cmpxchg_8(pcp, oval, nval)	irqsafe_cpu_generic_cmpxchg(pcp, oval, nval)
++# endif
++# define irqsafe_cpu_cmpxchg(pcp, oval, nval)		\
++	__pcpu_size_call_return2(irqsafe_cpu_cmpxchg_, (pcp), oval, nval)
++#endif
++
+ #endif /* __LINUX_PERCPU_H */
+
+commit dfc7fae2ccfa1d10f492e12ede343be29dce4dbf
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:30 2018 +0800
+
+    v2.6.37-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 49466b1..5095b83 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -39,10 +39,17 @@
+ 	preempt_enable();				\
+ } while (0)
+ 
+-#ifdef CONFIG_SMP
++#define get_cpu_ptr(var) ({				\
++	preempt_disable();				\
++	this_cpu_ptr(var); })
++
++#define put_cpu_ptr(var) do {				\
++	(void)(var);					\
++	preempt_enable();				\
++} while (0)
+ 
+ /* minimum unit size, also is the maximum supported allocation size */
+-#define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(64 << 10)
++#define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(32 << 10)
+ 
+ /*
+  * Percpu allocator can serve percpu allocations before slab is
+@@ -137,37 +144,20 @@ extern int __init pcpu_page_first_chunk(size_t reserved_size,
+  * dynamically allocated. Non-atomic access to the current CPU's
+  * version should probably be combined with get_cpu()/put_cpu().
+  */
++#ifdef CONFIG_SMP
+ #define per_cpu_ptr(ptr, cpu)	SHIFT_PERCPU_PTR((ptr), per_cpu_offset((cpu)))
++#else
++#define per_cpu_ptr(ptr, cpu)	({ (void)(cpu); VERIFY_PERCPU_PTR((ptr)); })
++#endif
+ 
+ extern void __percpu *__alloc_reserved_percpu(size_t size, size_t align);
+ extern bool is_kernel_percpu_address(unsigned long addr);
+ 
+-#ifndef CONFIG_HAVE_SETUP_PER_CPU_AREA
++#if !defined(CONFIG_SMP) || !defined(CONFIG_HAVE_SETUP_PER_CPU_AREA)
+ extern void __init setup_per_cpu_areas(void);
+ #endif
+ extern void __init percpu_init_late(void);
+ 
+-#else /* CONFIG_SMP */
+-
+-#define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); VERIFY_PERCPU_PTR((ptr)); })
+-
+-/* can't distinguish from other static vars, always false */
+-static inline bool is_kernel_percpu_address(unsigned long addr)
+-{
+-	return false;
+-}
+-
+-static inline void __init setup_per_cpu_areas(void) { }
+-
+-static inline void __init percpu_init_late(void) { }
+-
+-static inline void *pcpu_lpage_remapped(void *kaddr)
+-{
+-	return NULL;
+-}
+-
+-#endif /* CONFIG_SMP */
+-
+ extern void __percpu *__alloc_percpu(size_t size, size_t align);
+ extern void free_percpu(void __percpu *__pdata);
+ extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+
+commit aaddb44c8292758c214111220bb550ccbeccdb80
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:17 2018 +0800
+
+    v2.6.36-rc4
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index b8b9084..49466b1 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -149,7 +149,7 @@ extern void __init percpu_init_late(void);
+ 
+ #else /* CONFIG_SMP */
+ 
+-#define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
++#define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); VERIFY_PERCPU_PTR((ptr)); })
+ 
+ /* can't distinguish from other static vars, always false */
+ static inline bool is_kernel_percpu_address(unsigned long addr)
+
+commit ea9989060050f5205613323cc490229ac0e1fcf5
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:59:13 2018 +0800
+
+    v2.6.36-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index d3a38d6..b8b9084 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -45,6 +45,16 @@
+ #define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(64 << 10)
+ 
+ /*
++ * Percpu allocator can serve percpu allocations before slab is
++ * initialized which allows slab to depend on the percpu allocator.
++ * The following two parameters decide how much resource to
++ * preallocate for this.  Keep PERCPU_DYNAMIC_RESERVE equal to or
++ * larger than PERCPU_DYNAMIC_EARLY_SIZE.
++ */
++#define PERCPU_DYNAMIC_EARLY_SLOTS	128
++#define PERCPU_DYNAMIC_EARLY_SIZE	(12 << 10)
++
++/*
+  * PERCPU_DYNAMIC_RESERVE indicates the amount of free area to piggy
+  * back on the first chunk for dynamic percpu allocation if arch is
+  * manually allocating and mapping it for faster access (as a part of
+@@ -104,16 +114,11 @@ extern struct pcpu_alloc_info * __init pcpu_alloc_alloc_info(int nr_groups,
+ 							     int nr_units);
+ extern void __init pcpu_free_alloc_info(struct pcpu_alloc_info *ai);
+ 
+-extern struct pcpu_alloc_info * __init pcpu_build_alloc_info(
+-				size_t reserved_size, ssize_t dyn_size,
+-				size_t atom_size,
+-				pcpu_fc_cpu_distance_fn_t cpu_distance_fn);
+-
+ extern int __init pcpu_setup_first_chunk(const struct pcpu_alloc_info *ai,
+ 					 void *base_addr);
+ 
+ #ifdef CONFIG_NEED_PER_CPU_EMBED_FIRST_CHUNK
+-extern int __init pcpu_embed_first_chunk(size_t reserved_size, ssize_t dyn_size,
++extern int __init pcpu_embed_first_chunk(size_t reserved_size, size_t dyn_size,
+ 				size_t atom_size,
+ 				pcpu_fc_cpu_distance_fn_t cpu_distance_fn,
+ 				pcpu_fc_alloc_fn_t alloc_fn,
+@@ -140,6 +145,7 @@ extern bool is_kernel_percpu_address(unsigned long addr);
+ #ifndef CONFIG_HAVE_SETUP_PER_CPU_AREA
+ extern void __init setup_per_cpu_areas(void);
+ #endif
++extern void __init percpu_init_late(void);
+ 
+ #else /* CONFIG_SMP */
+ 
+@@ -153,6 +159,8 @@ static inline bool is_kernel_percpu_address(unsigned long addr)
+ 
+ static inline void __init setup_per_cpu_areas(void) { }
+ 
++static inline void __init percpu_init_late(void) { }
++
+ static inline void *pcpu_lpage_remapped(void *kaddr)
+ {
+ 	return NULL;
+
+commit d77ff12bc9e270cf1acc871399119ca458c4536e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:48 2018 +0800
+
+    v2.6.34-rc4
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index a93e5bf..d3a38d6 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -2,10 +2,10 @@
+ #define __LINUX_PERCPU_H
+ 
+ #include <linux/preempt.h>
+-#include <linux/slab.h> /* For kmalloc() */
+ #include <linux/smp.h>
+ #include <linux/cpumask.h>
+ #include <linux/pfn.h>
++#include <linux/init.h>
+ 
+ #include <asm/percpu.h>
+ 
+@@ -135,9 +135,7 @@ extern int __init pcpu_page_first_chunk(size_t reserved_size,
+ #define per_cpu_ptr(ptr, cpu)	SHIFT_PERCPU_PTR((ptr), per_cpu_offset((cpu)))
+ 
+ extern void __percpu *__alloc_reserved_percpu(size_t size, size_t align);
+-extern void __percpu *__alloc_percpu(size_t size, size_t align);
+-extern void free_percpu(void __percpu *__pdata);
+-extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
++extern bool is_kernel_percpu_address(unsigned long addr);
+ 
+ #ifndef CONFIG_HAVE_SETUP_PER_CPU_AREA
+ extern void __init setup_per_cpu_areas(void);
+@@ -147,25 +145,10 @@ extern void __init setup_per_cpu_areas(void);
+ 
+ #define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
+ 
+-static inline void __percpu *__alloc_percpu(size_t size, size_t align)
++/* can't distinguish from other static vars, always false */
++static inline bool is_kernel_percpu_address(unsigned long addr)
+ {
+-	/*
+-	 * Can't easily make larger alignment work with kmalloc.  WARN
+-	 * on it.  Larger alignment should only be used for module
+-	 * percpu sections on SMP for which this path isn't used.
+-	 */
+-	WARN_ON_ONCE(align > SMP_CACHE_BYTES);
+-	return kzalloc(size, GFP_KERNEL);
+-}
+-
+-static inline void free_percpu(void __percpu *p)
+-{
+-	kfree(p);
+-}
+-
+-static inline phys_addr_t per_cpu_ptr_to_phys(void *addr)
+-{
+-	return __pa(addr);
++	return false;
+ }
+ 
+ static inline void __init setup_per_cpu_areas(void) { }
+@@ -177,6 +160,10 @@ static inline void *pcpu_lpage_remapped(void *kaddr)
+ 
+ #endif /* CONFIG_SMP */
+ 
++extern void __percpu *__alloc_percpu(size_t size, size_t align);
++extern void free_percpu(void __percpu *__pdata);
++extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
++
+ #define alloc_percpu(type)	\
+ 	(typeof(type) __percpu *)__alloc_percpu(sizeof(type), __alignof__(type))
+ 
+
+commit bdc84ba0ad41508feb58d86df31213d7d2d63274
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:40 2018 +0800
+
+    v2.6.34-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index cf5efbc..a93e5bf 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -27,10 +27,17 @@
+  * we force a syntax error here if it isn't.
+  */
+ #define get_cpu_var(var) (*({				\
+-	extern int simple_identifier_##var(void);	\
+ 	preempt_disable();				\
+ 	&__get_cpu_var(var); }))
+-#define put_cpu_var(var) preempt_enable()
++
++/*
++ * The weird & is necessary because sparse considers (void)(var) to be
++ * a direct dereference of percpu variable (var).
++ */
++#define put_cpu_var(var) do {				\
++	(void)&(var);					\
++	preempt_enable();				\
++} while (0)
+ 
+ #ifdef CONFIG_SMP
+ 
+@@ -127,9 +134,9 @@ extern int __init pcpu_page_first_chunk(size_t reserved_size,
+  */
+ #define per_cpu_ptr(ptr, cpu)	SHIFT_PERCPU_PTR((ptr), per_cpu_offset((cpu)))
+ 
+-extern void *__alloc_reserved_percpu(size_t size, size_t align);
+-extern void *__alloc_percpu(size_t size, size_t align);
+-extern void free_percpu(void *__pdata);
++extern void __percpu *__alloc_reserved_percpu(size_t size, size_t align);
++extern void __percpu *__alloc_percpu(size_t size, size_t align);
++extern void free_percpu(void __percpu *__pdata);
+ extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+ 
+ #ifndef CONFIG_HAVE_SETUP_PER_CPU_AREA
+@@ -140,7 +147,7 @@ extern void __init setup_per_cpu_areas(void);
+ 
+ #define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
+ 
+-static inline void *__alloc_percpu(size_t size, size_t align)
++static inline void __percpu *__alloc_percpu(size_t size, size_t align)
+ {
+ 	/*
+ 	 * Can't easily make larger alignment work with kmalloc.  WARN
+@@ -151,7 +158,7 @@ static inline void *__alloc_percpu(size_t size, size_t align)
+ 	return kzalloc(size, GFP_KERNEL);
+ }
+ 
+-static inline void free_percpu(void *p)
++static inline void free_percpu(void __percpu *p)
+ {
+ 	kfree(p);
+ }
+@@ -171,7 +178,7 @@ static inline void *pcpu_lpage_remapped(void *kaddr)
+ #endif /* CONFIG_SMP */
+ 
+ #define alloc_percpu(type)	\
+-	(typeof(type) *)__alloc_percpu(sizeof(type), __alignof__(type))
++	(typeof(type) __percpu *)__alloc_percpu(sizeof(type), __alignof__(type))
+ 
+ /*
+  * Optional methods for optimized non-lvalue per-cpu variable access.
+@@ -188,17 +195,19 @@ static inline void *pcpu_lpage_remapped(void *kaddr)
+ #ifndef percpu_read
+ # define percpu_read(var)						\
+   ({									\
+-	typeof(per_cpu_var(var)) __tmp_var__;				\
+-	__tmp_var__ = get_cpu_var(var);					\
+-	put_cpu_var(var);						\
+-	__tmp_var__;							\
++	typeof(var) *pr_ptr__ = &(var);					\
++	typeof(var) pr_ret__;						\
++	pr_ret__ = get_cpu_var(*pr_ptr__);				\
++	put_cpu_var(*pr_ptr__);						\
++	pr_ret__;							\
+   })
+ #endif
+ 
+ #define __percpu_generic_to_op(var, val, op)				\
+ do {									\
+-	get_cpu_var(var) op val;					\
+-	put_cpu_var(var);						\
++	typeof(var) *pgto_ptr__ = &(var);				\
++	get_cpu_var(*pgto_ptr__) op val;				\
++	put_cpu_var(*pgto_ptr__);					\
+ } while (0)
+ 
+ #ifndef percpu_write
+@@ -234,6 +243,7 @@ extern void __bad_size_call_parameter(void);
+ 
+ #define __pcpu_size_call_return(stem, variable)				\
+ ({	typeof(variable) pscr_ret__;					\
++	__verify_pcpu_ptr(&(variable));					\
+ 	switch(sizeof(variable)) {					\
+ 	case 1: pscr_ret__ = stem##1(variable);break;			\
+ 	case 2: pscr_ret__ = stem##2(variable);break;			\
+@@ -247,6 +257,7 @@ extern void __bad_size_call_parameter(void);
+ 
+ #define __pcpu_size_call(stem, variable, ...)				\
+ do {									\
++	__verify_pcpu_ptr(&(variable));					\
+ 	switch(sizeof(variable)) {					\
+ 		case 1: stem##1(variable, __VA_ARGS__);break;		\
+ 		case 2: stem##2(variable, __VA_ARGS__);break;		\
+@@ -259,8 +270,7 @@ do {									\
+ 
+ /*
+  * Optimized manipulation for memory allocated through the per cpu
+- * allocator or for addresses of per cpu variables (can be determined
+- * using per_cpu_var(xx).
++ * allocator or for addresses of per cpu variables.
+  *
+  * These operation guarantee exclusivity of access for other operations
+  * on the *same* processor. The assumption is that per cpu data is only
+@@ -311,7 +321,7 @@ do {									\
+ #define _this_cpu_generic_to_op(pcp, val, op)				\
+ do {									\
+ 	preempt_disable();						\
+-	*__this_cpu_ptr(&pcp) op val;					\
++	*__this_cpu_ptr(&(pcp)) op val;					\
+ 	preempt_enable();						\
+ } while (0)
+ 
+
+commit 2691f787e5d49d089dabe4987890f7bf21a11209
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:24 2018 +0800
+
+    v2.6.33-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 878836c..cf5efbc 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -34,8 +34,6 @@
+ 
+ #ifdef CONFIG_SMP
+ 
+-#ifndef CONFIG_HAVE_LEGACY_PER_CPU_AREA
+-
+ /* minimum unit size, also is the maximum supported allocation size */
+ #define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(64 << 10)
+ 
+@@ -130,30 +128,9 @@ extern int __init pcpu_page_first_chunk(size_t reserved_size,
+ #define per_cpu_ptr(ptr, cpu)	SHIFT_PERCPU_PTR((ptr), per_cpu_offset((cpu)))
+ 
+ extern void *__alloc_reserved_percpu(size_t size, size_t align);
+-
+-#else /* CONFIG_HAVE_LEGACY_PER_CPU_AREA */
+-
+-struct percpu_data {
+-	void *ptrs[1];
+-};
+-
+-/* pointer disguising messes up the kmemleak objects tracking */
+-#ifndef CONFIG_DEBUG_KMEMLEAK
+-#define __percpu_disguise(pdata) (struct percpu_data *)~(unsigned long)(pdata)
+-#else
+-#define __percpu_disguise(pdata) (struct percpu_data *)(pdata)
+-#endif
+-
+-#define per_cpu_ptr(ptr, cpu)						\
+-({									\
+-        struct percpu_data *__p = __percpu_disguise(ptr);		\
+-        (__typeof__(ptr))__p->ptrs[(cpu)];				\
+-})
+-
+-#endif /* CONFIG_HAVE_LEGACY_PER_CPU_AREA */
+-
+ extern void *__alloc_percpu(size_t size, size_t align);
+ extern void free_percpu(void *__pdata);
++extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+ 
+ #ifndef CONFIG_HAVE_SETUP_PER_CPU_AREA
+ extern void __init setup_per_cpu_areas(void);
+@@ -179,6 +156,11 @@ static inline void free_percpu(void *p)
+ 	kfree(p);
+ }
+ 
++static inline phys_addr_t per_cpu_ptr_to_phys(void *addr)
++{
++	return __pa(addr);
++}
++
+ static inline void __init setup_per_cpu_areas(void) { }
+ 
+ static inline void *pcpu_lpage_remapped(void *kaddr)
+@@ -188,8 +170,8 @@ static inline void *pcpu_lpage_remapped(void *kaddr)
+ 
+ #endif /* CONFIG_SMP */
+ 
+-#define alloc_percpu(type)	(type *)__alloc_percpu(sizeof(type), \
+-						       __alignof__(type))
++#define alloc_percpu(type)	\
++	(typeof(type) *)__alloc_percpu(sizeof(type), __alignof__(type))
+ 
+ /*
+  * Optional methods for optimized non-lvalue per-cpu variable access.
+@@ -243,4 +225,404 @@ do {									\
+ # define percpu_xor(var, val)		__percpu_generic_to_op(var, (val), ^=)
+ #endif
+ 
++/*
++ * Branching function to split up a function into a set of functions that
++ * are called for different scalar sizes of the objects handled.
++ */
++
++extern void __bad_size_call_parameter(void);
++
++#define __pcpu_size_call_return(stem, variable)				\
++({	typeof(variable) pscr_ret__;					\
++	switch(sizeof(variable)) {					\
++	case 1: pscr_ret__ = stem##1(variable);break;			\
++	case 2: pscr_ret__ = stem##2(variable);break;			\
++	case 4: pscr_ret__ = stem##4(variable);break;			\
++	case 8: pscr_ret__ = stem##8(variable);break;			\
++	default:							\
++		__bad_size_call_parameter();break;			\
++	}								\
++	pscr_ret__;							\
++})
++
++#define __pcpu_size_call(stem, variable, ...)				\
++do {									\
++	switch(sizeof(variable)) {					\
++		case 1: stem##1(variable, __VA_ARGS__);break;		\
++		case 2: stem##2(variable, __VA_ARGS__);break;		\
++		case 4: stem##4(variable, __VA_ARGS__);break;		\
++		case 8: stem##8(variable, __VA_ARGS__);break;		\
++		default: 						\
++			__bad_size_call_parameter();break;		\
++	}								\
++} while (0)
++
++/*
++ * Optimized manipulation for memory allocated through the per cpu
++ * allocator or for addresses of per cpu variables (can be determined
++ * using per_cpu_var(xx).
++ *
++ * These operation guarantee exclusivity of access for other operations
++ * on the *same* processor. The assumption is that per cpu data is only
++ * accessed by a single processor instance (the current one).
++ *
++ * The first group is used for accesses that must be done in a
++ * preemption safe way since we know that the context is not preempt
++ * safe. Interrupts may occur. If the interrupt modifies the variable
++ * too then RMW actions will not be reliable.
++ *
++ * The arch code can provide optimized functions in two ways:
++ *
++ * 1. Override the function completely. F.e. define this_cpu_add().
++ *    The arch must then ensure that the various scalar format passed
++ *    are handled correctly.
++ *
++ * 2. Provide functions for certain scalar sizes. F.e. provide
++ *    this_cpu_add_2() to provide per cpu atomic operations for 2 byte
++ *    sized RMW actions. If arch code does not provide operations for
++ *    a scalar size then the fallback in the generic code will be
++ *    used.
++ */
++
++#define _this_cpu_generic_read(pcp)					\
++({	typeof(pcp) ret__;						\
++	preempt_disable();						\
++	ret__ = *this_cpu_ptr(&(pcp));					\
++	preempt_enable();						\
++	ret__;								\
++})
++
++#ifndef this_cpu_read
++# ifndef this_cpu_read_1
++#  define this_cpu_read_1(pcp)	_this_cpu_generic_read(pcp)
++# endif
++# ifndef this_cpu_read_2
++#  define this_cpu_read_2(pcp)	_this_cpu_generic_read(pcp)
++# endif
++# ifndef this_cpu_read_4
++#  define this_cpu_read_4(pcp)	_this_cpu_generic_read(pcp)
++# endif
++# ifndef this_cpu_read_8
++#  define this_cpu_read_8(pcp)	_this_cpu_generic_read(pcp)
++# endif
++# define this_cpu_read(pcp)	__pcpu_size_call_return(this_cpu_read_, (pcp))
++#endif
++
++#define _this_cpu_generic_to_op(pcp, val, op)				\
++do {									\
++	preempt_disable();						\
++	*__this_cpu_ptr(&pcp) op val;					\
++	preempt_enable();						\
++} while (0)
++
++#ifndef this_cpu_write
++# ifndef this_cpu_write_1
++#  define this_cpu_write_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), =)
++# endif
++# ifndef this_cpu_write_2
++#  define this_cpu_write_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), =)
++# endif
++# ifndef this_cpu_write_4
++#  define this_cpu_write_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), =)
++# endif
++# ifndef this_cpu_write_8
++#  define this_cpu_write_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), =)
++# endif
++# define this_cpu_write(pcp, val)	__pcpu_size_call(this_cpu_write_, (pcp), (val))
++#endif
++
++#ifndef this_cpu_add
++# ifndef this_cpu_add_1
++#  define this_cpu_add_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# ifndef this_cpu_add_2
++#  define this_cpu_add_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# ifndef this_cpu_add_4
++#  define this_cpu_add_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# ifndef this_cpu_add_8
++#  define this_cpu_add_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# define this_cpu_add(pcp, val)		__pcpu_size_call(this_cpu_add_, (pcp), (val))
++#endif
++
++#ifndef this_cpu_sub
++# define this_cpu_sub(pcp, val)		this_cpu_add((pcp), -(val))
++#endif
++
++#ifndef this_cpu_inc
++# define this_cpu_inc(pcp)		this_cpu_add((pcp), 1)
++#endif
++
++#ifndef this_cpu_dec
++# define this_cpu_dec(pcp)		this_cpu_sub((pcp), 1)
++#endif
++
++#ifndef this_cpu_and
++# ifndef this_cpu_and_1
++#  define this_cpu_and_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# ifndef this_cpu_and_2
++#  define this_cpu_and_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# ifndef this_cpu_and_4
++#  define this_cpu_and_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# ifndef this_cpu_and_8
++#  define this_cpu_and_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# define this_cpu_and(pcp, val)		__pcpu_size_call(this_cpu_and_, (pcp), (val))
++#endif
++
++#ifndef this_cpu_or
++# ifndef this_cpu_or_1
++#  define this_cpu_or_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# ifndef this_cpu_or_2
++#  define this_cpu_or_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# ifndef this_cpu_or_4
++#  define this_cpu_or_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# ifndef this_cpu_or_8
++#  define this_cpu_or_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# define this_cpu_or(pcp, val)		__pcpu_size_call(this_cpu_or_, (pcp), (val))
++#endif
++
++#ifndef this_cpu_xor
++# ifndef this_cpu_xor_1
++#  define this_cpu_xor_1(pcp, val)	_this_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# ifndef this_cpu_xor_2
++#  define this_cpu_xor_2(pcp, val)	_this_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# ifndef this_cpu_xor_4
++#  define this_cpu_xor_4(pcp, val)	_this_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# ifndef this_cpu_xor_8
++#  define this_cpu_xor_8(pcp, val)	_this_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# define this_cpu_xor(pcp, val)		__pcpu_size_call(this_cpu_or_, (pcp), (val))
++#endif
++
++/*
++ * Generic percpu operations that do not require preemption handling.
++ * Either we do not care about races or the caller has the
++ * responsibility of handling preemptions issues. Arch code can still
++ * override these instructions since the arch per cpu code may be more
++ * efficient and may actually get race freeness for free (that is the
++ * case for x86 for example).
++ *
++ * If there is no other protection through preempt disable and/or
++ * disabling interupts then one of these RMW operations can show unexpected
++ * behavior because the execution thread was rescheduled on another processor
++ * or an interrupt occurred and the same percpu variable was modified from
++ * the interrupt context.
++ */
++#ifndef __this_cpu_read
++# ifndef __this_cpu_read_1
++#  define __this_cpu_read_1(pcp)	(*__this_cpu_ptr(&(pcp)))
++# endif
++# ifndef __this_cpu_read_2
++#  define __this_cpu_read_2(pcp)	(*__this_cpu_ptr(&(pcp)))
++# endif
++# ifndef __this_cpu_read_4
++#  define __this_cpu_read_4(pcp)	(*__this_cpu_ptr(&(pcp)))
++# endif
++# ifndef __this_cpu_read_8
++#  define __this_cpu_read_8(pcp)	(*__this_cpu_ptr(&(pcp)))
++# endif
++# define __this_cpu_read(pcp)	__pcpu_size_call_return(__this_cpu_read_, (pcp))
++#endif
++
++#define __this_cpu_generic_to_op(pcp, val, op)				\
++do {									\
++	*__this_cpu_ptr(&(pcp)) op val;					\
++} while (0)
++
++#ifndef __this_cpu_write
++# ifndef __this_cpu_write_1
++#  define __this_cpu_write_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), =)
++# endif
++# ifndef __this_cpu_write_2
++#  define __this_cpu_write_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), =)
++# endif
++# ifndef __this_cpu_write_4
++#  define __this_cpu_write_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), =)
++# endif
++# ifndef __this_cpu_write_8
++#  define __this_cpu_write_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), =)
++# endif
++# define __this_cpu_write(pcp, val)	__pcpu_size_call(__this_cpu_write_, (pcp), (val))
++#endif
++
++#ifndef __this_cpu_add
++# ifndef __this_cpu_add_1
++#  define __this_cpu_add_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# ifndef __this_cpu_add_2
++#  define __this_cpu_add_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# ifndef __this_cpu_add_4
++#  define __this_cpu_add_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# ifndef __this_cpu_add_8
++#  define __this_cpu_add_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# define __this_cpu_add(pcp, val)	__pcpu_size_call(__this_cpu_add_, (pcp), (val))
++#endif
++
++#ifndef __this_cpu_sub
++# define __this_cpu_sub(pcp, val)	__this_cpu_add((pcp), -(val))
++#endif
++
++#ifndef __this_cpu_inc
++# define __this_cpu_inc(pcp)		__this_cpu_add((pcp), 1)
++#endif
++
++#ifndef __this_cpu_dec
++# define __this_cpu_dec(pcp)		__this_cpu_sub((pcp), 1)
++#endif
++
++#ifndef __this_cpu_and
++# ifndef __this_cpu_and_1
++#  define __this_cpu_and_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# ifndef __this_cpu_and_2
++#  define __this_cpu_and_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# ifndef __this_cpu_and_4
++#  define __this_cpu_and_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# ifndef __this_cpu_and_8
++#  define __this_cpu_and_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# define __this_cpu_and(pcp, val)	__pcpu_size_call(__this_cpu_and_, (pcp), (val))
++#endif
++
++#ifndef __this_cpu_or
++# ifndef __this_cpu_or_1
++#  define __this_cpu_or_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# ifndef __this_cpu_or_2
++#  define __this_cpu_or_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# ifndef __this_cpu_or_4
++#  define __this_cpu_or_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# ifndef __this_cpu_or_8
++#  define __this_cpu_or_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# define __this_cpu_or(pcp, val)	__pcpu_size_call(__this_cpu_or_, (pcp), (val))
++#endif
++
++#ifndef __this_cpu_xor
++# ifndef __this_cpu_xor_1
++#  define __this_cpu_xor_1(pcp, val)	__this_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# ifndef __this_cpu_xor_2
++#  define __this_cpu_xor_2(pcp, val)	__this_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# ifndef __this_cpu_xor_4
++#  define __this_cpu_xor_4(pcp, val)	__this_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# ifndef __this_cpu_xor_8
++#  define __this_cpu_xor_8(pcp, val)	__this_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# define __this_cpu_xor(pcp, val)	__pcpu_size_call(__this_cpu_xor_, (pcp), (val))
++#endif
++
++/*
++ * IRQ safe versions of the per cpu RMW operations. Note that these operations
++ * are *not* safe against modification of the same variable from another
++ * processors (which one gets when using regular atomic operations)
++ . They are guaranteed to be atomic vs. local interrupts and
++ * preemption only.
++ */
++#define irqsafe_cpu_generic_to_op(pcp, val, op)				\
++do {									\
++	unsigned long flags;						\
++	local_irq_save(flags);						\
++	*__this_cpu_ptr(&(pcp)) op val;					\
++	local_irq_restore(flags);					\
++} while (0)
++
++#ifndef irqsafe_cpu_add
++# ifndef irqsafe_cpu_add_1
++#  define irqsafe_cpu_add_1(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# ifndef irqsafe_cpu_add_2
++#  define irqsafe_cpu_add_2(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# ifndef irqsafe_cpu_add_4
++#  define irqsafe_cpu_add_4(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# ifndef irqsafe_cpu_add_8
++#  define irqsafe_cpu_add_8(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), +=)
++# endif
++# define irqsafe_cpu_add(pcp, val) __pcpu_size_call(irqsafe_cpu_add_, (pcp), (val))
++#endif
++
++#ifndef irqsafe_cpu_sub
++# define irqsafe_cpu_sub(pcp, val)	irqsafe_cpu_add((pcp), -(val))
++#endif
++
++#ifndef irqsafe_cpu_inc
++# define irqsafe_cpu_inc(pcp)	irqsafe_cpu_add((pcp), 1)
++#endif
++
++#ifndef irqsafe_cpu_dec
++# define irqsafe_cpu_dec(pcp)	irqsafe_cpu_sub((pcp), 1)
++#endif
++
++#ifndef irqsafe_cpu_and
++# ifndef irqsafe_cpu_and_1
++#  define irqsafe_cpu_and_1(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# ifndef irqsafe_cpu_and_2
++#  define irqsafe_cpu_and_2(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# ifndef irqsafe_cpu_and_4
++#  define irqsafe_cpu_and_4(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# ifndef irqsafe_cpu_and_8
++#  define irqsafe_cpu_and_8(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), &=)
++# endif
++# define irqsafe_cpu_and(pcp, val) __pcpu_size_call(irqsafe_cpu_and_, (val))
++#endif
++
++#ifndef irqsafe_cpu_or
++# ifndef irqsafe_cpu_or_1
++#  define irqsafe_cpu_or_1(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# ifndef irqsafe_cpu_or_2
++#  define irqsafe_cpu_or_2(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# ifndef irqsafe_cpu_or_4
++#  define irqsafe_cpu_or_4(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# ifndef irqsafe_cpu_or_8
++#  define irqsafe_cpu_or_8(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), |=)
++# endif
++# define irqsafe_cpu_or(pcp, val) __pcpu_size_call(irqsafe_cpu_or_, (val))
++#endif
++
++#ifndef irqsafe_cpu_xor
++# ifndef irqsafe_cpu_xor_1
++#  define irqsafe_cpu_xor_1(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# ifndef irqsafe_cpu_xor_2
++#  define irqsafe_cpu_xor_2(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# ifndef irqsafe_cpu_xor_4
++#  define irqsafe_cpu_xor_4(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# ifndef irqsafe_cpu_xor_8
++#  define irqsafe_cpu_xor_8(pcp, val) irqsafe_cpu_generic_to_op((pcp), (val), ^=)
++# endif
++# define irqsafe_cpu_xor(pcp, val) __pcpu_size_call(irqsafe_cpu_xor_, (val))
++#endif
++
+ #endif /* __LINUX_PERCPU_H */
+
+commit 86b99c516bc6182000cfec468dd55e7165193254
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:58:07 2018 +0800
+
+    v2.6.32-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 26fd9d1..878836c 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -34,7 +34,7 @@
+ 
+ #ifdef CONFIG_SMP
+ 
+-#ifdef CONFIG_HAVE_DYNAMIC_PER_CPU_AREA
++#ifndef CONFIG_HAVE_LEGACY_PER_CPU_AREA
+ 
+ /* minimum unit size, also is the maximum supported allocation size */
+ #define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(64 << 10)
+@@ -57,19 +57,70 @@
+ #endif
+ 
+ extern void *pcpu_base_addr;
++extern const unsigned long *pcpu_unit_offsets;
+ 
+-typedef struct page * (*pcpu_get_page_fn_t)(unsigned int cpu, int pageno);
+-typedef void (*pcpu_populate_pte_fn_t)(unsigned long addr);
++struct pcpu_group_info {
++	int			nr_units;	/* aligned # of units */
++	unsigned long		base_offset;	/* base address offset */
++	unsigned int		*cpu_map;	/* unit->cpu map, empty
++						 * entries contain NR_CPUS */
++};
++
++struct pcpu_alloc_info {
++	size_t			static_size;
++	size_t			reserved_size;
++	size_t			dyn_size;
++	size_t			unit_size;
++	size_t			atom_size;
++	size_t			alloc_size;
++	size_t			__ai_size;	/* internal, don't use */
++	int			nr_groups;	/* 0 if grouping unnecessary */
++	struct pcpu_group_info	groups[];
++};
+ 
+-extern size_t __init pcpu_setup_first_chunk(pcpu_get_page_fn_t get_page_fn,
+-				size_t static_size, size_t reserved_size,
+-				ssize_t dyn_size, ssize_t unit_size,
+-				void *base_addr,
+-				pcpu_populate_pte_fn_t populate_pte_fn);
++enum pcpu_fc {
++	PCPU_FC_AUTO,
++	PCPU_FC_EMBED,
++	PCPU_FC_PAGE,
+ 
+-extern ssize_t __init pcpu_embed_first_chunk(
+-				size_t static_size, size_t reserved_size,
+-				ssize_t dyn_size, ssize_t unit_size);
++	PCPU_FC_NR,
++};
++extern const char *pcpu_fc_names[PCPU_FC_NR];
++
++extern enum pcpu_fc pcpu_chosen_fc;
++
++typedef void * (*pcpu_fc_alloc_fn_t)(unsigned int cpu, size_t size,
++				     size_t align);
++typedef void (*pcpu_fc_free_fn_t)(void *ptr, size_t size);
++typedef void (*pcpu_fc_populate_pte_fn_t)(unsigned long addr);
++typedef int (pcpu_fc_cpu_distance_fn_t)(unsigned int from, unsigned int to);
++
++extern struct pcpu_alloc_info * __init pcpu_alloc_alloc_info(int nr_groups,
++							     int nr_units);
++extern void __init pcpu_free_alloc_info(struct pcpu_alloc_info *ai);
++
++extern struct pcpu_alloc_info * __init pcpu_build_alloc_info(
++				size_t reserved_size, ssize_t dyn_size,
++				size_t atom_size,
++				pcpu_fc_cpu_distance_fn_t cpu_distance_fn);
++
++extern int __init pcpu_setup_first_chunk(const struct pcpu_alloc_info *ai,
++					 void *base_addr);
++
++#ifdef CONFIG_NEED_PER_CPU_EMBED_FIRST_CHUNK
++extern int __init pcpu_embed_first_chunk(size_t reserved_size, ssize_t dyn_size,
++				size_t atom_size,
++				pcpu_fc_cpu_distance_fn_t cpu_distance_fn,
++				pcpu_fc_alloc_fn_t alloc_fn,
++				pcpu_fc_free_fn_t free_fn);
++#endif
++
++#ifdef CONFIG_NEED_PER_CPU_PAGE_FIRST_CHUNK
++extern int __init pcpu_page_first_chunk(size_t reserved_size,
++				pcpu_fc_alloc_fn_t alloc_fn,
++				pcpu_fc_free_fn_t free_fn,
++				pcpu_fc_populate_pte_fn_t populate_pte_fn);
++#endif
+ 
+ /*
+  * Use this to get to a cpu's version of the per-cpu object
+@@ -80,7 +131,7 @@ extern ssize_t __init pcpu_embed_first_chunk(
+ 
+ extern void *__alloc_reserved_percpu(size_t size, size_t align);
+ 
+-#else /* CONFIG_HAVE_DYNAMIC_PER_CPU_AREA */
++#else /* CONFIG_HAVE_LEGACY_PER_CPU_AREA */
+ 
+ struct percpu_data {
+ 	void *ptrs[1];
+@@ -99,11 +150,15 @@ struct percpu_data {
+         (__typeof__(ptr))__p->ptrs[(cpu)];				\
+ })
+ 
+-#endif /* CONFIG_HAVE_DYNAMIC_PER_CPU_AREA */
++#endif /* CONFIG_HAVE_LEGACY_PER_CPU_AREA */
+ 
+ extern void *__alloc_percpu(size_t size, size_t align);
+ extern void free_percpu(void *__pdata);
+ 
++#ifndef CONFIG_HAVE_SETUP_PER_CPU_AREA
++extern void __init setup_per_cpu_areas(void);
++#endif
++
+ #else /* CONFIG_SMP */
+ 
+ #define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
+@@ -124,6 +179,13 @@ static inline void free_percpu(void *p)
+ 	kfree(p);
+ }
+ 
++static inline void __init setup_per_cpu_areas(void) { }
++
++static inline void *pcpu_lpage_remapped(void *kaddr)
++{
++	return NULL;
++}
++
+ #endif /* CONFIG_SMP */
+ 
+ #define alloc_percpu(type)	(type *)__alloc_percpu(sizeof(type), \
+
+commit 3834498e8929cac542d1a45a0750324f2b694e45
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:48 2018 +0800
+
+    v2.6.31-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 1581ff2..26fd9d1 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -86,7 +86,12 @@ struct percpu_data {
+ 	void *ptrs[1];
+ };
+ 
++/* pointer disguising messes up the kmemleak objects tracking */
++#ifndef CONFIG_DEBUG_KMEMLEAK
+ #define __percpu_disguise(pdata) (struct percpu_data *)~(unsigned long)(pdata)
++#else
++#define __percpu_disguise(pdata) (struct percpu_data *)(pdata)
++#endif
+ 
+ #define per_cpu_ptr(ptr, cpu)						\
+ ({									\
+
+commit e7f9ce9b24ab6c6bb8c5c3b7cd5d765b64fa9f9e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:35 2018 +0800
+
+    v2.6.30-rc3
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index cfda2d5..1581ff2 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -9,50 +9,6 @@
+ 
+ #include <asm/percpu.h>
+ 
+-#ifndef PER_CPU_BASE_SECTION
+-#ifdef CONFIG_SMP
+-#define PER_CPU_BASE_SECTION ".data.percpu"
+-#else
+-#define PER_CPU_BASE_SECTION ".data"
+-#endif
+-#endif
+-
+-#ifdef CONFIG_SMP
+-
+-#ifdef MODULE
+-#define PER_CPU_SHARED_ALIGNED_SECTION ""
+-#else
+-#define PER_CPU_SHARED_ALIGNED_SECTION ".shared_aligned"
+-#endif
+-#define PER_CPU_FIRST_SECTION ".first"
+-
+-#else
+-
+-#define PER_CPU_SHARED_ALIGNED_SECTION ""
+-#define PER_CPU_FIRST_SECTION ""
+-
+-#endif
+-
+-#define DEFINE_PER_CPU_SECTION(type, name, section)			\
+-	__attribute__((__section__(PER_CPU_BASE_SECTION section)))	\
+-	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name
+-
+-#define DEFINE_PER_CPU(type, name)					\
+-	DEFINE_PER_CPU_SECTION(type, name, "")
+-
+-#define DEFINE_PER_CPU_SHARED_ALIGNED(type, name)			\
+-	DEFINE_PER_CPU_SECTION(type, name, PER_CPU_SHARED_ALIGNED_SECTION) \
+-	____cacheline_aligned_in_smp
+-
+-#define DEFINE_PER_CPU_PAGE_ALIGNED(type, name)				\
+-	DEFINE_PER_CPU_SECTION(type, name, ".page_aligned")
+-
+-#define DEFINE_PER_CPU_FIRST(type, name)				\
+-	DEFINE_PER_CPU_SECTION(type, name, PER_CPU_FIRST_SECTION)
+-
+-#define EXPORT_PER_CPU_SYMBOL(var) EXPORT_SYMBOL(per_cpu__##var)
+-#define EXPORT_PER_CPU_SYMBOL_GPL(var) EXPORT_SYMBOL_GPL(per_cpu__##var)
+-
+ /* enough to cover all DEFINE_PER_CPUs in modules */
+ #ifdef CONFIG_MODULES
+ #define PERCPU_MODULE_RESERVE		(8 << 10)
+
+commit b70252cb6ee00405b4a33adf221d4bb2f62650dd
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:34 2018 +0800
+
+    v2.6.30-rc2
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index ee5615d..cfda2d5 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -168,4 +168,56 @@ static inline void free_percpu(void *p)
+ #define alloc_percpu(type)	(type *)__alloc_percpu(sizeof(type), \
+ 						       __alignof__(type))
+ 
++/*
++ * Optional methods for optimized non-lvalue per-cpu variable access.
++ *
++ * @var can be a percpu variable or a field of it and its size should
++ * equal char, int or long.  percpu_read() evaluates to a lvalue and
++ * all others to void.
++ *
++ * These operations are guaranteed to be atomic w.r.t. preemption.
++ * The generic versions use plain get/put_cpu_var().  Archs are
++ * encouraged to implement single-instruction alternatives which don't
++ * require preemption protection.
++ */
++#ifndef percpu_read
++# define percpu_read(var)						\
++  ({									\
++	typeof(per_cpu_var(var)) __tmp_var__;				\
++	__tmp_var__ = get_cpu_var(var);					\
++	put_cpu_var(var);						\
++	__tmp_var__;							\
++  })
++#endif
++
++#define __percpu_generic_to_op(var, val, op)				\
++do {									\
++	get_cpu_var(var) op val;					\
++	put_cpu_var(var);						\
++} while (0)
++
++#ifndef percpu_write
++# define percpu_write(var, val)		__percpu_generic_to_op(var, (val), =)
++#endif
++
++#ifndef percpu_add
++# define percpu_add(var, val)		__percpu_generic_to_op(var, (val), +=)
++#endif
++
++#ifndef percpu_sub
++# define percpu_sub(var, val)		__percpu_generic_to_op(var, (val), -=)
++#endif
++
++#ifndef percpu_and
++# define percpu_and(var, val)		__percpu_generic_to_op(var, (val), &=)
++#endif
++
++#ifndef percpu_or
++# define percpu_or(var, val)		__percpu_generic_to_op(var, (val), |=)
++#endif
++
++#ifndef percpu_xor
++# define percpu_xor(var, val)		__percpu_generic_to_op(var, (val), ^=)
++#endif
++
+ #endif /* __LINUX_PERCPU_H */
+
+commit a4a66b98e8d1a6d44c25d0e7f6ea323d07e0b652
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:57:32 2018 +0800
+
+    v2.6.30-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 9f2a375..ee5615d 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -5,53 +5,66 @@
+ #include <linux/slab.h> /* For kmalloc() */
+ #include <linux/smp.h>
+ #include <linux/cpumask.h>
++#include <linux/pfn.h>
+ 
+ #include <asm/percpu.h>
+ 
++#ifndef PER_CPU_BASE_SECTION
++#ifdef CONFIG_SMP
++#define PER_CPU_BASE_SECTION ".data.percpu"
++#else
++#define PER_CPU_BASE_SECTION ".data"
++#endif
++#endif
++
+ #ifdef CONFIG_SMP
+-#define DEFINE_PER_CPU(type, name)					\
+-	__attribute__((__section__(".data.percpu")))			\
+-	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name
+ 
+ #ifdef MODULE
+-#define SHARED_ALIGNED_SECTION ".data.percpu"
++#define PER_CPU_SHARED_ALIGNED_SECTION ""
+ #else
+-#define SHARED_ALIGNED_SECTION ".data.percpu.shared_aligned"
++#define PER_CPU_SHARED_ALIGNED_SECTION ".shared_aligned"
+ #endif
++#define PER_CPU_FIRST_SECTION ".first"
+ 
+-#define DEFINE_PER_CPU_SHARED_ALIGNED(type, name)			\
+-	__attribute__((__section__(SHARED_ALIGNED_SECTION)))		\
+-	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name		\
+-	____cacheline_aligned_in_smp
++#else
++
++#define PER_CPU_SHARED_ALIGNED_SECTION ""
++#define PER_CPU_FIRST_SECTION ""
+ 
+-#define DEFINE_PER_CPU_PAGE_ALIGNED(type, name)			\
+-	__attribute__((__section__(".data.percpu.page_aligned")))	\
++#endif
++
++#define DEFINE_PER_CPU_SECTION(type, name, section)			\
++	__attribute__((__section__(PER_CPU_BASE_SECTION section)))	\
+ 	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name
+-#else
++
+ #define DEFINE_PER_CPU(type, name)					\
+-	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name
++	DEFINE_PER_CPU_SECTION(type, name, "")
+ 
+-#define DEFINE_PER_CPU_SHARED_ALIGNED(type, name)		      \
+-	DEFINE_PER_CPU(type, name)
++#define DEFINE_PER_CPU_SHARED_ALIGNED(type, name)			\
++	DEFINE_PER_CPU_SECTION(type, name, PER_CPU_SHARED_ALIGNED_SECTION) \
++	____cacheline_aligned_in_smp
+ 
+-#define DEFINE_PER_CPU_PAGE_ALIGNED(type, name)		      \
+-	DEFINE_PER_CPU(type, name)
+-#endif
++#define DEFINE_PER_CPU_PAGE_ALIGNED(type, name)				\
++	DEFINE_PER_CPU_SECTION(type, name, ".page_aligned")
++
++#define DEFINE_PER_CPU_FIRST(type, name)				\
++	DEFINE_PER_CPU_SECTION(type, name, PER_CPU_FIRST_SECTION)
+ 
+ #define EXPORT_PER_CPU_SYMBOL(var) EXPORT_SYMBOL(per_cpu__##var)
+ #define EXPORT_PER_CPU_SYMBOL_GPL(var) EXPORT_SYMBOL_GPL(per_cpu__##var)
+ 
+-/* Enough to cover all DEFINE_PER_CPUs in kernel, including modules. */
+-#ifndef PERCPU_ENOUGH_ROOM
++/* enough to cover all DEFINE_PER_CPUs in modules */
+ #ifdef CONFIG_MODULES
+-#define PERCPU_MODULE_RESERVE	8192
++#define PERCPU_MODULE_RESERVE		(8 << 10)
+ #else
+-#define PERCPU_MODULE_RESERVE	0
++#define PERCPU_MODULE_RESERVE		0
+ #endif
+ 
++#ifndef PERCPU_ENOUGH_ROOM
+ #define PERCPU_ENOUGH_ROOM						\
+-	(__per_cpu_end - __per_cpu_start + PERCPU_MODULE_RESERVE)
+-#endif	/* PERCPU_ENOUGH_ROOM */
++	(ALIGN(__per_cpu_end - __per_cpu_start, SMP_CACHE_BYTES) +	\
++	 PERCPU_MODULE_RESERVE)
++#endif
+ 
+ /*
+  * Must be an lvalue. Since @var must be a simple identifier,
+@@ -65,52 +78,94 @@
+ 
+ #ifdef CONFIG_SMP
+ 
++#ifdef CONFIG_HAVE_DYNAMIC_PER_CPU_AREA
++
++/* minimum unit size, also is the maximum supported allocation size */
++#define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(64 << 10)
++
++/*
++ * PERCPU_DYNAMIC_RESERVE indicates the amount of free area to piggy
++ * back on the first chunk for dynamic percpu allocation if arch is
++ * manually allocating and mapping it for faster access (as a part of
++ * large page mapping for example).
++ *
++ * The following values give between one and two pages of free space
++ * after typical minimal boot (2-way SMP, single disk and NIC) with
++ * both defconfig and a distro config on x86_64 and 32.  More
++ * intelligent way to determine this would be nice.
++ */
++#if BITS_PER_LONG > 32
++#define PERCPU_DYNAMIC_RESERVE		(20 << 10)
++#else
++#define PERCPU_DYNAMIC_RESERVE		(12 << 10)
++#endif
++
++extern void *pcpu_base_addr;
++
++typedef struct page * (*pcpu_get_page_fn_t)(unsigned int cpu, int pageno);
++typedef void (*pcpu_populate_pte_fn_t)(unsigned long addr);
++
++extern size_t __init pcpu_setup_first_chunk(pcpu_get_page_fn_t get_page_fn,
++				size_t static_size, size_t reserved_size,
++				ssize_t dyn_size, ssize_t unit_size,
++				void *base_addr,
++				pcpu_populate_pte_fn_t populate_pte_fn);
++
++extern ssize_t __init pcpu_embed_first_chunk(
++				size_t static_size, size_t reserved_size,
++				ssize_t dyn_size, ssize_t unit_size);
++
++/*
++ * Use this to get to a cpu's version of the per-cpu object
++ * dynamically allocated. Non-atomic access to the current CPU's
++ * version should probably be combined with get_cpu()/put_cpu().
++ */
++#define per_cpu_ptr(ptr, cpu)	SHIFT_PERCPU_PTR((ptr), per_cpu_offset((cpu)))
++
++extern void *__alloc_reserved_percpu(size_t size, size_t align);
++
++#else /* CONFIG_HAVE_DYNAMIC_PER_CPU_AREA */
++
+ struct percpu_data {
+ 	void *ptrs[1];
+ };
+ 
+ #define __percpu_disguise(pdata) (struct percpu_data *)~(unsigned long)(pdata)
+-/* 
+- * Use this to get to a cpu's version of the per-cpu object dynamically
+- * allocated. Non-atomic access to the current CPU's version should
+- * probably be combined with get_cpu()/put_cpu().
+- */ 
+-#define percpu_ptr(ptr, cpu)                              \
+-({                                                        \
+-        struct percpu_data *__p = __percpu_disguise(ptr); \
+-        (__typeof__(ptr))__p->ptrs[(cpu)];	          \
++
++#define per_cpu_ptr(ptr, cpu)						\
++({									\
++        struct percpu_data *__p = __percpu_disguise(ptr);		\
++        (__typeof__(ptr))__p->ptrs[(cpu)];				\
+ })
+ 
+-extern void *__percpu_alloc_mask(size_t size, gfp_t gfp, cpumask_t *mask);
+-extern void percpu_free(void *__pdata);
++#endif /* CONFIG_HAVE_DYNAMIC_PER_CPU_AREA */
++
++extern void *__alloc_percpu(size_t size, size_t align);
++extern void free_percpu(void *__pdata);
+ 
+ #else /* CONFIG_SMP */
+ 
+-#define percpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
++#define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
+ 
+-static __always_inline void *__percpu_alloc_mask(size_t size, gfp_t gfp, cpumask_t *mask)
++static inline void *__alloc_percpu(size_t size, size_t align)
+ {
+-	return kzalloc(size, gfp);
++	/*
++	 * Can't easily make larger alignment work with kmalloc.  WARN
++	 * on it.  Larger alignment should only be used for module
++	 * percpu sections on SMP for which this path isn't used.
++	 */
++	WARN_ON_ONCE(align > SMP_CACHE_BYTES);
++	return kzalloc(size, GFP_KERNEL);
+ }
+ 
+-static inline void percpu_free(void *__pdata)
++static inline void free_percpu(void *p)
+ {
+-	kfree(__pdata);
++	kfree(p);
+ }
+ 
+ #endif /* CONFIG_SMP */
+ 
+-#define percpu_alloc_mask(size, gfp, mask) \
+-	__percpu_alloc_mask((size), (gfp), &(mask))
+-
+-#define percpu_alloc(size, gfp) percpu_alloc_mask((size), (gfp), cpu_online_map)
+-
+-/* (legacy) interface for use without CPU hotplug handling */
+-
+-#define __alloc_percpu(size)	percpu_alloc_mask((size), GFP_KERNEL, \
+-						  cpu_possible_map)
+-#define alloc_percpu(type)	(type *)__alloc_percpu(sizeof(type))
+-#define free_percpu(ptr)	percpu_free((ptr))
+-#define per_cpu_ptr(ptr, cpu)	percpu_ptr((ptr), (cpu))
++#define alloc_percpu(type)	(type *)__alloc_percpu(sizeof(type), \
++						       __alignof__(type))
+ 
+ #endif /* __LINUX_PERCPU_H */
+
+commit c60b469c105ebdb6032a3115422e08cef9b6a9ab
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:58 2018 +0800
+
+    v2.6.28-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index fac3337..9f2a375 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -23,12 +23,19 @@
+ 	__attribute__((__section__(SHARED_ALIGNED_SECTION)))		\
+ 	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name		\
+ 	____cacheline_aligned_in_smp
++
++#define DEFINE_PER_CPU_PAGE_ALIGNED(type, name)			\
++	__attribute__((__section__(".data.percpu.page_aligned")))	\
++	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name
+ #else
+ #define DEFINE_PER_CPU(type, name)					\
+ 	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name
+ 
+ #define DEFINE_PER_CPU_SHARED_ALIGNED(type, name)		      \
+ 	DEFINE_PER_CPU(type, name)
++
++#define DEFINE_PER_CPU_PAGE_ALIGNED(type, name)		      \
++	DEFINE_PER_CPU(type, name)
+ #endif
+ 
+ #define EXPORT_PER_CPU_SYMBOL(var) EXPORT_SYMBOL(per_cpu__##var)
+
+commit 60aa3b0caa16d51a82eb0ac3d14729cfe3f67188
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:40 2018 +0800
+
+    v2.6.27-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 4cdd393..fac3337 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -74,11 +74,6 @@ struct percpu_data {
+         (__typeof__(ptr))__p->ptrs[(cpu)];	          \
+ })
+ 
+-extern void *percpu_populate(void *__pdata, size_t size, gfp_t gfp, int cpu);
+-extern void percpu_depopulate(void *__pdata, int cpu);
+-extern int __percpu_populate_mask(void *__pdata, size_t size, gfp_t gfp,
+-				  cpumask_t *mask);
+-extern void __percpu_depopulate_mask(void *__pdata, cpumask_t *mask);
+ extern void *__percpu_alloc_mask(size_t size, gfp_t gfp, cpumask_t *mask);
+ extern void percpu_free(void *__pdata);
+ 
+@@ -86,26 +81,6 @@ extern void percpu_free(void *__pdata);
+ 
+ #define percpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
+ 
+-static inline void percpu_depopulate(void *__pdata, int cpu)
+-{
+-}
+-
+-static inline void __percpu_depopulate_mask(void *__pdata, cpumask_t *mask)
+-{
+-}
+-
+-static inline void *percpu_populate(void *__pdata, size_t size, gfp_t gfp,
+-				    int cpu)
+-{
+-	return percpu_ptr(__pdata, cpu);
+-}
+-
+-static inline int __percpu_populate_mask(void *__pdata, size_t size, gfp_t gfp,
+-					 cpumask_t *mask)
+-{
+-	return 0;
+-}
+-
+ static __always_inline void *__percpu_alloc_mask(size_t size, gfp_t gfp, cpumask_t *mask)
+ {
+ 	return kzalloc(size, gfp);
+@@ -118,10 +93,6 @@ static inline void percpu_free(void *__pdata)
+ 
+ #endif /* CONFIG_SMP */
+ 
+-#define percpu_populate_mask(__pdata, size, gfp, mask) \
+-	__percpu_populate_mask((__pdata), (size), (gfp), &(mask))
+-#define percpu_depopulate_mask(__pdata, mask) \
+-	__percpu_depopulate_mask((__pdata), &(mask))
+ #define percpu_alloc_mask(size, gfp, mask) \
+ 	__percpu_alloc_mask((size), (gfp), &(mask))
+ 
+
+commit becbeec6d7e7bada71f49a770bd89aeb70f48021
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:26 2018 +0800
+
+    v2.6.26-rc3
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index d746a2a..4cdd393 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -13,8 +13,14 @@
+ 	__attribute__((__section__(".data.percpu")))			\
+ 	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name
+ 
++#ifdef MODULE
++#define SHARED_ALIGNED_SECTION ".data.percpu"
++#else
++#define SHARED_ALIGNED_SECTION ".data.percpu.shared_aligned"
++#endif
++
+ #define DEFINE_PER_CPU_SHARED_ALIGNED(type, name)			\
+-	__attribute__((__section__(".data.percpu.shared_aligned")))	\
++	__attribute__((__section__(SHARED_ALIGNED_SECTION)))		\
+ 	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name		\
+ 	____cacheline_aligned_in_smp
+ #else
+
+commit 45618cbf573e2352b1276be3f6329fcecc5a767c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:23 2018 +0800
+
+    v2.6.26-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 1ac9697..d746a2a 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -4,7 +4,6 @@
+ #include <linux/preempt.h>
+ #include <linux/slab.h> /* For kmalloc() */
+ #include <linux/smp.h>
+-#include <linux/string.h> /* For memset() */
+ #include <linux/cpumask.h>
+ 
+ #include <asm/percpu.h>
+
+commit 9f3429a703e7c0dc7ebb842af4fd2e406ce05543
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:56:06 2018 +0800
+
+    v2.6.25-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 926adaa..1ac9697 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -9,6 +9,26 @@
+ 
+ #include <asm/percpu.h>
+ 
++#ifdef CONFIG_SMP
++#define DEFINE_PER_CPU(type, name)					\
++	__attribute__((__section__(".data.percpu")))			\
++	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name
++
++#define DEFINE_PER_CPU_SHARED_ALIGNED(type, name)			\
++	__attribute__((__section__(".data.percpu.shared_aligned")))	\
++	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name		\
++	____cacheline_aligned_in_smp
++#else
++#define DEFINE_PER_CPU(type, name)					\
++	PER_CPU_ATTRIBUTES __typeof__(type) per_cpu__##name
++
++#define DEFINE_PER_CPU_SHARED_ALIGNED(type, name)		      \
++	DEFINE_PER_CPU(type, name)
++#endif
++
++#define EXPORT_PER_CPU_SYMBOL(var) EXPORT_SYMBOL(per_cpu__##var)
++#define EXPORT_PER_CPU_SYMBOL_GPL(var) EXPORT_SYMBOL_GPL(per_cpu__##var)
++
+ /* Enough to cover all DEFINE_PER_CPUs in kernel, including modules. */
+ #ifndef PERCPU_ENOUGH_ROOM
+ #ifdef CONFIG_MODULES
+@@ -34,7 +54,7 @@
+ #ifdef CONFIG_SMP
+ 
+ struct percpu_data {
+-	void *ptrs[NR_CPUS];
++	void *ptrs[1];
+ };
+ 
+ #define __percpu_disguise(pdata) (struct percpu_data *)~(unsigned long)(pdata)
+
+commit 0f24c1107b542817f214097cf4283ddd09a2348c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:34 2018 +0800
+
+    v2.6.23-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index b72be2f..926adaa 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -1,7 +1,7 @@
+ #ifndef __LINUX_PERCPU_H
+ #define __LINUX_PERCPU_H
+ 
+-#include <linux/spinlock.h> /* For preempt_disable() */
++#include <linux/preempt.h>
+ #include <linux/slab.h> /* For kmalloc() */
+ #include <linux/smp.h>
+ #include <linux/string.h> /* For memset() */
+
+commit 96e6819e31845f9eeea6e3dae35c3490845b0b62
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:55:21 2018 +0800
+
+    v2.6.22-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 600e3d3..b72be2f 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -11,9 +11,16 @@
+ 
+ /* Enough to cover all DEFINE_PER_CPUs in kernel, including modules. */
+ #ifndef PERCPU_ENOUGH_ROOM
+-#define PERCPU_ENOUGH_ROOM 32768
++#ifdef CONFIG_MODULES
++#define PERCPU_MODULE_RESERVE	8192
++#else
++#define PERCPU_MODULE_RESERVE	0
+ #endif
+ 
++#define PERCPU_ENOUGH_ROOM						\
++	(__per_cpu_end - __per_cpu_start + PERCPU_MODULE_RESERVE)
++#endif	/* PERCPU_ENOUGH_ROOM */
++
+ /*
+  * Must be an lvalue. Since @var must be a simple identifier,
+  * we force a syntax error here if it isn't.
+
+commit b191cc2704456924303b4b506b3ed3fd37a5d04d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:46 2018 +0800
+
+    v2.6.19-rc2
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 46ec72f..600e3d3 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -19,7 +19,7 @@
+  * we force a syntax error here if it isn't.
+  */
+ #define get_cpu_var(var) (*({				\
+-	extern int simple_indentifier_##var(void);	\
++	extern int simple_identifier_##var(void);	\
+ 	preempt_disable();				\
+ 	&__get_cpu_var(var); }))
+ #define put_cpu_var(var) preempt_enable()
+
+commit 897f49a8f8f8dce0aa225cb5f01f8e513385d70c
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:44 2018 +0800
+
+    v2.6.19-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index cb9039a..46ec72f 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -1,9 +1,12 @@
+ #ifndef __LINUX_PERCPU_H
+ #define __LINUX_PERCPU_H
++
+ #include <linux/spinlock.h> /* For preempt_disable() */
+ #include <linux/slab.h> /* For kmalloc() */
+ #include <linux/smp.h>
+ #include <linux/string.h> /* For memset() */
++#include <linux/cpumask.h>
++
+ #include <asm/percpu.h>
+ 
+ /* Enough to cover all DEFINE_PER_CPUs in kernel, including modules. */
+@@ -11,8 +14,14 @@
+ #define PERCPU_ENOUGH_ROOM 32768
+ #endif
+ 
+-/* Must be an lvalue. */
+-#define get_cpu_var(var) (*({ preempt_disable(); &__get_cpu_var(var); }))
++/*
++ * Must be an lvalue. Since @var must be a simple identifier,
++ * we force a syntax error here if it isn't.
++ */
++#define get_cpu_var(var) (*({				\
++	extern int simple_indentifier_##var(void);	\
++	preempt_disable();				\
++	&__get_cpu_var(var); }))
+ #define put_cpu_var(var) preempt_enable()
+ 
+ #ifdef CONFIG_SMP
+@@ -21,39 +30,77 @@ struct percpu_data {
+ 	void *ptrs[NR_CPUS];
+ };
+ 
++#define __percpu_disguise(pdata) (struct percpu_data *)~(unsigned long)(pdata)
+ /* 
+- * Use this to get to a cpu's version of the per-cpu object allocated using
+- * alloc_percpu.  Non-atomic access to the current CPU's version should
++ * Use this to get to a cpu's version of the per-cpu object dynamically
++ * allocated. Non-atomic access to the current CPU's version should
+  * probably be combined with get_cpu()/put_cpu().
+  */ 
+-#define per_cpu_ptr(ptr, cpu)                   \
+-({                                              \
+-        struct percpu_data *__p = (struct percpu_data *)~(unsigned long)(ptr); \
+-        (__typeof__(ptr))__p->ptrs[(cpu)];	\
++#define percpu_ptr(ptr, cpu)                              \
++({                                                        \
++        struct percpu_data *__p = __percpu_disguise(ptr); \
++        (__typeof__(ptr))__p->ptrs[(cpu)];	          \
+ })
+ 
+-extern void *__alloc_percpu(size_t size);
+-extern void free_percpu(const void *);
++extern void *percpu_populate(void *__pdata, size_t size, gfp_t gfp, int cpu);
++extern void percpu_depopulate(void *__pdata, int cpu);
++extern int __percpu_populate_mask(void *__pdata, size_t size, gfp_t gfp,
++				  cpumask_t *mask);
++extern void __percpu_depopulate_mask(void *__pdata, cpumask_t *mask);
++extern void *__percpu_alloc_mask(size_t size, gfp_t gfp, cpumask_t *mask);
++extern void percpu_free(void *__pdata);
+ 
+ #else /* CONFIG_SMP */
+ 
+-#define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
++#define percpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
++
++static inline void percpu_depopulate(void *__pdata, int cpu)
++{
++}
++
++static inline void __percpu_depopulate_mask(void *__pdata, cpumask_t *mask)
++{
++}
+ 
+-static inline void *__alloc_percpu(size_t size)
++static inline void *percpu_populate(void *__pdata, size_t size, gfp_t gfp,
++				    int cpu)
+ {
+-	void *ret = kmalloc(size, GFP_KERNEL);
+-	if (ret)
+-		memset(ret, 0, size);
+-	return ret;
++	return percpu_ptr(__pdata, cpu);
+ }
+-static inline void free_percpu(const void *ptr)
+-{	
+-	kfree(ptr);
++
++static inline int __percpu_populate_mask(void *__pdata, size_t size, gfp_t gfp,
++					 cpumask_t *mask)
++{
++	return 0;
++}
++
++static __always_inline void *__percpu_alloc_mask(size_t size, gfp_t gfp, cpumask_t *mask)
++{
++	return kzalloc(size, gfp);
++}
++
++static inline void percpu_free(void *__pdata)
++{
++	kfree(__pdata);
+ }
+ 
+ #endif /* CONFIG_SMP */
+ 
+-/* Simple wrapper for the common case: zeros memory. */
+-#define alloc_percpu(type)	((type *)(__alloc_percpu(sizeof(type))))
++#define percpu_populate_mask(__pdata, size, gfp, mask) \
++	__percpu_populate_mask((__pdata), (size), (gfp), &(mask))
++#define percpu_depopulate_mask(__pdata, mask) \
++	__percpu_depopulate_mask((__pdata), &(mask))
++#define percpu_alloc_mask(size, gfp, mask) \
++	__percpu_alloc_mask((size), (gfp), &(mask))
++
++#define percpu_alloc(size, gfp) percpu_alloc_mask((size), (gfp), cpu_online_map)
++
++/* (legacy) interface for use without CPU hotplug handling */
++
++#define __alloc_percpu(size)	percpu_alloc_mask((size), GFP_KERNEL, \
++						  cpu_possible_map)
++#define alloc_percpu(type)	(type *)__alloc_percpu(sizeof(type))
++#define free_percpu(ptr)	percpu_free((ptr))
++#define per_cpu_ptr(ptr, cpu)	percpu_ptr((ptr), (cpu))
+ 
+ #endif /* __LINUX_PERCPU_H */
+
+commit f5942d4ce9758ad855eb650a873cad7237acf6b3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:54:07 2018 +0800
+
+    v2.6.16-rc1
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index fb8d2d2..cb9039a 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -19,7 +19,6 @@
+ 
+ struct percpu_data {
+ 	void *ptrs[NR_CPUS];
+-	void *blkp;
+ };
+ 
+ /* 
+@@ -33,14 +32,14 @@ struct percpu_data {
+         (__typeof__(ptr))__p->ptrs[(cpu)];	\
+ })
+ 
+-extern void *__alloc_percpu(size_t size, size_t align);
++extern void *__alloc_percpu(size_t size);
+ extern void free_percpu(const void *);
+ 
+ #else /* CONFIG_SMP */
+ 
+ #define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
+ 
+-static inline void *__alloc_percpu(size_t size, size_t align)
++static inline void *__alloc_percpu(size_t size)
+ {
+ 	void *ret = kmalloc(size, GFP_KERNEL);
+ 	if (ret)
+@@ -55,7 +54,6 @@ static inline void free_percpu(const void *ptr)
+ #endif /* CONFIG_SMP */
+ 
+ /* Simple wrapper for the common case: zeros memory. */
+-#define alloc_percpu(type) \
+-	((type *)(__alloc_percpu(sizeof(type), __alignof__(type))))
++#define alloc_percpu(type)	((type *)(__alloc_percpu(sizeof(type))))
+ 
+ #endif /* __LINUX_PERCPU_H */
+
+commit 63e6d8590f246f1c1d28fcfbac68ac2471183be3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:57 2018 +0800
+
+    v2.6.15-rc2
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 5451eb1..fb8d2d2 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -38,7 +38,7 @@ extern void free_percpu(const void *);
+ 
+ #else /* CONFIG_SMP */
+ 
+-#define per_cpu_ptr(ptr, cpu) (ptr)
++#define per_cpu_ptr(ptr, cpu) ({ (void)(cpu); (ptr); })
+ 
+ static inline void *__alloc_percpu(size_t size, size_t align)
+ {
+
+commit 2ad1cc08211d06f9d1dd88b652b26585ed65f62d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:23 2018 +0800
+
+    v2.6.12
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index caebf2a..5451eb1 100644
+--- a/include/linux/percpu.h
++++ b/include/linux/percpu.h
+@@ -1,141 +1,61 @@
+ #ifndef __LINUX_PERCPU_H
+ #define __LINUX_PERCPU_H
+-
+-#include <linux/mmdebug.h>
+-#include <linux/preempt.h>
++#include <linux/spinlock.h> /* For preempt_disable() */
++#include <linux/slab.h> /* For kmalloc() */
+ #include <linux/smp.h>
+-#include <linux/cpumask.h>
+-#include <linux/printk.h>
+-#include <linux/pfn.h>
+-#include <linux/init.h>
+-
++#include <linux/string.h> /* For memset() */
+ #include <asm/percpu.h>
+ 
+-/* enough to cover all DEFINE_PER_CPUs in modules */
+-#ifdef CONFIG_MODULES
+-#define PERCPU_MODULE_RESERVE		(8 << 10)
+-#else
+-#define PERCPU_MODULE_RESERVE		0
+-#endif
+-
++/* Enough to cover all DEFINE_PER_CPUs in kernel, including modules. */
+ #ifndef PERCPU_ENOUGH_ROOM
+-#define PERCPU_ENOUGH_ROOM						\
+-	(ALIGN(__per_cpu_end - __per_cpu_start, SMP_CACHE_BYTES) +	\
+-	 PERCPU_MODULE_RESERVE)
++#define PERCPU_ENOUGH_ROOM 32768
+ #endif
+ 
+-/* minimum unit size, also is the maximum supported allocation size */
+-#define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(32 << 10)
+-
+-/*
+- * Percpu allocator can serve percpu allocations before slab is
+- * initialized which allows slab to depend on the percpu allocator.
+- * The following two parameters decide how much resource to
+- * preallocate for this.  Keep PERCPU_DYNAMIC_RESERVE equal to or
+- * larger than PERCPU_DYNAMIC_EARLY_SIZE.
+- */
+-#define PERCPU_DYNAMIC_EARLY_SLOTS	128
+-#define PERCPU_DYNAMIC_EARLY_SIZE	(12 << 10)
+-
+-/*
+- * PERCPU_DYNAMIC_RESERVE indicates the amount of free area to piggy
+- * back on the first chunk for dynamic percpu allocation if arch is
+- * manually allocating and mapping it for faster access (as a part of
+- * large page mapping for example).
+- *
+- * The following values give between one and two pages of free space
+- * after typical minimal boot (2-way SMP, single disk and NIC) with
+- * both defconfig and a distro config on x86_64 and 32.  More
+- * intelligent way to determine this would be nice.
+- */
+-#if BITS_PER_LONG > 32
+-#define PERCPU_DYNAMIC_RESERVE		(28 << 10)
+-#else
+-#define PERCPU_DYNAMIC_RESERVE		(20 << 10)
+-#endif
++/* Must be an lvalue. */
++#define get_cpu_var(var) (*({ preempt_disable(); &__get_cpu_var(var); }))
++#define put_cpu_var(var) preempt_enable()
+ 
+-extern void *pcpu_base_addr;
+-extern const unsigned long *pcpu_unit_offsets;
++#ifdef CONFIG_SMP
+ 
+-struct pcpu_group_info {
+-	int			nr_units;	/* aligned # of units */
+-	unsigned long		base_offset;	/* base address offset */
+-	unsigned int		*cpu_map;	/* unit->cpu map, empty
+-						 * entries contain NR_CPUS */
++struct percpu_data {
++	void *ptrs[NR_CPUS];
++	void *blkp;
+ };
+ 
+-struct pcpu_alloc_info {
+-	size_t			static_size;
+-	size_t			reserved_size;
+-	size_t			dyn_size;
+-	size_t			unit_size;
+-	size_t			atom_size;
+-	size_t			alloc_size;
+-	size_t			__ai_size;	/* internal, don't use */
+-	int			nr_groups;	/* 0 if grouping unnecessary */
+-	struct pcpu_group_info	groups[];
+-};
+-
+-enum pcpu_fc {
+-	PCPU_FC_AUTO,
+-	PCPU_FC_EMBED,
+-	PCPU_FC_PAGE,
+-
+-	PCPU_FC_NR,
+-};
+-extern const char * const pcpu_fc_names[PCPU_FC_NR];
+-
+-extern enum pcpu_fc pcpu_chosen_fc;
+-
+-typedef void * (*pcpu_fc_alloc_fn_t)(unsigned int cpu, size_t size,
+-				     size_t align);
+-typedef void (*pcpu_fc_free_fn_t)(void *ptr, size_t size);
+-typedef void (*pcpu_fc_populate_pte_fn_t)(unsigned long addr);
+-typedef int (pcpu_fc_cpu_distance_fn_t)(unsigned int from, unsigned int to);
+-
+-extern struct pcpu_alloc_info * __init pcpu_alloc_alloc_info(int nr_groups,
+-							     int nr_units);
+-extern void __init pcpu_free_alloc_info(struct pcpu_alloc_info *ai);
+-
+-extern int __init pcpu_setup_first_chunk(const struct pcpu_alloc_info *ai,
+-					 void *base_addr);
+-
+-#ifdef CONFIG_NEED_PER_CPU_EMBED_FIRST_CHUNK
+-extern int __init pcpu_embed_first_chunk(size_t reserved_size, size_t dyn_size,
+-				size_t atom_size,
+-				pcpu_fc_cpu_distance_fn_t cpu_distance_fn,
+-				pcpu_fc_alloc_fn_t alloc_fn,
+-				pcpu_fc_free_fn_t free_fn);
+-#endif
+-
+-#ifdef CONFIG_NEED_PER_CPU_PAGE_FIRST_CHUNK
+-extern int __init pcpu_page_first_chunk(size_t reserved_size,
+-				pcpu_fc_alloc_fn_t alloc_fn,
+-				pcpu_fc_free_fn_t free_fn,
+-				pcpu_fc_populate_pte_fn_t populate_pte_fn);
+-#endif
+-
+-extern void __percpu *__alloc_reserved_percpu(size_t size, size_t align);
+-extern bool is_kernel_percpu_address(unsigned long addr);
+-
+-#if !defined(CONFIG_SMP) || !defined(CONFIG_HAVE_SETUP_PER_CPU_AREA)
+-extern void __init setup_per_cpu_areas(void);
+-#endif
+-extern void __init percpu_init_late(void);
+-
+-extern void __percpu *__alloc_percpu_gfp(size_t size, size_t align, gfp_t gfp);
+-extern void __percpu *__alloc_percpu(size_t size, size_t align);
+-extern void free_percpu(void __percpu *__pdata);
+-extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
+-
+-#define alloc_percpu_gfp(type, gfp)					\
+-	(typeof(type) __percpu *)__alloc_percpu_gfp(sizeof(type),	\
+-						__alignof__(type), gfp)
+-#define alloc_percpu(type)						\
+-	(typeof(type) __percpu *)__alloc_percpu(sizeof(type),		\
+-						__alignof__(type))
+-
+-/* To avoid include hell, as printk can not declare this, we declare it here */
+-DECLARE_PER_CPU(printk_func_t, printk_func);
++/* 
++ * Use this to get to a cpu's version of the per-cpu object allocated using
++ * alloc_percpu.  Non-atomic access to the current CPU's version should
++ * probably be combined with get_cpu()/put_cpu().
++ */ 
++#define per_cpu_ptr(ptr, cpu)                   \
++({                                              \
++        struct percpu_data *__p = (struct percpu_data *)~(unsigned long)(ptr); \
++        (__typeof__(ptr))__p->ptrs[(cpu)];	\
++})
++
++extern void *__alloc_percpu(size_t size, size_t align);
++extern void free_percpu(const void *);
++
++#else /* CONFIG_SMP */
++
++#define per_cpu_ptr(ptr, cpu) (ptr)
++
++static inline void *__alloc_percpu(size_t size, size_t align)
++{
++	void *ret = kmalloc(size, GFP_KERNEL);
++	if (ret)
++		memset(ret, 0, size);
++	return ret;
++}
++static inline void free_percpu(const void *ptr)
++{	
++	kfree(ptr);
++}
++
++#endif /* CONFIG_SMP */
++
++/* Simple wrapper for the common case: zeros memory. */
++#define alloc_percpu(type) \
++	((type *)(__alloc_percpu(sizeof(type), __alignof__(type))))
+ 
+ #endif /* __LINUX_PERCPU_H */
+
+commit d1b29f8d86cc05717924ae27fa41197d58995638
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:15 2018 +0800
+
+    v2.6.11
+
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+new file mode 100644
+index 0000000..caebf2a
+--- /dev/null
++++ b/include/linux/percpu.h
+@@ -0,0 +1,141 @@
++#ifndef __LINUX_PERCPU_H
++#define __LINUX_PERCPU_H
++
++#include <linux/mmdebug.h>
++#include <linux/preempt.h>
++#include <linux/smp.h>
++#include <linux/cpumask.h>
++#include <linux/printk.h>
++#include <linux/pfn.h>
++#include <linux/init.h>
++
++#include <asm/percpu.h>
++
++/* enough to cover all DEFINE_PER_CPUs in modules */
++#ifdef CONFIG_MODULES
++#define PERCPU_MODULE_RESERVE		(8 << 10)
++#else
++#define PERCPU_MODULE_RESERVE		0
++#endif
++
++#ifndef PERCPU_ENOUGH_ROOM
++#define PERCPU_ENOUGH_ROOM						\
++	(ALIGN(__per_cpu_end - __per_cpu_start, SMP_CACHE_BYTES) +	\
++	 PERCPU_MODULE_RESERVE)
++#endif
++
++/* minimum unit size, also is the maximum supported allocation size */
++#define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(32 << 10)
++
++/*
++ * Percpu allocator can serve percpu allocations before slab is
++ * initialized which allows slab to depend on the percpu allocator.
++ * The following two parameters decide how much resource to
++ * preallocate for this.  Keep PERCPU_DYNAMIC_RESERVE equal to or
++ * larger than PERCPU_DYNAMIC_EARLY_SIZE.
++ */
++#define PERCPU_DYNAMIC_EARLY_SLOTS	128
++#define PERCPU_DYNAMIC_EARLY_SIZE	(12 << 10)
++
++/*
++ * PERCPU_DYNAMIC_RESERVE indicates the amount of free area to piggy
++ * back on the first chunk for dynamic percpu allocation if arch is
++ * manually allocating and mapping it for faster access (as a part of
++ * large page mapping for example).
++ *
++ * The following values give between one and two pages of free space
++ * after typical minimal boot (2-way SMP, single disk and NIC) with
++ * both defconfig and a distro config on x86_64 and 32.  More
++ * intelligent way to determine this would be nice.
++ */
++#if BITS_PER_LONG > 32
++#define PERCPU_DYNAMIC_RESERVE		(28 << 10)
++#else
++#define PERCPU_DYNAMIC_RESERVE		(20 << 10)
++#endif
++
++extern void *pcpu_base_addr;
++extern const unsigned long *pcpu_unit_offsets;
++
++struct pcpu_group_info {
++	int			nr_units;	/* aligned # of units */
++	unsigned long		base_offset;	/* base address offset */
++	unsigned int		*cpu_map;	/* unit->cpu map, empty
++						 * entries contain NR_CPUS */
++};
++
++struct pcpu_alloc_info {
++	size_t			static_size;
++	size_t			reserved_size;
++	size_t			dyn_size;
++	size_t			unit_size;
++	size_t			atom_size;
++	size_t			alloc_size;
++	size_t			__ai_size;	/* internal, don't use */
++	int			nr_groups;	/* 0 if grouping unnecessary */
++	struct pcpu_group_info	groups[];
++};
++
++enum pcpu_fc {
++	PCPU_FC_AUTO,
++	PCPU_FC_EMBED,
++	PCPU_FC_PAGE,
++
++	PCPU_FC_NR,
++};
++extern const char * const pcpu_fc_names[PCPU_FC_NR];
++
++extern enum pcpu_fc pcpu_chosen_fc;
++
++typedef void * (*pcpu_fc_alloc_fn_t)(unsigned int cpu, size_t size,
++				     size_t align);
++typedef void (*pcpu_fc_free_fn_t)(void *ptr, size_t size);
++typedef void (*pcpu_fc_populate_pte_fn_t)(unsigned long addr);
++typedef int (pcpu_fc_cpu_distance_fn_t)(unsigned int from, unsigned int to);
++
++extern struct pcpu_alloc_info * __init pcpu_alloc_alloc_info(int nr_groups,
++							     int nr_units);
++extern void __init pcpu_free_alloc_info(struct pcpu_alloc_info *ai);
++
++extern int __init pcpu_setup_first_chunk(const struct pcpu_alloc_info *ai,
++					 void *base_addr);
++
++#ifdef CONFIG_NEED_PER_CPU_EMBED_FIRST_CHUNK
++extern int __init pcpu_embed_first_chunk(size_t reserved_size, size_t dyn_size,
++				size_t atom_size,
++				pcpu_fc_cpu_distance_fn_t cpu_distance_fn,
++				pcpu_fc_alloc_fn_t alloc_fn,
++				pcpu_fc_free_fn_t free_fn);
++#endif
++
++#ifdef CONFIG_NEED_PER_CPU_PAGE_FIRST_CHUNK
++extern int __init pcpu_page_first_chunk(size_t reserved_size,
++				pcpu_fc_alloc_fn_t alloc_fn,
++				pcpu_fc_free_fn_t free_fn,
++				pcpu_fc_populate_pte_fn_t populate_pte_fn);
++#endif
++
++extern void __percpu *__alloc_reserved_percpu(size_t size, size_t align);
++extern bool is_kernel_percpu_address(unsigned long addr);
++
++#if !defined(CONFIG_SMP) || !defined(CONFIG_HAVE_SETUP_PER_CPU_AREA)
++extern void __init setup_per_cpu_areas(void);
++#endif
++extern void __init percpu_init_late(void);
++
++extern void __percpu *__alloc_percpu_gfp(size_t size, size_t align, gfp_t gfp);
++extern void __percpu *__alloc_percpu(size_t size, size_t align);
++extern void free_percpu(void __percpu *__pdata);
++extern phys_addr_t per_cpu_ptr_to_phys(void *addr);
++
++#define alloc_percpu_gfp(type, gfp)					\
++	(typeof(type) __percpu *)__alloc_percpu_gfp(sizeof(type),	\
++						__alignof__(type), gfp)
++#define alloc_percpu(type)						\
++	(typeof(type) __percpu *)__alloc_percpu(sizeof(type),		\
++						__alignof__(type))
++
++/* To avoid include hell, as printk can not declare this, we declare it here */
++DECLARE_PER_CPU(printk_func_t, printk_func);
++
++#endif /* __LINUX_PERCPU_H */
+
+commit ded9bf74b2ab3d2669870548498439413dd655b3
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Sun Jul 15 05:53:13 2018 +0800
+
+    target source code file : include/linux/percpu.h
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..e97b929
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++include/linux/percpu.h

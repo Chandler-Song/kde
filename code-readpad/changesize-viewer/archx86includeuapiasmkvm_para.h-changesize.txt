@@ -1,0 +1,28 @@
+ed687c6180fbb308aaecbb79b1debc355d6c8595 v4.17-rc6
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+0cf2b51c4d76934e91c15f7647abaea92d2957d7 v4.17-rc1
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+e8977fb46eb3069de3d732e77c284814ad35332a v4.16-rc4
+ 1 file changed, 1 insertion(+)
+dbdc812c3e4976389aacbb7495f2a48b32e5d01f v4.16-rc1
+ 1 file changed, 4 insertions(+)
+f7d174c3b9d22c00228663eea812e9fceee459c2 v4.15-rc1
+ 1 file changed, 1 deletion(-)
+3ba66dc662432f0408f8b6d1852a9179c129ed0c v4.14-rc8
+ 1 file changed, 1 insertion(+)
+5fed052461c1812c0e576b514695646c56a200af v4.13-rc1
+ 1 file changed, 1 insertion(+)
+427d8e5d28c9ff613cd347a3cd7899ca4b790757 v4.11-rc1
+ 1 file changed, 9 insertions(+)
+42452a1fb9fb4735bc12b86fce836a1acca04792 v4.10-rc1
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+62ce7388e35bd034ae44ac2a8742bd595c5e4106 v3.12-rc1
+ 1 file changed, 1 insertion(+)
+a8aa34a45f415157fb1e355f3fe0709a0edde064 v3.8-rc1
+ 1 file changed, 100 insertions(+)
+f441daf55e28de89de90d5fea114de83ac4446ef v2.6.12
+ 1 file changed, 101 deletions(-)
+b712ad4104065ea25866821d063592dd28dfed00 v2.6.11
+ 1 file changed, 101 insertions(+)
+7035327718e8eed7ecfd423a4adf606fca8b10e2 target source code file : arch/x86/include/uapi/asm/kvm_para.h
+ 1 file changed, 1 insertion(+)
