@@ -1,0 +1,1118 @@
+commit e061c5d4e0c241b8fddbcaf80b9f95594c39ef76
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:26:05 2018 +0800
+
+    v4.17-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index f171051..faa2648 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -73,8 +73,19 @@ static int kvm_cpu_has_extint(struct kvm_vcpu *v)
+  */
+ int kvm_cpu_has_injectable_intr(struct kvm_vcpu *v)
+ {
++	/*
++	 * FIXME: interrupt.injected represents an interrupt that it's
++	 * side-effects have already been applied (e.g. bit from IRR
++	 * already moved to ISR). Therefore, it is incorrect to rely
++	 * on interrupt.injected to know if there is a pending
++	 * interrupt in the user-mode LAPIC.
++	 * This leads to nVMX/nSVM not be able to distinguish
++	 * if it should exit from L2 to L1 on EXTERNAL_INTERRUPT on
++	 * pending interrupt or should re-inject an injected
++	 * interrupt.
++	 */
+ 	if (!lapic_in_kernel(v))
+-		return v->arch.interrupt.pending;
++		return v->arch.interrupt.injected;
+ 
+ 	if (kvm_cpu_has_extint(v))
+ 		return 1;
+@@ -91,8 +102,19 @@ int kvm_cpu_has_injectable_intr(struct kvm_vcpu *v)
+  */
+ int kvm_cpu_has_interrupt(struct kvm_vcpu *v)
+ {
++	/*
++	 * FIXME: interrupt.injected represents an interrupt that it's
++	 * side-effects have already been applied (e.g. bit from IRR
++	 * already moved to ISR). Therefore, it is incorrect to rely
++	 * on interrupt.injected to know if there is a pending
++	 * interrupt in the user-mode LAPIC.
++	 * This leads to nVMX/nSVM not be able to distinguish
++	 * if it should exit from L2 to L1 on EXTERNAL_INTERRUPT on
++	 * pending interrupt or should re-inject an injected
++	 * interrupt.
++	 */
+ 	if (!lapic_in_kernel(v))
+-		return v->arch.interrupt.pending;
++		return v->arch.interrupt.injected;
+ 
+ 	if (kvm_cpu_has_extint(v))
+ 		return 1;
+
+commit cf4c03b32c8bcbbb776e28e60d43a431b084903f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:25:52 2018 +0800
+
+    v4.16-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 5c24811..f171051 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -79,7 +79,7 @@ int kvm_cpu_has_injectable_intr(struct kvm_vcpu *v)
+ 	if (kvm_cpu_has_extint(v))
+ 		return 1;
+ 
+-	if (kvm_vcpu_apicv_active(v))
++	if (!is_guest_mode(v) && kvm_vcpu_apicv_active(v))
+ 		return 0;
+ 
+ 	return kvm_apic_has_interrupt(v) != -1; /* LAPIC */
+
+commit 6cd048aa2984bf016fe267b7c65d0e6995bce497
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:24:49 2018 +0800
+
+    v4.12-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 60d91c9..5c24811 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -60,7 +60,7 @@ static int kvm_cpu_has_extint(struct kvm_vcpu *v)
+ 		if (irqchip_split(v->kvm))
+ 			return pending_userspace_extint(v);
+ 		else
+-			return pic_irqchip(v->kvm)->output;
++			return v->kvm->arch.vpic->output;
+ 	} else
+ 		return 0;
+ }
+
+commit 796d28bf0cc49d2532b771db37cdfe161ee972e6
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:23:52 2018 +0800
+
+    v4.8-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 95fcc7b..60d91c9 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -20,7 +20,7 @@
+  *
+  */
+ 
+-#include <linux/module.h>
++#include <linux/export.h>
+ #include <linux/kvm_host.h>
+ 
+ #include "irq.h"
+
+commit 2b1e9a86112d9fa334000f4a9bb9775f8e760a5e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:23:28 2018 +0800
+
+    v4.6-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 3982b47..95fcc7b 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -33,7 +33,10 @@
+  */
+ int kvm_cpu_has_pending_timer(struct kvm_vcpu *vcpu)
+ {
+-	return apic_has_pending_timer(vcpu);
++	if (lapic_in_kernel(vcpu))
++		return apic_has_pending_timer(vcpu);
++
++	return 0;
+ }
+ EXPORT_SYMBOL(kvm_cpu_has_pending_timer);
+ 
+@@ -137,8 +140,8 @@ EXPORT_SYMBOL_GPL(kvm_cpu_get_interrupt);
+ 
+ void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu)
+ {
+-	kvm_inject_apic_timer_irqs(vcpu);
+-	/* TODO: PIT, RTC etc. */
++	if (lapic_in_kernel(vcpu))
++		kvm_inject_apic_timer_irqs(vcpu);
+ }
+ EXPORT_SYMBOL_GPL(kvm_inject_pending_timer_irqs);
+ 
+
+commit a1db4c09a95361761f74af354a4f6f65ba27ee34
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:23:16 2018 +0800
+
+    v4.5-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 097060e..3982b47 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -76,7 +76,7 @@ int kvm_cpu_has_injectable_intr(struct kvm_vcpu *v)
+ 	if (kvm_cpu_has_extint(v))
+ 		return 1;
+ 
+-	if (kvm_vcpu_apic_vid_enabled(v))
++	if (kvm_vcpu_apicv_active(v))
+ 		return 0;
+ 
+ 	return kvm_apic_has_interrupt(v) != -1; /* LAPIC */
+
+commit c5131ae9d052e9bcc674bbc1a73c39a335c73e3f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:23:03 2018 +0800
+
+    v4.4-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index a1ec6a5..097060e 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -38,14 +38,27 @@ int kvm_cpu_has_pending_timer(struct kvm_vcpu *vcpu)
+ EXPORT_SYMBOL(kvm_cpu_has_pending_timer);
+ 
+ /*
++ * check if there is a pending userspace external interrupt
++ */
++static int pending_userspace_extint(struct kvm_vcpu *v)
++{
++	return v->arch.pending_external_vector != -1;
++}
++
++/*
+  * check if there is pending interrupt from
+  * non-APIC source without intack.
+  */
+ static int kvm_cpu_has_extint(struct kvm_vcpu *v)
+ {
+-	if (kvm_apic_accept_pic_intr(v))
+-		return pic_irqchip(v->kvm)->output;	/* PIC */
+-	else
++	u8 accept = kvm_apic_accept_pic_intr(v);
++
++	if (accept) {
++		if (irqchip_split(v->kvm))
++			return pending_userspace_extint(v);
++		else
++			return pic_irqchip(v->kvm)->output;
++	} else
+ 		return 0;
+ }
+ 
+@@ -57,13 +70,13 @@ static int kvm_cpu_has_extint(struct kvm_vcpu *v)
+  */
+ int kvm_cpu_has_injectable_intr(struct kvm_vcpu *v)
+ {
+-	if (!irqchip_in_kernel(v->kvm))
++	if (!lapic_in_kernel(v))
+ 		return v->arch.interrupt.pending;
+ 
+ 	if (kvm_cpu_has_extint(v))
+ 		return 1;
+ 
+-	if (kvm_apic_vid_enabled(v->kvm))
++	if (kvm_vcpu_apic_vid_enabled(v))
+ 		return 0;
+ 
+ 	return kvm_apic_has_interrupt(v) != -1; /* LAPIC */
+@@ -75,7 +88,7 @@ int kvm_cpu_has_injectable_intr(struct kvm_vcpu *v)
+  */
+ int kvm_cpu_has_interrupt(struct kvm_vcpu *v)
+ {
+-	if (!irqchip_in_kernel(v->kvm))
++	if (!lapic_in_kernel(v))
+ 		return v->arch.interrupt.pending;
+ 
+ 	if (kvm_cpu_has_extint(v))
+@@ -91,9 +104,16 @@ EXPORT_SYMBOL_GPL(kvm_cpu_has_interrupt);
+  */
+ static int kvm_cpu_get_extint(struct kvm_vcpu *v)
+ {
+-	if (kvm_cpu_has_extint(v))
+-		return kvm_pic_read_irq(v->kvm); /* PIC */
+-	return -1;
++	if (kvm_cpu_has_extint(v)) {
++		if (irqchip_split(v->kvm)) {
++			int vector = v->arch.pending_external_vector;
++
++			v->arch.pending_external_vector = -1;
++			return vector;
++		} else
++			return kvm_pic_read_irq(v->kvm); /* PIC */
++	} else
++		return -1;
+ }
+ 
+ /*
+@@ -103,7 +123,7 @@ int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
+ {
+ 	int vector;
+ 
+-	if (!irqchip_in_kernel(v->kvm))
++	if (!lapic_in_kernel(v))
+ 		return v->arch.interrupt.nr;
+ 
+ 	vector = kvm_cpu_get_extint(v);
+
+commit f9def9f0e7d535579090837f431ffb306de84d1e
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:21:42 2018 +0800
+
+    v3.17-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index bd0da43..a1ec6a5 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -108,7 +108,7 @@ int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
+ 
+ 	vector = kvm_cpu_get_extint(v);
+ 
+-	if (kvm_apic_vid_enabled(v->kvm) || vector != -1)
++	if (vector != -1)
+ 		return vector;			/* PIC */
+ 
+ 	return kvm_get_apic_interrupt(v);	/* APIC */
+
+commit 324e638fbd11e54280702a7d6a85f70454694630
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:21:31 2018 +0800
+
+    v3.16-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 484bc87..bd0da43 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -113,6 +113,7 @@ int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
+ 
+ 	return kvm_get_apic_interrupt(v);	/* APIC */
+ }
++EXPORT_SYMBOL_GPL(kvm_cpu_get_interrupt);
+ 
+ void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu)
+ {
+
+commit 9ecf9c65d3f89a6b255abc62445e83ddc0ee94ea
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:20:15 2018 +0800
+
+    v3.9-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 7e06ba1..484bc87 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -38,49 +38,81 @@ int kvm_cpu_has_pending_timer(struct kvm_vcpu *vcpu)
+ EXPORT_SYMBOL(kvm_cpu_has_pending_timer);
+ 
+ /*
++ * check if there is pending interrupt from
++ * non-APIC source without intack.
++ */
++static int kvm_cpu_has_extint(struct kvm_vcpu *v)
++{
++	if (kvm_apic_accept_pic_intr(v))
++		return pic_irqchip(v->kvm)->output;	/* PIC */
++	else
++		return 0;
++}
++
++/*
++ * check if there is injectable interrupt:
++ * when virtual interrupt delivery enabled,
++ * interrupt from apic will handled by hardware,
++ * we don't need to check it here.
++ */
++int kvm_cpu_has_injectable_intr(struct kvm_vcpu *v)
++{
++	if (!irqchip_in_kernel(v->kvm))
++		return v->arch.interrupt.pending;
++
++	if (kvm_cpu_has_extint(v))
++		return 1;
++
++	if (kvm_apic_vid_enabled(v->kvm))
++		return 0;
++
++	return kvm_apic_has_interrupt(v) != -1; /* LAPIC */
++}
++
++/*
+  * check if there is pending interrupt without
+  * intack.
+  */
+ int kvm_cpu_has_interrupt(struct kvm_vcpu *v)
+ {
+-	struct kvm_pic *s;
+-
+ 	if (!irqchip_in_kernel(v->kvm))
+ 		return v->arch.interrupt.pending;
+ 
+-	if (kvm_apic_has_interrupt(v) == -1) {	/* LAPIC */
+-		if (kvm_apic_accept_pic_intr(v)) {
+-			s = pic_irqchip(v->kvm);	/* PIC */
+-			return s->output;
+-		} else
+-			return 0;
+-	}
+-	return 1;
++	if (kvm_cpu_has_extint(v))
++		return 1;
++
++	return kvm_apic_has_interrupt(v) != -1;	/* LAPIC */
+ }
+ EXPORT_SYMBOL_GPL(kvm_cpu_has_interrupt);
+ 
+ /*
++ * Read pending interrupt(from non-APIC source)
++ * vector and intack.
++ */
++static int kvm_cpu_get_extint(struct kvm_vcpu *v)
++{
++	if (kvm_cpu_has_extint(v))
++		return kvm_pic_read_irq(v->kvm); /* PIC */
++	return -1;
++}
++
++/*
+  * Read pending interrupt vector and intack.
+  */
+ int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
+ {
+-	struct kvm_pic *s;
+ 	int vector;
+ 
+ 	if (!irqchip_in_kernel(v->kvm))
+ 		return v->arch.interrupt.nr;
+ 
+-	vector = kvm_get_apic_interrupt(v);	/* APIC */
+-	if (vector == -1) {
+-		if (kvm_apic_accept_pic_intr(v)) {
+-			s = pic_irqchip(v->kvm);
+-			s->output = 0;		/* PIC */
+-			vector = kvm_pic_read_irq(v->kvm);
+-		}
+-	}
+-	return vector;
++	vector = kvm_cpu_get_extint(v);
++
++	if (kvm_apic_vid_enabled(v->kvm) || vector != -1)
++		return vector;			/* PIC */
++
++	return kvm_get_apic_interrupt(v);	/* APIC */
+ }
+-EXPORT_SYMBOL_GPL(kvm_cpu_get_interrupt);
+ 
+ void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu)
+ {
+
+commit 5c440c2482649f8e2921f2d788a43b825546792d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:18:08 2018 +0800
+
+    v2.6.37-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 2095a04..7e06ba1 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -1,7 +1,7 @@
+ /*
+  * irq.c: API for in kernel interrupt controller
+  * Copyright (c) 2007, Intel Corporation.
+- * Copyright 2009 Red Hat, Inc. and/or its affilates.
++ * Copyright 2009 Red Hat, Inc. and/or its affiliates.
+  *
+  * This program is free software; you can redistribute it and/or modify it
+  * under the terms and conditions of the GNU General Public License,
+@@ -33,12 +33,7 @@
+  */
+ int kvm_cpu_has_pending_timer(struct kvm_vcpu *vcpu)
+ {
+-	int ret;
+-
+-	ret = pit_has_pending_timer(vcpu);
+-	ret |= apic_has_pending_timer(vcpu);
+-
+-	return ret;
++	return apic_has_pending_timer(vcpu);
+ }
+ EXPORT_SYMBOL(kvm_cpu_has_pending_timer);
+ 
+
+commit a90f1cf3992cbf234891665f9b9ead5d97056a2b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:17:58 2018 +0800
+
+    v2.6.36-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 96dfbb6..2095a04 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -1,6 +1,7 @@
+ /*
+  * irq.c: API for in kernel interrupt controller
+  * Copyright (c) 2007, Intel Corporation.
++ * Copyright 2009 Red Hat, Inc. and/or its affilates.
+  *
+  * This program is free software; you can redistribute it and/or modify it
+  * under the terms and conditions of the GNU General Public License,
+@@ -89,7 +90,6 @@ EXPORT_SYMBOL_GPL(kvm_cpu_get_interrupt);
+ void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu)
+ {
+ 	kvm_inject_apic_timer_irqs(vcpu);
+-	kvm_inject_pit_timer_irqs(vcpu);
+ 	/* TODO: PIT, RTC etc. */
+ }
+ EXPORT_SYMBOL_GPL(kvm_inject_pending_timer_irqs);
+
+commit 6346575609cd7f4d89f5a01b44e288d635ff83ce
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:17:04 2018 +0800
+
+    v2.6.31-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index cf17ed5..96dfbb6 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -24,6 +24,7 @@
+ 
+ #include "irq.h"
+ #include "i8254.h"
++#include "x86.h"
+ 
+ /*
+  * check if there are pending timer events
+@@ -48,6 +49,9 @@ int kvm_cpu_has_interrupt(struct kvm_vcpu *v)
+ {
+ 	struct kvm_pic *s;
+ 
++	if (!irqchip_in_kernel(v->kvm))
++		return v->arch.interrupt.pending;
++
+ 	if (kvm_apic_has_interrupt(v) == -1) {	/* LAPIC */
+ 		if (kvm_apic_accept_pic_intr(v)) {
+ 			s = pic_irqchip(v->kvm);	/* PIC */
+@@ -67,6 +71,9 @@ int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
+ 	struct kvm_pic *s;
+ 	int vector;
+ 
++	if (!irqchip_in_kernel(v->kvm))
++		return v->arch.interrupt.nr;
++
+ 	vector = kvm_get_apic_interrupt(v);	/* APIC */
+ 	if (vector == -1) {
+ 		if (kvm_apic_accept_pic_intr(v)) {
+
+commit a8680ad09249d628d86913f18e11ac0d247d4f17
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:16:47 2018 +0800
+
+    v2.6.29-rc6
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index c019b8e..cf17ed5 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -87,13 +87,6 @@ void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu)
+ }
+ EXPORT_SYMBOL_GPL(kvm_inject_pending_timer_irqs);
+ 
+-void kvm_timer_intr_post(struct kvm_vcpu *vcpu, int vec)
+-{
+-	kvm_apic_timer_intr_post(vcpu, vec);
+-	/* TODO: PIT, RTC etc. */
+-}
+-EXPORT_SYMBOL_GPL(kvm_timer_intr_post);
+-
+ void __kvm_migrate_timers(struct kvm_vcpu *vcpu)
+ {
+ 	__kvm_migrate_apic_timer(vcpu);
+
+commit 3f901fc4ea658baa9fadfa8f1c0319211640315f
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:16:32 2018 +0800
+
+    v2.6.28-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index 76d736b..c019b8e 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -72,7 +72,7 @@ int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
+ 		if (kvm_apic_accept_pic_intr(v)) {
+ 			s = pic_irqchip(v->kvm);
+ 			s->output = 0;		/* PIC */
+-			vector = kvm_pic_read_irq(s);
++			vector = kvm_pic_read_irq(v->kvm);
+ 		}
+ 	}
+ 	return vector;
+@@ -90,7 +90,6 @@ EXPORT_SYMBOL_GPL(kvm_inject_pending_timer_irqs);
+ void kvm_timer_intr_post(struct kvm_vcpu *vcpu, int vec)
+ {
+ 	kvm_apic_timer_intr_post(vcpu, vec);
+-	kvm_pit_timer_intr_post(vcpu, vec);
+ 	/* TODO: PIT, RTC etc. */
+ }
+ EXPORT_SYMBOL_GPL(kvm_timer_intr_post);
+
+commit 1ad1429981bda6ef380aff24c8af332b7dcc9598
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:16:15 2018 +0800
+
+    v2.6.26-rc6
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index ce1f583..76d736b 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -94,3 +94,9 @@ void kvm_timer_intr_post(struct kvm_vcpu *vcpu, int vec)
+ 	/* TODO: PIT, RTC etc. */
+ }
+ EXPORT_SYMBOL_GPL(kvm_timer_intr_post);
++
++void __kvm_migrate_timers(struct kvm_vcpu *vcpu)
++{
++	__kvm_migrate_apic_timer(vcpu);
++	__kvm_migrate_pit_timer(vcpu);
++}
+
+commit 6b77ac13a5b421780429bc6021272ffce5eea04b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:16:11 2018 +0800
+
+    v2.6.26-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+index e571475..ce1f583 100644
+--- a/arch/x86/kvm/irq.c
++++ b/arch/x86/kvm/irq.c
+@@ -23,6 +23,22 @@
+ #include <linux/kvm_host.h>
+ 
+ #include "irq.h"
++#include "i8254.h"
++
++/*
++ * check if there are pending timer events
++ * to be processed.
++ */
++int kvm_cpu_has_pending_timer(struct kvm_vcpu *vcpu)
++{
++	int ret;
++
++	ret = pit_has_pending_timer(vcpu);
++	ret |= apic_has_pending_timer(vcpu);
++
++	return ret;
++}
++EXPORT_SYMBOL(kvm_cpu_has_pending_timer);
+ 
+ /*
+  * check if there is pending interrupt without
+@@ -66,6 +82,7 @@ EXPORT_SYMBOL_GPL(kvm_cpu_get_interrupt);
+ void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu)
+ {
+ 	kvm_inject_apic_timer_irqs(vcpu);
++	kvm_inject_pit_timer_irqs(vcpu);
+ 	/* TODO: PIT, RTC etc. */
+ }
+ EXPORT_SYMBOL_GPL(kvm_inject_pending_timer_irqs);
+@@ -73,6 +90,7 @@ EXPORT_SYMBOL_GPL(kvm_inject_pending_timer_irqs);
+ void kvm_timer_intr_post(struct kvm_vcpu *vcpu, int vec)
+ {
+ 	kvm_apic_timer_intr_post(vcpu, vec);
++	kvm_pit_timer_intr_post(vcpu, vec);
+ 	/* TODO: PIT, RTC etc. */
+ }
+ EXPORT_SYMBOL_GPL(kvm_timer_intr_post);
+
+commit 7ddd37e6fcabfd57581bf99cdda27be939e4215d
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:16:01 2018 +0800
+
+    v2.6.25-rc1
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+new file mode 100644
+index 0000000..e571475
+--- /dev/null
++++ b/arch/x86/kvm/irq.c
+@@ -0,0 +1,78 @@
++/*
++ * irq.c: API for in kernel interrupt controller
++ * Copyright (c) 2007, Intel Corporation.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms and conditions of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along with
++ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
++ * Place - Suite 330, Boston, MA 02111-1307 USA.
++ * Authors:
++ *   Yaozu (Eddie) Dong <Eddie.dong@intel.com>
++ *
++ */
++
++#include <linux/module.h>
++#include <linux/kvm_host.h>
++
++#include "irq.h"
++
++/*
++ * check if there is pending interrupt without
++ * intack.
++ */
++int kvm_cpu_has_interrupt(struct kvm_vcpu *v)
++{
++	struct kvm_pic *s;
++
++	if (kvm_apic_has_interrupt(v) == -1) {	/* LAPIC */
++		if (kvm_apic_accept_pic_intr(v)) {
++			s = pic_irqchip(v->kvm);	/* PIC */
++			return s->output;
++		} else
++			return 0;
++	}
++	return 1;
++}
++EXPORT_SYMBOL_GPL(kvm_cpu_has_interrupt);
++
++/*
++ * Read pending interrupt vector and intack.
++ */
++int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
++{
++	struct kvm_pic *s;
++	int vector;
++
++	vector = kvm_get_apic_interrupt(v);	/* APIC */
++	if (vector == -1) {
++		if (kvm_apic_accept_pic_intr(v)) {
++			s = pic_irqchip(v->kvm);
++			s->output = 0;		/* PIC */
++			vector = kvm_pic_read_irq(s);
++		}
++	}
++	return vector;
++}
++EXPORT_SYMBOL_GPL(kvm_cpu_get_interrupt);
++
++void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu)
++{
++	kvm_inject_apic_timer_irqs(vcpu);
++	/* TODO: PIT, RTC etc. */
++}
++EXPORT_SYMBOL_GPL(kvm_inject_pending_timer_irqs);
++
++void kvm_timer_intr_post(struct kvm_vcpu *vcpu, int vec)
++{
++	kvm_apic_timer_intr_post(vcpu, vec);
++	/* TODO: PIT, RTC etc. */
++}
++EXPORT_SYMBOL_GPL(kvm_timer_intr_post);
+
+commit df98a4e10e6d675f2513a3e738c2f25aed62e636
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:14:22 2018 +0800
+
+    v2.6.12
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+deleted file mode 100644
+index faa2648..0000000
+--- a/arch/x86/kvm/irq.c
++++ /dev/null
+@@ -1,174 +0,0 @@
+-/*
+- * irq.c: API for in kernel interrupt controller
+- * Copyright (c) 2007, Intel Corporation.
+- * Copyright 2009 Red Hat, Inc. and/or its affiliates.
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms and conditions of the GNU General Public License,
+- * version 2, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+- * more details.
+- *
+- * You should have received a copy of the GNU General Public License along with
+- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+- * Place - Suite 330, Boston, MA 02111-1307 USA.
+- * Authors:
+- *   Yaozu (Eddie) Dong <Eddie.dong@intel.com>
+- *
+- */
+-
+-#include <linux/export.h>
+-#include <linux/kvm_host.h>
+-
+-#include "irq.h"
+-#include "i8254.h"
+-#include "x86.h"
+-
+-/*
+- * check if there are pending timer events
+- * to be processed.
+- */
+-int kvm_cpu_has_pending_timer(struct kvm_vcpu *vcpu)
+-{
+-	if (lapic_in_kernel(vcpu))
+-		return apic_has_pending_timer(vcpu);
+-
+-	return 0;
+-}
+-EXPORT_SYMBOL(kvm_cpu_has_pending_timer);
+-
+-/*
+- * check if there is a pending userspace external interrupt
+- */
+-static int pending_userspace_extint(struct kvm_vcpu *v)
+-{
+-	return v->arch.pending_external_vector != -1;
+-}
+-
+-/*
+- * check if there is pending interrupt from
+- * non-APIC source without intack.
+- */
+-static int kvm_cpu_has_extint(struct kvm_vcpu *v)
+-{
+-	u8 accept = kvm_apic_accept_pic_intr(v);
+-
+-	if (accept) {
+-		if (irqchip_split(v->kvm))
+-			return pending_userspace_extint(v);
+-		else
+-			return v->kvm->arch.vpic->output;
+-	} else
+-		return 0;
+-}
+-
+-/*
+- * check if there is injectable interrupt:
+- * when virtual interrupt delivery enabled,
+- * interrupt from apic will handled by hardware,
+- * we don't need to check it here.
+- */
+-int kvm_cpu_has_injectable_intr(struct kvm_vcpu *v)
+-{
+-	/*
+-	 * FIXME: interrupt.injected represents an interrupt that it's
+-	 * side-effects have already been applied (e.g. bit from IRR
+-	 * already moved to ISR). Therefore, it is incorrect to rely
+-	 * on interrupt.injected to know if there is a pending
+-	 * interrupt in the user-mode LAPIC.
+-	 * This leads to nVMX/nSVM not be able to distinguish
+-	 * if it should exit from L2 to L1 on EXTERNAL_INTERRUPT on
+-	 * pending interrupt or should re-inject an injected
+-	 * interrupt.
+-	 */
+-	if (!lapic_in_kernel(v))
+-		return v->arch.interrupt.injected;
+-
+-	if (kvm_cpu_has_extint(v))
+-		return 1;
+-
+-	if (!is_guest_mode(v) && kvm_vcpu_apicv_active(v))
+-		return 0;
+-
+-	return kvm_apic_has_interrupt(v) != -1; /* LAPIC */
+-}
+-
+-/*
+- * check if there is pending interrupt without
+- * intack.
+- */
+-int kvm_cpu_has_interrupt(struct kvm_vcpu *v)
+-{
+-	/*
+-	 * FIXME: interrupt.injected represents an interrupt that it's
+-	 * side-effects have already been applied (e.g. bit from IRR
+-	 * already moved to ISR). Therefore, it is incorrect to rely
+-	 * on interrupt.injected to know if there is a pending
+-	 * interrupt in the user-mode LAPIC.
+-	 * This leads to nVMX/nSVM not be able to distinguish
+-	 * if it should exit from L2 to L1 on EXTERNAL_INTERRUPT on
+-	 * pending interrupt or should re-inject an injected
+-	 * interrupt.
+-	 */
+-	if (!lapic_in_kernel(v))
+-		return v->arch.interrupt.injected;
+-
+-	if (kvm_cpu_has_extint(v))
+-		return 1;
+-
+-	return kvm_apic_has_interrupt(v) != -1;	/* LAPIC */
+-}
+-EXPORT_SYMBOL_GPL(kvm_cpu_has_interrupt);
+-
+-/*
+- * Read pending interrupt(from non-APIC source)
+- * vector and intack.
+- */
+-static int kvm_cpu_get_extint(struct kvm_vcpu *v)
+-{
+-	if (kvm_cpu_has_extint(v)) {
+-		if (irqchip_split(v->kvm)) {
+-			int vector = v->arch.pending_external_vector;
+-
+-			v->arch.pending_external_vector = -1;
+-			return vector;
+-		} else
+-			return kvm_pic_read_irq(v->kvm); /* PIC */
+-	} else
+-		return -1;
+-}
+-
+-/*
+- * Read pending interrupt vector and intack.
+- */
+-int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
+-{
+-	int vector;
+-
+-	if (!lapic_in_kernel(v))
+-		return v->arch.interrupt.nr;
+-
+-	vector = kvm_cpu_get_extint(v);
+-
+-	if (vector != -1)
+-		return vector;			/* PIC */
+-
+-	return kvm_get_apic_interrupt(v);	/* APIC */
+-}
+-EXPORT_SYMBOL_GPL(kvm_cpu_get_interrupt);
+-
+-void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu)
+-{
+-	if (lapic_in_kernel(vcpu))
+-		kvm_inject_apic_timer_irqs(vcpu);
+-}
+-EXPORT_SYMBOL_GPL(kvm_inject_pending_timer_irqs);
+-
+-void __kvm_migrate_timers(struct kvm_vcpu *vcpu)
+-{
+-	__kvm_migrate_apic_timer(vcpu);
+-	__kvm_migrate_pit_timer(vcpu);
+-}
+
+commit c6a8b46b9f94d52ce58f006b5cdd259ecfb7e4e6
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:14:13 2018 +0800
+
+    v2.6.11
+
+diff --git a/arch/x86/kvm/irq.c b/arch/x86/kvm/irq.c
+new file mode 100644
+index 0000000..faa2648
+--- /dev/null
++++ b/arch/x86/kvm/irq.c
+@@ -0,0 +1,174 @@
++/*
++ * irq.c: API for in kernel interrupt controller
++ * Copyright (c) 2007, Intel Corporation.
++ * Copyright 2009 Red Hat, Inc. and/or its affiliates.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms and conditions of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along with
++ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
++ * Place - Suite 330, Boston, MA 02111-1307 USA.
++ * Authors:
++ *   Yaozu (Eddie) Dong <Eddie.dong@intel.com>
++ *
++ */
++
++#include <linux/export.h>
++#include <linux/kvm_host.h>
++
++#include "irq.h"
++#include "i8254.h"
++#include "x86.h"
++
++/*
++ * check if there are pending timer events
++ * to be processed.
++ */
++int kvm_cpu_has_pending_timer(struct kvm_vcpu *vcpu)
++{
++	if (lapic_in_kernel(vcpu))
++		return apic_has_pending_timer(vcpu);
++
++	return 0;
++}
++EXPORT_SYMBOL(kvm_cpu_has_pending_timer);
++
++/*
++ * check if there is a pending userspace external interrupt
++ */
++static int pending_userspace_extint(struct kvm_vcpu *v)
++{
++	return v->arch.pending_external_vector != -1;
++}
++
++/*
++ * check if there is pending interrupt from
++ * non-APIC source without intack.
++ */
++static int kvm_cpu_has_extint(struct kvm_vcpu *v)
++{
++	u8 accept = kvm_apic_accept_pic_intr(v);
++
++	if (accept) {
++		if (irqchip_split(v->kvm))
++			return pending_userspace_extint(v);
++		else
++			return v->kvm->arch.vpic->output;
++	} else
++		return 0;
++}
++
++/*
++ * check if there is injectable interrupt:
++ * when virtual interrupt delivery enabled,
++ * interrupt from apic will handled by hardware,
++ * we don't need to check it here.
++ */
++int kvm_cpu_has_injectable_intr(struct kvm_vcpu *v)
++{
++	/*
++	 * FIXME: interrupt.injected represents an interrupt that it's
++	 * side-effects have already been applied (e.g. bit from IRR
++	 * already moved to ISR). Therefore, it is incorrect to rely
++	 * on interrupt.injected to know if there is a pending
++	 * interrupt in the user-mode LAPIC.
++	 * This leads to nVMX/nSVM not be able to distinguish
++	 * if it should exit from L2 to L1 on EXTERNAL_INTERRUPT on
++	 * pending interrupt or should re-inject an injected
++	 * interrupt.
++	 */
++	if (!lapic_in_kernel(v))
++		return v->arch.interrupt.injected;
++
++	if (kvm_cpu_has_extint(v))
++		return 1;
++
++	if (!is_guest_mode(v) && kvm_vcpu_apicv_active(v))
++		return 0;
++
++	return kvm_apic_has_interrupt(v) != -1; /* LAPIC */
++}
++
++/*
++ * check if there is pending interrupt without
++ * intack.
++ */
++int kvm_cpu_has_interrupt(struct kvm_vcpu *v)
++{
++	/*
++	 * FIXME: interrupt.injected represents an interrupt that it's
++	 * side-effects have already been applied (e.g. bit from IRR
++	 * already moved to ISR). Therefore, it is incorrect to rely
++	 * on interrupt.injected to know if there is a pending
++	 * interrupt in the user-mode LAPIC.
++	 * This leads to nVMX/nSVM not be able to distinguish
++	 * if it should exit from L2 to L1 on EXTERNAL_INTERRUPT on
++	 * pending interrupt or should re-inject an injected
++	 * interrupt.
++	 */
++	if (!lapic_in_kernel(v))
++		return v->arch.interrupt.injected;
++
++	if (kvm_cpu_has_extint(v))
++		return 1;
++
++	return kvm_apic_has_interrupt(v) != -1;	/* LAPIC */
++}
++EXPORT_SYMBOL_GPL(kvm_cpu_has_interrupt);
++
++/*
++ * Read pending interrupt(from non-APIC source)
++ * vector and intack.
++ */
++static int kvm_cpu_get_extint(struct kvm_vcpu *v)
++{
++	if (kvm_cpu_has_extint(v)) {
++		if (irqchip_split(v->kvm)) {
++			int vector = v->arch.pending_external_vector;
++
++			v->arch.pending_external_vector = -1;
++			return vector;
++		} else
++			return kvm_pic_read_irq(v->kvm); /* PIC */
++	} else
++		return -1;
++}
++
++/*
++ * Read pending interrupt vector and intack.
++ */
++int kvm_cpu_get_interrupt(struct kvm_vcpu *v)
++{
++	int vector;
++
++	if (!lapic_in_kernel(v))
++		return v->arch.interrupt.nr;
++
++	vector = kvm_cpu_get_extint(v);
++
++	if (vector != -1)
++		return vector;			/* PIC */
++
++	return kvm_get_apic_interrupt(v);	/* APIC */
++}
++EXPORT_SYMBOL_GPL(kvm_cpu_get_interrupt);
++
++void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu)
++{
++	if (lapic_in_kernel(vcpu))
++		kvm_inject_apic_timer_irqs(vcpu);
++}
++EXPORT_SYMBOL_GPL(kvm_inject_pending_timer_irqs);
++
++void __kvm_migrate_timers(struct kvm_vcpu *vcpu)
++{
++	__kvm_migrate_apic_timer(vcpu);
++	__kvm_migrate_pit_timer(vcpu);
++}
+
+commit b472fc2301529f98b995dbb9042aeb0095c96971
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:14:13 2018 +0800
+
+    target source code file : arch/x86/kvm/irq.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..cdaa1b9
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++arch/x86/kvm/irq.c

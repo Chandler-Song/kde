@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# demo: bash run.sh target.list /root/nfs/kernel-code-readpad /root/nfs/linux-museum
+# demo: bash run.sh target.list /root/nfs/kde/code-readpad /root/nfs/linux-museum
 
 file=$1
 t_path=$2

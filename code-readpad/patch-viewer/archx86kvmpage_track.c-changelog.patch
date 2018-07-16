@@ -1,0 +1,1000 @@
+commit 2e33cdcc4c2fdfc77c2eb46cba9e906adcabccd8
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:26:17 2018 +0800
+
+    v4.18-rc1
+
+diff --git a/arch/x86/kvm/page_track.c b/arch/x86/kvm/page_track.c
+index 01c1371..3052a59 100644
+--- a/arch/x86/kvm/page_track.c
++++ b/arch/x86/kvm/page_track.c
+@@ -40,8 +40,9 @@ int kvm_page_track_create_memslot(struct kvm_memory_slot *slot,
+ 	int  i;
+ 
+ 	for (i = 0; i < KVM_PAGE_TRACK_MAX; i++) {
+-		slot->arch.gfn_track[i] = kvzalloc(npages *
+-					    sizeof(*slot->arch.gfn_track[i]), GFP_KERNEL);
++		slot->arch.gfn_track[i] =
++			kvcalloc(npages, sizeof(*slot->arch.gfn_track[i]),
++				 GFP_KERNEL);
+ 		if (!slot->arch.gfn_track[i])
+ 			goto track_free;
+ 	}
+
+commit 3d6d6adf570c7f5fc0629a242a451763a7112dda
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:25:37 2018 +0800
+
+    v4.15-rc1
+
+diff --git a/arch/x86/kvm/page_track.c b/arch/x86/kvm/page_track.c
+index ea67dc8..01c1371 100644
+--- a/arch/x86/kvm/page_track.c
++++ b/arch/x86/kvm/page_track.c
+@@ -157,7 +157,7 @@ bool kvm_page_track_is_active(struct kvm_vcpu *vcpu, gfn_t gfn,
+ 		return false;
+ 
+ 	index = gfn_to_index(gfn, slot->base_gfn, PT_PAGE_TABLE_LEVEL);
+-	return !!ACCESS_ONCE(slot->arch.gfn_track[mode][index]);
++	return !!READ_ONCE(slot->arch.gfn_track[mode][index]);
+ }
+ 
+ void kvm_page_track_cleanup(struct kvm *kvm)
+
+commit 9d7a249a24f1976266c1b995cb4b95243bd47070
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:24:49 2018 +0800
+
+    v4.12-rc1
+
+diff --git a/arch/x86/kvm/page_track.c b/arch/x86/kvm/page_track.c
+index 60168cd..ea67dc8 100644
+--- a/arch/x86/kvm/page_track.c
++++ b/arch/x86/kvm/page_track.c
+@@ -40,8 +40,8 @@ int kvm_page_track_create_memslot(struct kvm_memory_slot *slot,
+ 	int  i;
+ 
+ 	for (i = 0; i < KVM_PAGE_TRACK_MAX; i++) {
+-		slot->arch.gfn_track[i] = kvm_kvzalloc(npages *
+-					    sizeof(*slot->arch.gfn_track[i]));
++		slot->arch.gfn_track[i] = kvzalloc(npages *
++					    sizeof(*slot->arch.gfn_track[i]), GFP_KERNEL);
+ 		if (!slot->arch.gfn_track[i])
+ 			goto track_free;
+ 	}
+
+commit 4dbd754b9bb235b5acdb990de6316dcf7398d320
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:24:40 2018 +0800
+
+    v4.11-rc5
+
+diff --git a/arch/x86/kvm/page_track.c b/arch/x86/kvm/page_track.c
+index 37942e4..60168cd 100644
+--- a/arch/x86/kvm/page_track.c
++++ b/arch/x86/kvm/page_track.c
+@@ -160,6 +160,14 @@ bool kvm_page_track_is_active(struct kvm_vcpu *vcpu, gfn_t gfn,
+ 	return !!ACCESS_ONCE(slot->arch.gfn_track[mode][index]);
+ }
+ 
++void kvm_page_track_cleanup(struct kvm *kvm)
++{
++	struct kvm_page_track_notifier_head *head;
++
++	head = &kvm->arch.track_notifier_head;
++	cleanup_srcu_struct(&head->track_srcu);
++}
++
+ void kvm_page_track_init(struct kvm *kvm)
+ {
+ 	struct kvm_page_track_notifier_head *head;
+
+commit 7c48d28592008ddeb56d284f2fdba511ffe8f013
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:24:35 2018 +0800
+
+    v4.11-rc1
+
+diff --git a/arch/x86/kvm/page_track.c b/arch/x86/kvm/page_track.c
+index 4a1c13e..37942e4 100644
+--- a/arch/x86/kvm/page_track.c
++++ b/arch/x86/kvm/page_track.c
+@@ -14,6 +14,8 @@
+  */
+ 
+ #include <linux/kvm_host.h>
++#include <linux/rculist.h>
++
+ #include <asm/kvm_host.h>
+ #include <asm/kvm_page_track.h>
+ 
+
+commit 05fbffcd47675550dcd17ae57744b9feab44bbff
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:24:20 2018 +0800
+
+    v4.10-rc1
+
+diff --git a/arch/x86/kvm/page_track.c b/arch/x86/kvm/page_track.c
+index b431539..4a1c13e 100644
+--- a/arch/x86/kvm/page_track.c
++++ b/arch/x86/kvm/page_track.c
+@@ -106,6 +106,7 @@ void kvm_slot_page_track_add_page(struct kvm *kvm,
+ 		if (kvm_mmu_slot_gfn_write_protect(kvm, slot, gfn))
+ 			kvm_flush_remote_tlbs(kvm);
+ }
++EXPORT_SYMBOL_GPL(kvm_slot_page_track_add_page);
+ 
+ /*
+  * remove the guest page from the tracking pool which stops the interception
+@@ -135,6 +136,7 @@ void kvm_slot_page_track_remove_page(struct kvm *kvm,
+ 	 */
+ 	kvm_mmu_gfn_allow_lpage(slot, gfn);
+ }
++EXPORT_SYMBOL_GPL(kvm_slot_page_track_remove_page);
+ 
+ /*
+  * check if the corresponding access on the specified guest page is tracked.
+@@ -181,6 +183,7 @@ kvm_page_track_register_notifier(struct kvm *kvm,
+ 	hlist_add_head_rcu(&n->node, &head->track_notifier_list);
+ 	spin_unlock(&kvm->mmu_lock);
+ }
++EXPORT_SYMBOL_GPL(kvm_page_track_register_notifier);
+ 
+ /*
+  * stop receiving the event interception. It is the opposed operation of
+@@ -199,6 +202,7 @@ kvm_page_track_unregister_notifier(struct kvm *kvm,
+ 	spin_unlock(&kvm->mmu_lock);
+ 	synchronize_srcu(&head->track_srcu);
+ }
++EXPORT_SYMBOL_GPL(kvm_page_track_unregister_notifier);
+ 
+ /*
+  * Notify the node that write access is intercepted and write emulation is
+@@ -222,6 +226,31 @@ void kvm_page_track_write(struct kvm_vcpu *vcpu, gpa_t gpa, const u8 *new,
+ 	idx = srcu_read_lock(&head->track_srcu);
+ 	hlist_for_each_entry_rcu(n, &head->track_notifier_list, node)
+ 		if (n->track_write)
+-			n->track_write(vcpu, gpa, new, bytes);
++			n->track_write(vcpu, gpa, new, bytes, n);
++	srcu_read_unlock(&head->track_srcu, idx);
++}
++
++/*
++ * Notify the node that memory slot is being removed or moved so that it can
++ * drop write-protection for the pages in the memory slot.
++ *
++ * The node should figure out it has any write-protected pages in this slot
++ * by itself.
++ */
++void kvm_page_track_flush_slot(struct kvm *kvm, struct kvm_memory_slot *slot)
++{
++	struct kvm_page_track_notifier_head *head;
++	struct kvm_page_track_notifier_node *n;
++	int idx;
++
++	head = &kvm->arch.track_notifier_head;
++
++	if (hlist_empty(&head->track_notifier_list))
++		return;
++
++	idx = srcu_read_lock(&head->track_srcu);
++	hlist_for_each_entry_rcu(n, &head->track_notifier_list, node)
++		if (n->track_flush_slot)
++			n->track_flush_slot(kvm, slot, n);
+ 	srcu_read_unlock(&head->track_srcu, idx);
+ }
+
+commit 106ee60a9721865a77797273e8321284e87b32ac
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:23:28 2018 +0800
+
+    v4.6-rc1
+
+diff --git a/arch/x86/kvm/page_track.c b/arch/x86/kvm/page_track.c
+new file mode 100644
+index 0000000..b431539
+--- /dev/null
++++ b/arch/x86/kvm/page_track.c
+@@ -0,0 +1,227 @@
++/*
++ * Support KVM gust page tracking
++ *
++ * This feature allows us to track page access in guest. Currently, only
++ * write access is tracked.
++ *
++ * Copyright(C) 2015 Intel Corporation.
++ *
++ * Author:
++ *   Xiao Guangrong <guangrong.xiao@linux.intel.com>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ */
++
++#include <linux/kvm_host.h>
++#include <asm/kvm_host.h>
++#include <asm/kvm_page_track.h>
++
++#include "mmu.h"
++
++void kvm_page_track_free_memslot(struct kvm_memory_slot *free,
++				 struct kvm_memory_slot *dont)
++{
++	int i;
++
++	for (i = 0; i < KVM_PAGE_TRACK_MAX; i++)
++		if (!dont || free->arch.gfn_track[i] !=
++		      dont->arch.gfn_track[i]) {
++			kvfree(free->arch.gfn_track[i]);
++			free->arch.gfn_track[i] = NULL;
++		}
++}
++
++int kvm_page_track_create_memslot(struct kvm_memory_slot *slot,
++				  unsigned long npages)
++{
++	int  i;
++
++	for (i = 0; i < KVM_PAGE_TRACK_MAX; i++) {
++		slot->arch.gfn_track[i] = kvm_kvzalloc(npages *
++					    sizeof(*slot->arch.gfn_track[i]));
++		if (!slot->arch.gfn_track[i])
++			goto track_free;
++	}
++
++	return 0;
++
++track_free:
++	kvm_page_track_free_memslot(slot, NULL);
++	return -ENOMEM;
++}
++
++static inline bool page_track_mode_is_valid(enum kvm_page_track_mode mode)
++{
++	if (mode < 0 || mode >= KVM_PAGE_TRACK_MAX)
++		return false;
++
++	return true;
++}
++
++static void update_gfn_track(struct kvm_memory_slot *slot, gfn_t gfn,
++			     enum kvm_page_track_mode mode, short count)
++{
++	int index, val;
++
++	index = gfn_to_index(gfn, slot->base_gfn, PT_PAGE_TABLE_LEVEL);
++
++	val = slot->arch.gfn_track[mode][index];
++
++	if (WARN_ON(val + count < 0 || val + count > USHRT_MAX))
++		return;
++
++	slot->arch.gfn_track[mode][index] += count;
++}
++
++/*
++ * add guest page to the tracking pool so that corresponding access on that
++ * page will be intercepted.
++ *
++ * It should be called under the protection both of mmu-lock and kvm->srcu
++ * or kvm->slots_lock.
++ *
++ * @kvm: the guest instance we are interested in.
++ * @slot: the @gfn belongs to.
++ * @gfn: the guest page.
++ * @mode: tracking mode, currently only write track is supported.
++ */
++void kvm_slot_page_track_add_page(struct kvm *kvm,
++				  struct kvm_memory_slot *slot, gfn_t gfn,
++				  enum kvm_page_track_mode mode)
++{
++
++	if (WARN_ON(!page_track_mode_is_valid(mode)))
++		return;
++
++	update_gfn_track(slot, gfn, mode, 1);
++
++	/*
++	 * new track stops large page mapping for the
++	 * tracked page.
++	 */
++	kvm_mmu_gfn_disallow_lpage(slot, gfn);
++
++	if (mode == KVM_PAGE_TRACK_WRITE)
++		if (kvm_mmu_slot_gfn_write_protect(kvm, slot, gfn))
++			kvm_flush_remote_tlbs(kvm);
++}
++
++/*
++ * remove the guest page from the tracking pool which stops the interception
++ * of corresponding access on that page. It is the opposed operation of
++ * kvm_slot_page_track_add_page().
++ *
++ * It should be called under the protection both of mmu-lock and kvm->srcu
++ * or kvm->slots_lock.
++ *
++ * @kvm: the guest instance we are interested in.
++ * @slot: the @gfn belongs to.
++ * @gfn: the guest page.
++ * @mode: tracking mode, currently only write track is supported.
++ */
++void kvm_slot_page_track_remove_page(struct kvm *kvm,
++				     struct kvm_memory_slot *slot, gfn_t gfn,
++				     enum kvm_page_track_mode mode)
++{
++	if (WARN_ON(!page_track_mode_is_valid(mode)))
++		return;
++
++	update_gfn_track(slot, gfn, mode, -1);
++
++	/*
++	 * allow large page mapping for the tracked page
++	 * after the tracker is gone.
++	 */
++	kvm_mmu_gfn_allow_lpage(slot, gfn);
++}
++
++/*
++ * check if the corresponding access on the specified guest page is tracked.
++ */
++bool kvm_page_track_is_active(struct kvm_vcpu *vcpu, gfn_t gfn,
++			      enum kvm_page_track_mode mode)
++{
++	struct kvm_memory_slot *slot;
++	int index;
++
++	if (WARN_ON(!page_track_mode_is_valid(mode)))
++		return false;
++
++	slot = kvm_vcpu_gfn_to_memslot(vcpu, gfn);
++	if (!slot)
++		return false;
++
++	index = gfn_to_index(gfn, slot->base_gfn, PT_PAGE_TABLE_LEVEL);
++	return !!ACCESS_ONCE(slot->arch.gfn_track[mode][index]);
++}
++
++void kvm_page_track_init(struct kvm *kvm)
++{
++	struct kvm_page_track_notifier_head *head;
++
++	head = &kvm->arch.track_notifier_head;
++	init_srcu_struct(&head->track_srcu);
++	INIT_HLIST_HEAD(&head->track_notifier_list);
++}
++
++/*
++ * register the notifier so that event interception for the tracked guest
++ * pages can be received.
++ */
++void
++kvm_page_track_register_notifier(struct kvm *kvm,
++				 struct kvm_page_track_notifier_node *n)
++{
++	struct kvm_page_track_notifier_head *head;
++
++	head = &kvm->arch.track_notifier_head;
++
++	spin_lock(&kvm->mmu_lock);
++	hlist_add_head_rcu(&n->node, &head->track_notifier_list);
++	spin_unlock(&kvm->mmu_lock);
++}
++
++/*
++ * stop receiving the event interception. It is the opposed operation of
++ * kvm_page_track_register_notifier().
++ */
++void
++kvm_page_track_unregister_notifier(struct kvm *kvm,
++				   struct kvm_page_track_notifier_node *n)
++{
++	struct kvm_page_track_notifier_head *head;
++
++	head = &kvm->arch.track_notifier_head;
++
++	spin_lock(&kvm->mmu_lock);
++	hlist_del_rcu(&n->node);
++	spin_unlock(&kvm->mmu_lock);
++	synchronize_srcu(&head->track_srcu);
++}
++
++/*
++ * Notify the node that write access is intercepted and write emulation is
++ * finished at this time.
++ *
++ * The node should figure out if the written page is the one that node is
++ * interested in by itself.
++ */
++void kvm_page_track_write(struct kvm_vcpu *vcpu, gpa_t gpa, const u8 *new,
++			  int bytes)
++{
++	struct kvm_page_track_notifier_head *head;
++	struct kvm_page_track_notifier_node *n;
++	int idx;
++
++	head = &vcpu->kvm->arch.track_notifier_head;
++
++	if (hlist_empty(&head->track_notifier_list))
++		return;
++
++	idx = srcu_read_lock(&head->track_srcu);
++	hlist_for_each_entry_rcu(n, &head->track_notifier_list, node)
++		if (n->track_write)
++			n->track_write(vcpu, gpa, new, bytes);
++	srcu_read_unlock(&head->track_srcu, idx);
++}
+
+commit 1ad83e7d340885c3ae5e1cc3a11fa305c20e15e0
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:14:22 2018 +0800
+
+    v2.6.12
+
+diff --git a/arch/x86/kvm/page_track.c b/arch/x86/kvm/page_track.c
+deleted file mode 100644
+index 3052a59..0000000
+--- a/arch/x86/kvm/page_track.c
++++ /dev/null
+@@ -1,267 +0,0 @@
+-/*
+- * Support KVM gust page tracking
+- *
+- * This feature allows us to track page access in guest. Currently, only
+- * write access is tracked.
+- *
+- * Copyright(C) 2015 Intel Corporation.
+- *
+- * Author:
+- *   Xiao Guangrong <guangrong.xiao@linux.intel.com>
+- *
+- * This work is licensed under the terms of the GNU GPL, version 2.  See
+- * the COPYING file in the top-level directory.
+- */
+-
+-#include <linux/kvm_host.h>
+-#include <linux/rculist.h>
+-
+-#include <asm/kvm_host.h>
+-#include <asm/kvm_page_track.h>
+-
+-#include "mmu.h"
+-
+-void kvm_page_track_free_memslot(struct kvm_memory_slot *free,
+-				 struct kvm_memory_slot *dont)
+-{
+-	int i;
+-
+-	for (i = 0; i < KVM_PAGE_TRACK_MAX; i++)
+-		if (!dont || free->arch.gfn_track[i] !=
+-		      dont->arch.gfn_track[i]) {
+-			kvfree(free->arch.gfn_track[i]);
+-			free->arch.gfn_track[i] = NULL;
+-		}
+-}
+-
+-int kvm_page_track_create_memslot(struct kvm_memory_slot *slot,
+-				  unsigned long npages)
+-{
+-	int  i;
+-
+-	for (i = 0; i < KVM_PAGE_TRACK_MAX; i++) {
+-		slot->arch.gfn_track[i] =
+-			kvcalloc(npages, sizeof(*slot->arch.gfn_track[i]),
+-				 GFP_KERNEL);
+-		if (!slot->arch.gfn_track[i])
+-			goto track_free;
+-	}
+-
+-	return 0;
+-
+-track_free:
+-	kvm_page_track_free_memslot(slot, NULL);
+-	return -ENOMEM;
+-}
+-
+-static inline bool page_track_mode_is_valid(enum kvm_page_track_mode mode)
+-{
+-	if (mode < 0 || mode >= KVM_PAGE_TRACK_MAX)
+-		return false;
+-
+-	return true;
+-}
+-
+-static void update_gfn_track(struct kvm_memory_slot *slot, gfn_t gfn,
+-			     enum kvm_page_track_mode mode, short count)
+-{
+-	int index, val;
+-
+-	index = gfn_to_index(gfn, slot->base_gfn, PT_PAGE_TABLE_LEVEL);
+-
+-	val = slot->arch.gfn_track[mode][index];
+-
+-	if (WARN_ON(val + count < 0 || val + count > USHRT_MAX))
+-		return;
+-
+-	slot->arch.gfn_track[mode][index] += count;
+-}
+-
+-/*
+- * add guest page to the tracking pool so that corresponding access on that
+- * page will be intercepted.
+- *
+- * It should be called under the protection both of mmu-lock and kvm->srcu
+- * or kvm->slots_lock.
+- *
+- * @kvm: the guest instance we are interested in.
+- * @slot: the @gfn belongs to.
+- * @gfn: the guest page.
+- * @mode: tracking mode, currently only write track is supported.
+- */
+-void kvm_slot_page_track_add_page(struct kvm *kvm,
+-				  struct kvm_memory_slot *slot, gfn_t gfn,
+-				  enum kvm_page_track_mode mode)
+-{
+-
+-	if (WARN_ON(!page_track_mode_is_valid(mode)))
+-		return;
+-
+-	update_gfn_track(slot, gfn, mode, 1);
+-
+-	/*
+-	 * new track stops large page mapping for the
+-	 * tracked page.
+-	 */
+-	kvm_mmu_gfn_disallow_lpage(slot, gfn);
+-
+-	if (mode == KVM_PAGE_TRACK_WRITE)
+-		if (kvm_mmu_slot_gfn_write_protect(kvm, slot, gfn))
+-			kvm_flush_remote_tlbs(kvm);
+-}
+-EXPORT_SYMBOL_GPL(kvm_slot_page_track_add_page);
+-
+-/*
+- * remove the guest page from the tracking pool which stops the interception
+- * of corresponding access on that page. It is the opposed operation of
+- * kvm_slot_page_track_add_page().
+- *
+- * It should be called under the protection both of mmu-lock and kvm->srcu
+- * or kvm->slots_lock.
+- *
+- * @kvm: the guest instance we are interested in.
+- * @slot: the @gfn belongs to.
+- * @gfn: the guest page.
+- * @mode: tracking mode, currently only write track is supported.
+- */
+-void kvm_slot_page_track_remove_page(struct kvm *kvm,
+-				     struct kvm_memory_slot *slot, gfn_t gfn,
+-				     enum kvm_page_track_mode mode)
+-{
+-	if (WARN_ON(!page_track_mode_is_valid(mode)))
+-		return;
+-
+-	update_gfn_track(slot, gfn, mode, -1);
+-
+-	/*
+-	 * allow large page mapping for the tracked page
+-	 * after the tracker is gone.
+-	 */
+-	kvm_mmu_gfn_allow_lpage(slot, gfn);
+-}
+-EXPORT_SYMBOL_GPL(kvm_slot_page_track_remove_page);
+-
+-/*
+- * check if the corresponding access on the specified guest page is tracked.
+- */
+-bool kvm_page_track_is_active(struct kvm_vcpu *vcpu, gfn_t gfn,
+-			      enum kvm_page_track_mode mode)
+-{
+-	struct kvm_memory_slot *slot;
+-	int index;
+-
+-	if (WARN_ON(!page_track_mode_is_valid(mode)))
+-		return false;
+-
+-	slot = kvm_vcpu_gfn_to_memslot(vcpu, gfn);
+-	if (!slot)
+-		return false;
+-
+-	index = gfn_to_index(gfn, slot->base_gfn, PT_PAGE_TABLE_LEVEL);
+-	return !!READ_ONCE(slot->arch.gfn_track[mode][index]);
+-}
+-
+-void kvm_page_track_cleanup(struct kvm *kvm)
+-{
+-	struct kvm_page_track_notifier_head *head;
+-
+-	head = &kvm->arch.track_notifier_head;
+-	cleanup_srcu_struct(&head->track_srcu);
+-}
+-
+-void kvm_page_track_init(struct kvm *kvm)
+-{
+-	struct kvm_page_track_notifier_head *head;
+-
+-	head = &kvm->arch.track_notifier_head;
+-	init_srcu_struct(&head->track_srcu);
+-	INIT_HLIST_HEAD(&head->track_notifier_list);
+-}
+-
+-/*
+- * register the notifier so that event interception for the tracked guest
+- * pages can be received.
+- */
+-void
+-kvm_page_track_register_notifier(struct kvm *kvm,
+-				 struct kvm_page_track_notifier_node *n)
+-{
+-	struct kvm_page_track_notifier_head *head;
+-
+-	head = &kvm->arch.track_notifier_head;
+-
+-	spin_lock(&kvm->mmu_lock);
+-	hlist_add_head_rcu(&n->node, &head->track_notifier_list);
+-	spin_unlock(&kvm->mmu_lock);
+-}
+-EXPORT_SYMBOL_GPL(kvm_page_track_register_notifier);
+-
+-/*
+- * stop receiving the event interception. It is the opposed operation of
+- * kvm_page_track_register_notifier().
+- */
+-void
+-kvm_page_track_unregister_notifier(struct kvm *kvm,
+-				   struct kvm_page_track_notifier_node *n)
+-{
+-	struct kvm_page_track_notifier_head *head;
+-
+-	head = &kvm->arch.track_notifier_head;
+-
+-	spin_lock(&kvm->mmu_lock);
+-	hlist_del_rcu(&n->node);
+-	spin_unlock(&kvm->mmu_lock);
+-	synchronize_srcu(&head->track_srcu);
+-}
+-EXPORT_SYMBOL_GPL(kvm_page_track_unregister_notifier);
+-
+-/*
+- * Notify the node that write access is intercepted and write emulation is
+- * finished at this time.
+- *
+- * The node should figure out if the written page is the one that node is
+- * interested in by itself.
+- */
+-void kvm_page_track_write(struct kvm_vcpu *vcpu, gpa_t gpa, const u8 *new,
+-			  int bytes)
+-{
+-	struct kvm_page_track_notifier_head *head;
+-	struct kvm_page_track_notifier_node *n;
+-	int idx;
+-
+-	head = &vcpu->kvm->arch.track_notifier_head;
+-
+-	if (hlist_empty(&head->track_notifier_list))
+-		return;
+-
+-	idx = srcu_read_lock(&head->track_srcu);
+-	hlist_for_each_entry_rcu(n, &head->track_notifier_list, node)
+-		if (n->track_write)
+-			n->track_write(vcpu, gpa, new, bytes, n);
+-	srcu_read_unlock(&head->track_srcu, idx);
+-}
+-
+-/*
+- * Notify the node that memory slot is being removed or moved so that it can
+- * drop write-protection for the pages in the memory slot.
+- *
+- * The node should figure out it has any write-protected pages in this slot
+- * by itself.
+- */
+-void kvm_page_track_flush_slot(struct kvm *kvm, struct kvm_memory_slot *slot)
+-{
+-	struct kvm_page_track_notifier_head *head;
+-	struct kvm_page_track_notifier_node *n;
+-	int idx;
+-
+-	head = &kvm->arch.track_notifier_head;
+-
+-	if (hlist_empty(&head->track_notifier_list))
+-		return;
+-
+-	idx = srcu_read_lock(&head->track_srcu);
+-	hlist_for_each_entry_rcu(n, &head->track_notifier_list, node)
+-		if (n->track_flush_slot)
+-			n->track_flush_slot(kvm, slot, n);
+-	srcu_read_unlock(&head->track_srcu, idx);
+-}
+
+commit 3d013c801eb73dfd2a681f8c81449455ae1f1272
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:14:13 2018 +0800
+
+    v2.6.11
+
+diff --git a/arch/x86/kvm/page_track.c b/arch/x86/kvm/page_track.c
+new file mode 100644
+index 0000000..3052a59
+--- /dev/null
++++ b/arch/x86/kvm/page_track.c
+@@ -0,0 +1,267 @@
++/*
++ * Support KVM gust page tracking
++ *
++ * This feature allows us to track page access in guest. Currently, only
++ * write access is tracked.
++ *
++ * Copyright(C) 2015 Intel Corporation.
++ *
++ * Author:
++ *   Xiao Guangrong <guangrong.xiao@linux.intel.com>
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ */
++
++#include <linux/kvm_host.h>
++#include <linux/rculist.h>
++
++#include <asm/kvm_host.h>
++#include <asm/kvm_page_track.h>
++
++#include "mmu.h"
++
++void kvm_page_track_free_memslot(struct kvm_memory_slot *free,
++				 struct kvm_memory_slot *dont)
++{
++	int i;
++
++	for (i = 0; i < KVM_PAGE_TRACK_MAX; i++)
++		if (!dont || free->arch.gfn_track[i] !=
++		      dont->arch.gfn_track[i]) {
++			kvfree(free->arch.gfn_track[i]);
++			free->arch.gfn_track[i] = NULL;
++		}
++}
++
++int kvm_page_track_create_memslot(struct kvm_memory_slot *slot,
++				  unsigned long npages)
++{
++	int  i;
++
++	for (i = 0; i < KVM_PAGE_TRACK_MAX; i++) {
++		slot->arch.gfn_track[i] =
++			kvcalloc(npages, sizeof(*slot->arch.gfn_track[i]),
++				 GFP_KERNEL);
++		if (!slot->arch.gfn_track[i])
++			goto track_free;
++	}
++
++	return 0;
++
++track_free:
++	kvm_page_track_free_memslot(slot, NULL);
++	return -ENOMEM;
++}
++
++static inline bool page_track_mode_is_valid(enum kvm_page_track_mode mode)
++{
++	if (mode < 0 || mode >= KVM_PAGE_TRACK_MAX)
++		return false;
++
++	return true;
++}
++
++static void update_gfn_track(struct kvm_memory_slot *slot, gfn_t gfn,
++			     enum kvm_page_track_mode mode, short count)
++{
++	int index, val;
++
++	index = gfn_to_index(gfn, slot->base_gfn, PT_PAGE_TABLE_LEVEL);
++
++	val = slot->arch.gfn_track[mode][index];
++
++	if (WARN_ON(val + count < 0 || val + count > USHRT_MAX))
++		return;
++
++	slot->arch.gfn_track[mode][index] += count;
++}
++
++/*
++ * add guest page to the tracking pool so that corresponding access on that
++ * page will be intercepted.
++ *
++ * It should be called under the protection both of mmu-lock and kvm->srcu
++ * or kvm->slots_lock.
++ *
++ * @kvm: the guest instance we are interested in.
++ * @slot: the @gfn belongs to.
++ * @gfn: the guest page.
++ * @mode: tracking mode, currently only write track is supported.
++ */
++void kvm_slot_page_track_add_page(struct kvm *kvm,
++				  struct kvm_memory_slot *slot, gfn_t gfn,
++				  enum kvm_page_track_mode mode)
++{
++
++	if (WARN_ON(!page_track_mode_is_valid(mode)))
++		return;
++
++	update_gfn_track(slot, gfn, mode, 1);
++
++	/*
++	 * new track stops large page mapping for the
++	 * tracked page.
++	 */
++	kvm_mmu_gfn_disallow_lpage(slot, gfn);
++
++	if (mode == KVM_PAGE_TRACK_WRITE)
++		if (kvm_mmu_slot_gfn_write_protect(kvm, slot, gfn))
++			kvm_flush_remote_tlbs(kvm);
++}
++EXPORT_SYMBOL_GPL(kvm_slot_page_track_add_page);
++
++/*
++ * remove the guest page from the tracking pool which stops the interception
++ * of corresponding access on that page. It is the opposed operation of
++ * kvm_slot_page_track_add_page().
++ *
++ * It should be called under the protection both of mmu-lock and kvm->srcu
++ * or kvm->slots_lock.
++ *
++ * @kvm: the guest instance we are interested in.
++ * @slot: the @gfn belongs to.
++ * @gfn: the guest page.
++ * @mode: tracking mode, currently only write track is supported.
++ */
++void kvm_slot_page_track_remove_page(struct kvm *kvm,
++				     struct kvm_memory_slot *slot, gfn_t gfn,
++				     enum kvm_page_track_mode mode)
++{
++	if (WARN_ON(!page_track_mode_is_valid(mode)))
++		return;
++
++	update_gfn_track(slot, gfn, mode, -1);
++
++	/*
++	 * allow large page mapping for the tracked page
++	 * after the tracker is gone.
++	 */
++	kvm_mmu_gfn_allow_lpage(slot, gfn);
++}
++EXPORT_SYMBOL_GPL(kvm_slot_page_track_remove_page);
++
++/*
++ * check if the corresponding access on the specified guest page is tracked.
++ */
++bool kvm_page_track_is_active(struct kvm_vcpu *vcpu, gfn_t gfn,
++			      enum kvm_page_track_mode mode)
++{
++	struct kvm_memory_slot *slot;
++	int index;
++
++	if (WARN_ON(!page_track_mode_is_valid(mode)))
++		return false;
++
++	slot = kvm_vcpu_gfn_to_memslot(vcpu, gfn);
++	if (!slot)
++		return false;
++
++	index = gfn_to_index(gfn, slot->base_gfn, PT_PAGE_TABLE_LEVEL);
++	return !!READ_ONCE(slot->arch.gfn_track[mode][index]);
++}
++
++void kvm_page_track_cleanup(struct kvm *kvm)
++{
++	struct kvm_page_track_notifier_head *head;
++
++	head = &kvm->arch.track_notifier_head;
++	cleanup_srcu_struct(&head->track_srcu);
++}
++
++void kvm_page_track_init(struct kvm *kvm)
++{
++	struct kvm_page_track_notifier_head *head;
++
++	head = &kvm->arch.track_notifier_head;
++	init_srcu_struct(&head->track_srcu);
++	INIT_HLIST_HEAD(&head->track_notifier_list);
++}
++
++/*
++ * register the notifier so that event interception for the tracked guest
++ * pages can be received.
++ */
++void
++kvm_page_track_register_notifier(struct kvm *kvm,
++				 struct kvm_page_track_notifier_node *n)
++{
++	struct kvm_page_track_notifier_head *head;
++
++	head = &kvm->arch.track_notifier_head;
++
++	spin_lock(&kvm->mmu_lock);
++	hlist_add_head_rcu(&n->node, &head->track_notifier_list);
++	spin_unlock(&kvm->mmu_lock);
++}
++EXPORT_SYMBOL_GPL(kvm_page_track_register_notifier);
++
++/*
++ * stop receiving the event interception. It is the opposed operation of
++ * kvm_page_track_register_notifier().
++ */
++void
++kvm_page_track_unregister_notifier(struct kvm *kvm,
++				   struct kvm_page_track_notifier_node *n)
++{
++	struct kvm_page_track_notifier_head *head;
++
++	head = &kvm->arch.track_notifier_head;
++
++	spin_lock(&kvm->mmu_lock);
++	hlist_del_rcu(&n->node);
++	spin_unlock(&kvm->mmu_lock);
++	synchronize_srcu(&head->track_srcu);
++}
++EXPORT_SYMBOL_GPL(kvm_page_track_unregister_notifier);
++
++/*
++ * Notify the node that write access is intercepted and write emulation is
++ * finished at this time.
++ *
++ * The node should figure out if the written page is the one that node is
++ * interested in by itself.
++ */
++void kvm_page_track_write(struct kvm_vcpu *vcpu, gpa_t gpa, const u8 *new,
++			  int bytes)
++{
++	struct kvm_page_track_notifier_head *head;
++	struct kvm_page_track_notifier_node *n;
++	int idx;
++
++	head = &vcpu->kvm->arch.track_notifier_head;
++
++	if (hlist_empty(&head->track_notifier_list))
++		return;
++
++	idx = srcu_read_lock(&head->track_srcu);
++	hlist_for_each_entry_rcu(n, &head->track_notifier_list, node)
++		if (n->track_write)
++			n->track_write(vcpu, gpa, new, bytes, n);
++	srcu_read_unlock(&head->track_srcu, idx);
++}
++
++/*
++ * Notify the node that memory slot is being removed or moved so that it can
++ * drop write-protection for the pages in the memory slot.
++ *
++ * The node should figure out it has any write-protected pages in this slot
++ * by itself.
++ */
++void kvm_page_track_flush_slot(struct kvm *kvm, struct kvm_memory_slot *slot)
++{
++	struct kvm_page_track_notifier_head *head;
++	struct kvm_page_track_notifier_node *n;
++	int idx;
++
++	head = &kvm->arch.track_notifier_head;
++
++	if (hlist_empty(&head->track_notifier_list))
++		return;
++
++	idx = srcu_read_lock(&head->track_srcu);
++	hlist_for_each_entry_rcu(n, &head->track_notifier_list, node)
++		if (n->track_flush_slot)
++			n->track_flush_slot(kvm, slot, n);
++	srcu_read_unlock(&head->track_srcu, idx);
++}
+
+commit 7dc2dd8e15d5a69497b5a7758761d3574a2efaaa
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:14:13 2018 +0800
+
+    target source code file : arch/x86/kvm/page_track.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..59fb6a5
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++arch/x86/kvm/page_track.c

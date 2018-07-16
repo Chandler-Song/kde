@@ -1,0 +1,259 @@
+commit e7afdce4ef5ef5c232082ddd35fabbff35681b4b
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:24:06 2018 +0800
+
+    v4.9-rc1
+
+diff --git a/arch/x86/kvm/debugfs.c b/arch/x86/kvm/debugfs.c
+new file mode 100644
+index 0000000..c19c7ed
+--- /dev/null
++++ b/arch/x86/kvm/debugfs.c
+@@ -0,0 +1,69 @@
++/*
++ * Kernel-based Virtual Machine driver for Linux
++ *
++ * Copyright 2016 Red Hat, Inc. and/or its affiliates.
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++ */
++#include <linux/kvm_host.h>
++#include <linux/debugfs.h>
++
++bool kvm_arch_has_vcpu_debugfs(void)
++{
++	return true;
++}
++
++static int vcpu_get_tsc_offset(void *data, u64 *val)
++{
++	struct kvm_vcpu *vcpu = (struct kvm_vcpu *) data;
++	*val = vcpu->arch.tsc_offset;
++	return 0;
++}
++
++DEFINE_SIMPLE_ATTRIBUTE(vcpu_tsc_offset_fops, vcpu_get_tsc_offset, NULL, "%lld\n");
++
++static int vcpu_get_tsc_scaling_ratio(void *data, u64 *val)
++{
++	struct kvm_vcpu *vcpu = (struct kvm_vcpu *) data;
++	*val = vcpu->arch.tsc_scaling_ratio;
++	return 0;
++}
++
++DEFINE_SIMPLE_ATTRIBUTE(vcpu_tsc_scaling_fops, vcpu_get_tsc_scaling_ratio, NULL, "%llu\n");
++
++static int vcpu_get_tsc_scaling_frac_bits(void *data, u64 *val)
++{
++	*val = kvm_tsc_scaling_ratio_frac_bits;
++	return 0;
++}
++
++DEFINE_SIMPLE_ATTRIBUTE(vcpu_tsc_scaling_frac_fops, vcpu_get_tsc_scaling_frac_bits, NULL, "%llu\n");
++
++int kvm_arch_create_vcpu_debugfs(struct kvm_vcpu *vcpu)
++{
++	struct dentry *ret;
++
++	ret = debugfs_create_file("tsc-offset", 0444,
++							vcpu->debugfs_dentry,
++							vcpu, &vcpu_tsc_offset_fops);
++	if (!ret)
++		return -ENOMEM;
++
++	if (kvm_has_tsc_control) {
++		ret = debugfs_create_file("tsc-scaling-ratio", 0444,
++							vcpu->debugfs_dentry,
++							vcpu, &vcpu_tsc_scaling_fops);
++		if (!ret)
++			return -ENOMEM;
++		ret = debugfs_create_file("tsc-scaling-ratio-frac-bits", 0444,
++							vcpu->debugfs_dentry,
++							vcpu, &vcpu_tsc_scaling_frac_fops);
++		if (!ret)
++			return -ENOMEM;
++
++	}
++
++	return 0;
++}
+
+commit e280c9f335fa4bdc0276d1cd61a71a530ff4da45
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:14:22 2018 +0800
+
+    v2.6.12
+
+diff --git a/arch/x86/kvm/debugfs.c b/arch/x86/kvm/debugfs.c
+deleted file mode 100644
+index c19c7ed..0000000
+--- a/arch/x86/kvm/debugfs.c
++++ /dev/null
+@@ -1,69 +0,0 @@
+-/*
+- * Kernel-based Virtual Machine driver for Linux
+- *
+- * Copyright 2016 Red Hat, Inc. and/or its affiliates.
+- *
+- * This work is licensed under the terms of the GNU GPL, version 2.  See
+- * the COPYING file in the top-level directory.
+- *
+- */
+-#include <linux/kvm_host.h>
+-#include <linux/debugfs.h>
+-
+-bool kvm_arch_has_vcpu_debugfs(void)
+-{
+-	return true;
+-}
+-
+-static int vcpu_get_tsc_offset(void *data, u64 *val)
+-{
+-	struct kvm_vcpu *vcpu = (struct kvm_vcpu *) data;
+-	*val = vcpu->arch.tsc_offset;
+-	return 0;
+-}
+-
+-DEFINE_SIMPLE_ATTRIBUTE(vcpu_tsc_offset_fops, vcpu_get_tsc_offset, NULL, "%lld\n");
+-
+-static int vcpu_get_tsc_scaling_ratio(void *data, u64 *val)
+-{
+-	struct kvm_vcpu *vcpu = (struct kvm_vcpu *) data;
+-	*val = vcpu->arch.tsc_scaling_ratio;
+-	return 0;
+-}
+-
+-DEFINE_SIMPLE_ATTRIBUTE(vcpu_tsc_scaling_fops, vcpu_get_tsc_scaling_ratio, NULL, "%llu\n");
+-
+-static int vcpu_get_tsc_scaling_frac_bits(void *data, u64 *val)
+-{
+-	*val = kvm_tsc_scaling_ratio_frac_bits;
+-	return 0;
+-}
+-
+-DEFINE_SIMPLE_ATTRIBUTE(vcpu_tsc_scaling_frac_fops, vcpu_get_tsc_scaling_frac_bits, NULL, "%llu\n");
+-
+-int kvm_arch_create_vcpu_debugfs(struct kvm_vcpu *vcpu)
+-{
+-	struct dentry *ret;
+-
+-	ret = debugfs_create_file("tsc-offset", 0444,
+-							vcpu->debugfs_dentry,
+-							vcpu, &vcpu_tsc_offset_fops);
+-	if (!ret)
+-		return -ENOMEM;
+-
+-	if (kvm_has_tsc_control) {
+-		ret = debugfs_create_file("tsc-scaling-ratio", 0444,
+-							vcpu->debugfs_dentry,
+-							vcpu, &vcpu_tsc_scaling_fops);
+-		if (!ret)
+-			return -ENOMEM;
+-		ret = debugfs_create_file("tsc-scaling-ratio-frac-bits", 0444,
+-							vcpu->debugfs_dentry,
+-							vcpu, &vcpu_tsc_scaling_frac_fops);
+-		if (!ret)
+-			return -ENOMEM;
+-
+-	}
+-
+-	return 0;
+-}
+
+commit d9a8078c4a3f5d0bed90def1a18cd3fb9ef3e830
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:14:13 2018 +0800
+
+    v2.6.11
+
+diff --git a/arch/x86/kvm/debugfs.c b/arch/x86/kvm/debugfs.c
+new file mode 100644
+index 0000000..c19c7ed
+--- /dev/null
++++ b/arch/x86/kvm/debugfs.c
+@@ -0,0 +1,69 @@
++/*
++ * Kernel-based Virtual Machine driver for Linux
++ *
++ * Copyright 2016 Red Hat, Inc. and/or its affiliates.
++ *
++ * This work is licensed under the terms of the GNU GPL, version 2.  See
++ * the COPYING file in the top-level directory.
++ *
++ */
++#include <linux/kvm_host.h>
++#include <linux/debugfs.h>
++
++bool kvm_arch_has_vcpu_debugfs(void)
++{
++	return true;
++}
++
++static int vcpu_get_tsc_offset(void *data, u64 *val)
++{
++	struct kvm_vcpu *vcpu = (struct kvm_vcpu *) data;
++	*val = vcpu->arch.tsc_offset;
++	return 0;
++}
++
++DEFINE_SIMPLE_ATTRIBUTE(vcpu_tsc_offset_fops, vcpu_get_tsc_offset, NULL, "%lld\n");
++
++static int vcpu_get_tsc_scaling_ratio(void *data, u64 *val)
++{
++	struct kvm_vcpu *vcpu = (struct kvm_vcpu *) data;
++	*val = vcpu->arch.tsc_scaling_ratio;
++	return 0;
++}
++
++DEFINE_SIMPLE_ATTRIBUTE(vcpu_tsc_scaling_fops, vcpu_get_tsc_scaling_ratio, NULL, "%llu\n");
++
++static int vcpu_get_tsc_scaling_frac_bits(void *data, u64 *val)
++{
++	*val = kvm_tsc_scaling_ratio_frac_bits;
++	return 0;
++}
++
++DEFINE_SIMPLE_ATTRIBUTE(vcpu_tsc_scaling_frac_fops, vcpu_get_tsc_scaling_frac_bits, NULL, "%llu\n");
++
++int kvm_arch_create_vcpu_debugfs(struct kvm_vcpu *vcpu)
++{
++	struct dentry *ret;
++
++	ret = debugfs_create_file("tsc-offset", 0444,
++							vcpu->debugfs_dentry,
++							vcpu, &vcpu_tsc_offset_fops);
++	if (!ret)
++		return -ENOMEM;
++
++	if (kvm_has_tsc_control) {
++		ret = debugfs_create_file("tsc-scaling-ratio", 0444,
++							vcpu->debugfs_dentry,
++							vcpu, &vcpu_tsc_scaling_fops);
++		if (!ret)
++			return -ENOMEM;
++		ret = debugfs_create_file("tsc-scaling-ratio-frac-bits", 0444,
++							vcpu->debugfs_dentry,
++							vcpu, &vcpu_tsc_scaling_frac_fops);
++		if (!ret)
++			return -ENOMEM;
++
++	}
++
++	return 0;
++}
+
+commit b4a31532e530ec843e0359d75c4afa8349d41993
+Author: Aaron.L.Xu <like.xu@intel.com>
+Date:   Mon Jul 16 23:14:13 2018 +0800
+
+    target source code file : arch/x86/kvm/debugfs.c
+
+diff --git a/target_name.txt b/target_name.txt
+new file mode 100644
+index 0000000..60e8337
+--- /dev/null
++++ b/target_name.txt
+@@ -0,0 +1 @@
++arch/x86/kvm/debugfs.c

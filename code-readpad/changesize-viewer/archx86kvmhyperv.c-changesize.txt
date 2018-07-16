@@ -1,0 +1,36 @@
+54864a4cb192d4472d0d42bfbc8b1f3ef087c88e v4.18-rc1
+ 1 file changed, 158 insertions(+), 13 deletions(-)
+89c77dbcf758ae3711845162b331f43c90918436 v4.17-rc7
+ 1 file changed, 11 insertions(+), 8 deletions(-)
+57ec784b5479272f836ef86a5ac00c727f3b092d v4.17-rc6
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+1e3a8c71e5a9adec74ff8282b8f1052703a66185 v4.17-rc1
+ 1 file changed, 171 insertions(+), 21 deletions(-)
+1eb673cf24d69c8189434cc1611f56fd109fe152 v4.14-rc1
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+c26814391e10bf6ac18dbda6881b50bac5005aac v4.13-rc2
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+9e00780b5280db9ec94a90918e4c9b7390af1112 v4.13-rc1
+ 1 file changed, 44 insertions(+), 23 deletions(-)
+c9a1748d2f863b27acebd36d585fd981d2e5f554 v4.11-rc1
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+54d7976565f8409e0c7dfe62da1b416355459b35 v4.10-rc1
+ 1 file changed, 16 insertions(+), 10 deletions(-)
+eb5290adc5f205a9348ea051afafa303f533c1ff v4.9-rc1
+ 1 file changed, 141 insertions(+), 16 deletions(-)
+6e0178fa08daa53154d69e1e05f0d6e3e60146cf v4.6-rc3
+ 1 file changed, 5 insertions(+)
+6f619de8b4ba1d47d2adfb1b46fbb25d983de8d8 v4.6-rc1
+ 1 file changed, 41 insertions(+), 9 deletions(-)
+4be549077e5e82530dd5c8c6d274187ed89d3d7d v4.5-rc1
+ 1 file changed, 704 insertions(+), 4 deletions(-)
+eec02d4b880d97a41ee46bb6b90870b94e1370c5 v4.4-rc1
+ 1 file changed, 29 insertions(+), 2 deletions(-)
+29be7834754706533025d6c1f907cf02129fdb1e v4.3-rc1
+ 1 file changed, 377 insertions(+)
+b5552e59fa0b72fb0a677cf638c70192529b425e v2.6.12
+ 1 file changed, 1603 deletions(-)
+06f2936d9973a61f8bf4baea3d23b6a37a705390 v2.6.11
+ 1 file changed, 1603 insertions(+)
+34348011193aca808fe342dc469e7e2bbb6b7182 target source code file : arch/x86/kvm/hyperv.c
+ 1 file changed, 1 insertion(+)

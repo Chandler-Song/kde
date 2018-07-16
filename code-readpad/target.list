@@ -1,15 +1,13 @@
 arch/x86/kernel/kvm.c
+arch/x86/kvm/cpuid.c
 arch/x86/kvm/debugfs.c
 arch/x86/kvm/emulate.c
 arch/x86/kvm/hyperv.c
 arch/x86/kvm/i8254.c
 arch/x86/kvm/ioapic.c
-arch/x86/kvm/irq.c
 arch/x86/kvm/irq_comm.c
+arch/x86/kvm/irq.c
 arch/x86/kvm/mmu.c
 arch/x86/kvm/mtrr.c
 arch/x86/kvm/page_track.c
 virt/kvm/async_pf.c
-arch/x86/kvm/Kconfig
-arch/x86/kvm/cpuid.c
-arch/x86/kvm/svm.c
