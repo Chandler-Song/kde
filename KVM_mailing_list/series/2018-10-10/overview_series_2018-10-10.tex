@@ -1,0 +1,261 @@
+\documentclass[landscape, 14pt]{report}
+\usepackage[top=2in, bottom=1in, left=1in, right=1in]{geometry}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage[]{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\PassOptionsToPackage{hyphens}{url} % url is loaded by hyperref
+\usepackage[unicode=true]{hyperref}
+\hypersetup{
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+% set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+
+
+\date{}
+
+\begin{document}
+
+\paragraph{{[}GIT PULL{]} Please pull my kvm-ppc-next-4.20-1
+tag}\label{header-n0}
+
+\subparagraph{\texorpdfstring{From: Paul Mackerras
+\href{mailto:paulus@ozlabs.org}{\nolinkurl{paulus@ozlabs.org}}}{From: Paul Mackerras paulus@ozlabs.org}}\label{header-n2}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{Paolo or Radim,}
+
+\NormalTok{Please }\ControlFlowTok{do}\NormalTok{ a pull from my kvm-ppc-next}\FloatTok{-4.20}\DecValTok{-1}\NormalTok{ tag to get a PPC KVM}
+\NormalTok{update }\ControlFlowTok{for} \DecValTok{4}\NormalTok{.}\FloatTok{20.}\NormalTok{  There is one big new feature here, which is nested}
+\NormalTok{virtualization support }\ControlFlowTok{for}\NormalTok{ radix guests on POWER9, plus a few other}
+\NormalTok{fixes and improvements.}
+
+\NormalTok{A lot of the commits here are also going to be merged in the powerpc}
+\NormalTok{tree via the topic/ppc-kvm branch, in order to reduce conflicts}
+\NormalTok{between the powerpc tree and the kvm tree.}
+
+\NormalTok{Stephen Rothwell noted that there is a conflict between my}
+\NormalTok{kvm-ppc-next tree and the kvm-arm tree, in that we have both allocated}
+\NormalTok{the next free capability number (}\DecValTok{160}\NormalTok{).  It would be nice to get a}
+\NormalTok{stable allocation }\ControlFlowTok{for}\NormalTok{ the new capability that I need (one which}
+\NormalTok{reports/enables nested virtualization support }\ControlFlowTok{for}\NormalTok{ the HV KVM module)}
+\NormalTok{so that the necessary QEMU patches can be submitted.}
+
+\NormalTok{Thanks,}
+\NormalTok{Paul.}
+
+\NormalTok{The following changes since commit dd5bd0a65ff6f22a32b35ca3fa1bcf7a6bc7104f:}
+
+\NormalTok{  Merge tag 'kvm-s390-next}\FloatTok{-4.20}\DecValTok{-1}\NormalTok{' of git:}\CommentTok{//git.kernel.org/pub/scm/linux/kernel/git/kvms390/linux into HEAD (2018-10-04 17:12:45 +0200)}
+
+\NormalTok{are available in the git repository at:}
+
+\NormalTok{  git:}\CommentTok{//git.kernel.org/pub/scm/linux/kernel/git/paulus/powerpc tags/kvm-ppc-next-4.20-1}
+
+\ControlFlowTok{for}\NormalTok{ you to fetch changes up to 901f8c3f6feb0225c14b3bc6237850fb921d2f2d:}
+
+\NormalTok{  KVM: PPC: Book3S HV: Add NO_HASH flag to GET_SMMU_INFO ioctl result (}\DecValTok{2018-10-09} \DecValTok{16}\NormalTok{:}\DecValTok{14}\NormalTok{:}\DecValTok{54}\NormalTok{ +}\DecValTok{1100}\NormalTok{)}
+
+\NormalTok{----------------------------------------------------------------}
+\NormalTok{PPC KVM update }\ControlFlowTok{for} \DecValTok{4}\NormalTok{.}\FloatTok{20.}
+
+\NormalTok{The major new feature here is nested HV KVM support.  This allows the}
+\NormalTok{HV KVM module to load inside a radix guest on POWER9 and run radix}
+\NormalTok{guests underneath it.  These nested guests can run in supervisor mode}
+\NormalTok{and don't require any additional instructions to be emulated, unlike}
+\NormalTok{with PR KVM, and so performance is much better than with PR KVM, and}
+\NormalTok{is very close to the performance of a non-nested guest.  A nested}
+\NormalTok{hypervisor (a guest with nested guests) can be migrated to another}
+\NormalTok{host and will bring all its nested guests along with it.  A nested}
+\NormalTok{guest can also itself run guests, and so on down to any desired depth}
+\NormalTok{of nesting.}
+
+\NormalTok{Apart from that there are a series of updates }\ControlFlowTok{for}\NormalTok{ IOMMU handling from}
+\NormalTok{Alexey Kardashevskiy, a }\StringTok{"one VM per core"}\NormalTok{ mode }\ControlFlowTok{for}\NormalTok{ HV KVM }\ControlFlowTok{for}
+\NormalTok{security-paranoid applications, and a small fix }\ControlFlowTok{for}\NormalTok{ PR KVM.}
+
+\NormalTok{----------------------------------------------------------------}
+\NormalTok{Alexey Kardashevskiy (}\DecValTok{5}\NormalTok{):}
+\NormalTok{      KVM: PPC: Validate all tces before updating tables}
+\NormalTok{      KVM: PPC: Inform the userspace about TCE update failures}
+\NormalTok{      KVM: PPC: Validate TCEs against preregistered memory page sizes}
+\NormalTok{      KVM: PPC: Propagate errors to the guest when failed instead of ignoring}
+\NormalTok{      KVM: PPC: Remove redundand permission bits removal}
+
+\NormalTok{Cameron Kaiser (}\DecValTok{1}\NormalTok{):}
+\NormalTok{      KVM: PPC: Book3S PR: Exiting split hack mode needs to fixup both PC and LR}
+
+\NormalTok{Michael Ellerman (}\DecValTok{1}\NormalTok{):}
+\NormalTok{      Merge branch 'kvm-ppc-fixes' of paulus/powerpc into topic/ppc-kvm}
+
+\NormalTok{Paul Mackerras (}\DecValTok{26}\NormalTok{):}
+\NormalTok{      KVM: PPC: Book3S HV: Provide mode where all vCPUs on a core must be the same VM}
+\NormalTok{      powerpc: Turn off CPU_FTR_P9_TM_HV_ASSIST in non-hypervisor mode}
+\NormalTok{      KVM: PPC: Book3S: Simplify external interrupt handling}
+\NormalTok{      KVM: PPC: Book3S HV: Remove left-over code in XICS-on-XIVE emulation}
+\NormalTok{      KVM: PPC: Book3S HV: Move interrupt delivery on guest entry to C code}
+\NormalTok{      KVM: PPC: Book3S HV: Extract PMU save/restore operations as C-callable functions}
+\NormalTok{      KVM: PPC: Book3S HV: Simplify real-mode interrupt handling}
+\NormalTok{      KVM: PPC: Book3S: Rework TM save/restore code and make it C-callable}
+\NormalTok{      KVM: PPC: Book3S HV: Call kvmppc_handle_exit_hv() with vcore unlocked}
+\NormalTok{      KVM: PPC: Book3S HV: Streamlined guest entry/exit path on P9 }\ControlFlowTok{for}\NormalTok{ radix guests}
+\NormalTok{      KVM: PPC: Book3S HV: Handle hypervisor instruction faults better}
+\NormalTok{      KVM: PPC: Book3S HV: Add a debugfs file to dump radix mappings}
+\NormalTok{      KVM: PPC: Use ccr field in pt_regs }\KeywordTok{struct}\NormalTok{ embedded in vcpu }\KeywordTok{struct}
+\NormalTok{      KVM: PPC: Book3S HV: Use kvmppc_unmap_pte() in kvm_unmap_radix()}
+\NormalTok{      KVM: PPC: Book3S HV: Framework and hcall stubs }\ControlFlowTok{for}\NormalTok{ nested virtualization}
+\NormalTok{      KVM: PPC: Book3S HV: Nested guest entry via hypercall}
+\NormalTok{      KVM: PPC: Book3S HV: Use XICS hypercalls when running as a nested hypervisor}
+\NormalTok{      KVM: PPC: Book3S HV: Handle hypercalls correctly when nested}
+\NormalTok{      KVM: PPC: Book3S HV: Use hypercalls }\ControlFlowTok{for}\NormalTok{ TLB invalidation when nested}
+\NormalTok{      KVM: PPC: Book3S HV: Don't access HFSCR, LPIDR or LPCR when running nested}
+\NormalTok{      KVM: PPC: Book3S HV: Add one-reg interface to virtual PTCR }\DataTypeTok{register}
+\NormalTok{      KVM: PPC: Book3S HV: Allow HV module to load without hypervisor mode}
+\NormalTok{      KVM: PPC: Book3S HV: Add nested shadow page tables to debugfs}
+\NormalTok{      Merge remote-tracking branch 'remotes/powerpc/topic/ppc-kvm' into kvm-ppc-next}
+\NormalTok{      KVM: PPC: Book3S HV: Add a VM capability to enable nested virtualization}
+\NormalTok{      KVM: PPC: Book3S HV: Add NO_HASH flag to GET_SMMU_INFO ioctl result}
+
+\NormalTok{Suraj Jitindar Singh (}\DecValTok{9}\NormalTok{):}
+\NormalTok{      KVM: PPC: Book3S HV: Clear partition table entry on vm teardown}
+\NormalTok{      KVM: PPC: Book3S HV: Make kvmppc_mmu_radix_xlate process/partition table agnostic}
+\NormalTok{      KVM: PPC: Book3S HV: Refactor radix page fault handler}
+\NormalTok{      KVM: PPC: Book3S HV: Handle page fault }\ControlFlowTok{for}\NormalTok{ a nested guest}
+\NormalTok{      KVM: PPC: Book3S HV: Introduce rmap to track nested guest mappings}
+\NormalTok{      KVM: PPC: Book3S HV: Implement H_TLB_INVALIDATE hcall}
+\NormalTok{      KVM: PPC: Book3S HV: Invalidate TLB when nested vcpu moves physical cpu}
+\NormalTok{      KVM: PPC: Book3S HV: Sanitise hv_regs on nested guest entry}
+\NormalTok{      KVM: PPC: Book3S HV: Handle differing endianness }\ControlFlowTok{for}\NormalTok{ H_ENTER_NESTED}
+
+\NormalTok{ Documentation/virtual/kvm/api.txt                  |   }\DecValTok{19}\NormalTok{ +}
+\NormalTok{ arch/powerpc/include/asm/asm-prototypes.h          |   }\DecValTok{21}\NormalTok{ +}
+\NormalTok{ arch/powerpc/include/asm/book3s/}\DecValTok{64}\NormalTok{/mmu-hash.h      |   }\DecValTok{12}\NormalTok{ +}
+\NormalTok{ .../powerpc/include/asm/book3s/}\DecValTok{64}\NormalTok{/tlbflush-radix.h |    }\DecValTok{1}\NormalTok{ +}
+\NormalTok{ arch/powerpc/include/asm/hvcall.h                  |   }\DecValTok{41}\NormalTok{ +}
+\NormalTok{ arch/powerpc/include/asm/kvm_asm.h                 |    }\DecValTok{4}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/include/asm/kvm_book3s.h              |   }\DecValTok{45}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/include/asm/kvm_book3s_64.h           |  }\DecValTok{118}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/include/asm/kvm_book3s_asm.h          |    }\DecValTok{3}\NormalTok{ +}
+\NormalTok{ arch/powerpc/include/asm/kvm_booke.h               |    }\DecValTok{4}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/include/asm/kvm_host.h                |   }\DecValTok{16}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/include/asm/kvm_ppc.h                 |    }\DecValTok{8}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/include/asm/ppc-opcode.h              |    }\DecValTok{1}\NormalTok{ +}
+\NormalTok{ arch/powerpc/include/asm/reg.h                     |    }\DecValTok{2}\NormalTok{ +}
+\NormalTok{ arch/powerpc/include/uapi/asm/kvm.h                |    }\DecValTok{1}\NormalTok{ +}
+\NormalTok{ arch/powerpc/kernel/asm-offsets.c                  |    }\DecValTok{5}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kernel/cpu_setup_power.S              |    }\DecValTok{4}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/Makefile                          |    }\DecValTok{3}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s.c                          |   }\DecValTok{46}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_64_mmu_hv.c                |    }\DecValTok{7}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_64_mmu_radix.c             |  }\DecValTok{718}\NormalTok{ ++++++++---}
+\NormalTok{ arch/powerpc/kvm/book3s_64_vio.c                   |   }\DecValTok{89}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_64_vio_hv.c                |   }\DecValTok{81}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_emulate.c                  |   }\DecValTok{13}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_hv.c                       |  }\DecValTok{864}\NormalTok{ ++++++++++++-}
+\NormalTok{ arch/powerpc/kvm/book3s_hv_builtin.c               |   }\DecValTok{92}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_hv_interrupts.S            |   }\DecValTok{95}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_hv_nested.c                | }\DecValTok{1291}\NormalTok{ ++++++++++++++++++++}
+\NormalTok{ arch/powerpc/kvm/book3s_hv_ras.c                   |   }\DecValTok{10}\NormalTok{ +}
+\NormalTok{ arch/powerpc/kvm/book3s_hv_rm_xics.c               |   }\DecValTok{13}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_hv_rmhandlers.S            |  }\DecValTok{823}\NormalTok{ +++++++------}
+\NormalTok{ arch/powerpc/kvm/book3s_hv_tm.c                    |    }\DecValTok{6}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_hv_tm_builtin.c            |    }\DecValTok{5}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_pr.c                       |    }\DecValTok{5}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_xics.c                     |   }\DecValTok{14}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/book3s_xive.c                     |   }\DecValTok{63}\NormalTok{ +}
+\NormalTok{ arch/powerpc/kvm/book3s_xive_template.c            |    }\DecValTok{8}\NormalTok{ -}
+\NormalTok{ arch/powerpc/kvm/bookehv_interrupts.S              |    }\DecValTok{8}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/emulate_loadstore.c               |    }\DecValTok{1}\NormalTok{ -}
+\NormalTok{ arch/powerpc/kvm/powerpc.c                         |   }\DecValTok{15}\NormalTok{ +-}
+\NormalTok{ arch/powerpc/kvm/tm.S                              |  }\DecValTok{250}\NormalTok{ ++--}
+\NormalTok{ arch/powerpc/kvm/trace_book3s.h                    |    }\DecValTok{1}\NormalTok{ -}
+\NormalTok{ arch/powerpc/mm/tlb-radix.c                        |    }\DecValTok{9}\NormalTok{ +}
+\NormalTok{ include/uapi/linux/kvm.h                           |    }\DecValTok{2}\NormalTok{ +}
+\NormalTok{ tools/perf/arch/powerpc/util/book3s_hv_exits.h     |    }\DecValTok{1}\NormalTok{ -}
+ \DecValTok{45}\NormalTok{ files changed, }\DecValTok{3933}\NormalTok{ insertions(+), }\DecValTok{905}\NormalTok{ deletions(-)}
+\NormalTok{ create mode }\DecValTok{100644}\NormalTok{ arch/powerpc/kvm/book3s_hv_nested.c}
+\end{Highlighting}
+\end{Shaded}
+
+\end{document}

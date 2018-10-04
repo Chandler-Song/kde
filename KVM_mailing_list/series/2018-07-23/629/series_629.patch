@@ -1,0 +1,150 @@
+From patchwork Mon Jul 23 23:16:49 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Peter Shier <pshier@google.com>
+X-Patchwork-Id: 10541267
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id BAC46112B
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 23:17:01 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A4C8B28555
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 23:17:01 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 98F7E28587; Mon, 23 Jul 2018 23:17:01 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-15.5 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI,
+	USER_IN_DEF_DKIM_WL autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2FBE928555
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 23:17:01 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1728441AbeGXAUa (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 20:20:30 -0400
+Received: from mail-vk0-f73.google.com ([209.85.213.73]:37711 "EHLO
+        mail-vk0-f73.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728391AbeGXAUa (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 20:20:30 -0400
+Received: by mail-vk0-f73.google.com with SMTP id b77-v6so870088vke.4
+        for <kvm@vger.kernel.org>; Mon, 23 Jul 2018 16:16:58 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:date:message-id:subject:from:to:cc;
+        bh=cehfAOWIzjO9wavA5Zn5EYG11giDWYrPET1bAmytzb8=;
+        b=U7XdwLBpFVyPuxs2FUBEo3yfKGx5YbEYQABmgOrBZ8sgWHB/yFtQkc6jZOZgrwB5gZ
+         RfigKsLmToEkBqm+uaowlXoZrlgMndayKbnuoaJbeDfyhTF20MvaHB7LdrPWVjU5ydJ7
+         M+Si9U/1oePQZHUoWMhbAP0gzpN51YV2Lo449poYiOJvQEl2I9llaDNC2Gj4/K9CHCnF
+         SxZRMibMtcbQ60c/0zpxHgVIDllCo48fK/5lR45qqRzUGrtF48wvdA8Q4diaAz5C2qYM
+         yhmSKAE0WXLvAtM/DyfVfz97xT6fQ7zLB6rekwGtaNPIyxPSDixnE4gUAdLmvEH9Gg37
+         VxJg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:date:message-id:subject:from:to:cc;
+        bh=cehfAOWIzjO9wavA5Zn5EYG11giDWYrPET1bAmytzb8=;
+        b=jfx22pny/hp+2pUB9A1lOYbHNCvRBD5UCBHomBReoTfV3EDlL2No9jOWGcR8idgF/Q
+         0fwsCbpvczsDFsSZl7Ykt8+AV3THfgAjRPN9XAUPcie2mXJrwCMU4khn5zltgO0k6cv5
+         kS5Rq/HBkJ16GONolugKactqOGYCACRo4wxjm+tH73ORwp7WFPABzuxP5CH/DiEuZ+d0
+         Ysfiq4ReuwzhfxxyLHK8uXCD0Zg/aSkq5lnTDBaGB12ZJP+F6alL3V4611g9Pi6+gC+8
+         v5aHWIEcCOZEz3aLScbVM/pjZrimrnq9JRLsVytJYvOJo4aWCZq1YIlkJGB4nLWo8Xrr
+         iX6Q==
+X-Gm-Message-State: AOUpUlGtgPn+rLXBnKpINgtMk1SIpeZ3Xx+JBBlWwXprBb2UIORUOgQr
+        P4ZVq8CFcL7q+DKj8FsbnciHdRKnvgODdkjV7thhlWGhnyUaf5Ho59+7+twIg0Y3bAcVDJ5ER9t
+        0k1+WBSZPlP14rYZd0RuMY8chXQ2Zt2ojRuWG4ux4JBDVwc5FVtFXfHg5lw==
+X-Google-Smtp-Source: 
+ AAOMgpf/+dpQUBWlwbPz4JZGy9afYsvnwH2AONEoV3TjwdTWq7aDMgVkFoncfZo2KgNhlBH9Tx5pRU51B1w=
+MIME-Version: 1.0
+X-Received: by 2002:a1f:1c3:: with SMTP id
+ 186-v6mr7165676vkb.59.1532387818340;
+ Mon, 23 Jul 2018 16:16:58 -0700 (PDT)
+Date: Mon, 23 Jul 2018 16:16:49 -0700
+Message-Id: <20180723231649.84397-1-pshier@google.com>
+X-Mailer: git-send-email 2.18.0.233.g985f88cf7e-goog
+Subject: [PATCH] kvm: vmx: Move check for MSR bitmap support into
+ vmx_update_msr_bitmap
+From: Peter Shier <pshier@google.com>
+To: kvm@vger.kernel.org
+Cc: Peter Shier <pshier@google.com>
+Content-Type: text/plain; charset="UTF-8"
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+vmx_update_msr_bitmap should only run if the CPU supports the "use MSR
+bitmaps" VM-execution control. Some callers make the check but one does
+not. This change moves the check from the call sites into
+vmx_update_msr_bitmap to ensure that the check is always done.
+
+Signed-off-by: Peter Shier <pshier@google.com>
+Reviewed-by: Jim Mattson <jmattson@google.com>
+---
+ arch/x86/kvm/vmx.c | 25 +++++++++++++++----------
+ 1 file changed, 15 insertions(+), 10 deletions(-)
+
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 1689f433f3a08..e9744b6324d1d 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -3088,8 +3088,7 @@ static void setup_msrs(struct vcpu_vmx *vmx)
+ 
+ 	vmx->save_nmsrs = save_nmsrs;
+ 
+-	if (cpu_has_vmx_msr_bitmap())
+-		vmx_update_msr_bitmap(&vmx->vcpu);
++	vmx_update_msr_bitmap(&vmx->vcpu);
+ }
+ 
+ static u64 vmx_read_l1_tsc_offset(struct kvm_vcpu *vcpu)
+@@ -5726,10 +5725,18 @@ static void vmx_update_msr_bitmap_x2apic(unsigned long *msr_bitmap,
+ 
+ static void vmx_update_msr_bitmap(struct kvm_vcpu *vcpu)
+ {
+-	struct vcpu_vmx *vmx = to_vmx(vcpu);
+-	unsigned long *msr_bitmap = vmx->vmcs01.msr_bitmap;
+-	u8 mode = vmx_msr_bitmap_mode(vcpu);
+-	u8 changed = mode ^ vmx->msr_bitmap_mode;
++	struct vcpu_vmx *vmx;
++	unsigned long *msr_bitmap;
++	u8 mode;
++	u8 changed;
++
++	if (!cpu_has_vmx_msr_bitmap())
++		return;
++
++	vmx = to_vmx(vcpu);
++	msr_bitmap = vmx->vmcs01.msr_bitmap;
++	mode = vmx_msr_bitmap_mode(vcpu);
++	changed = mode ^ vmx->msr_bitmap_mode;
+ 
+ 	if (!changed)
+ 		return;
+@@ -5993,8 +6000,7 @@ static void vmx_refresh_apicv_exec_ctrl(struct kvm_vcpu *vcpu)
+ 					SECONDARY_EXEC_VIRTUAL_INTR_DELIVERY);
+ 	}
+ 
+-	if (cpu_has_vmx_msr_bitmap())
+-		vmx_update_msr_bitmap(vcpu);
++	vmx_update_msr_bitmap(vcpu);
+ }
+ 
+ static u32 vmx_exec_control(struct vcpu_vmx *vmx)
+@@ -12344,8 +12350,7 @@ static void load_vmcs12_host_state(struct kvm_vcpu *vcpu,
+ 	kvm_set_dr(vcpu, 7, 0x400);
+ 	vmcs_write64(GUEST_IA32_DEBUGCTL, 0);
+ 
+-	if (cpu_has_vmx_msr_bitmap())
+-		vmx_update_msr_bitmap(vcpu);
++	vmx_update_msr_bitmap(vcpu);
+ 
+ 	if (nested_vmx_load_msr(vcpu, vmcs12->vm_exit_msr_load_addr,
+ 				vmcs12->vm_exit_msr_load_count))

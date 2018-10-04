@@ -1,0 +1,283 @@
+From patchwork Tue Sep  4 18:42:58 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Patchwork-Submitter: Krish Sadhukhan <krish.sadhukhan@oracle.com>
+X-Patchwork-Id: 10587783
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id C567F13BB
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Tue,  4 Sep 2018 19:06:23 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B517129826
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Tue,  4 Sep 2018 19:06:23 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id A94A529D38; Tue,  4 Sep 2018 19:06:23 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI,
+	UNPARSEABLE_RELAY autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5AD6429826
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Tue,  4 Sep 2018 19:06:23 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1728031AbeIDXcs (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Tue, 4 Sep 2018 19:32:48 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:35598 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727781AbeIDXcr (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Tue, 4 Sep 2018 19:32:47 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id
+ w84J4PaA114180;
+        Tue, 4 Sep 2018 19:06:15 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com;
+ h=from : to : cc :
+ subject : date : message-id : in-reply-to : references : mime-version :
+ content-type : content-transfer-encoding; s=corp-2018-07-02;
+ bh=JNQHxN8KXakr1zJyz3bU+TpeQEK1a1sCv6nPY2RIXGQ=;
+ b=dpJ7+yrb43Feh8PobGsKPPphkTQPhdF0NkXPw56jQltgW1X92Udxi/3ysqxyQCXjobKp
+ rygZZ1gWZDz2eKJRDIeM3R9GI5bWp2wUgona+UAsZWK6eH5upLiZ7tkeItM0Z9dsLuNZ
+ XOfU2n4gtKFz+JZizzCtUtModmhenfVjsX28mY1SgUTSCvCOd3HVU3Iv9/YoiqwRcoJz
+ GA7Q0TWDVbYYNdaiLKDMcvDS7cBqnesXaFG7oTbG9blyuHWSHDAsdtelmsoFVpi0uAFF
+ FSdz59cjDPpEX5Xu/32bGt5DecOHEUxT4HuzEtOSKC39Y/gOCF3XpRdCMo5N1Q0qt4Cy hg==
+Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
+        by userp2130.oracle.com with ESMTP id 2m7j6tf770-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256
+ verify=OK);
+        Tue, 04 Sep 2018 19:06:15 +0000
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id w84J6EeJ028971
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256
+ verify=OK);
+        Tue, 4 Sep 2018 19:06:14 GMT
+Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id w84J6EvD000438;
+        Tue, 4 Sep 2018 19:06:14 GMT
+Received: from ban25x6uut29.us.oracle.com (/10.153.73.29)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Tue, 04 Sep 2018 12:06:13 -0700
+From: Krish Sadhukhan <krish.sadhukhan@oracle.com>
+To: kvm@vger.kernel.org
+Cc: pbonzini@redhat.com, rkrcmar@redhat.com, jmattson@google.com
+Subject: [PATCH 1/2][KVM] nVMX x86: Check VPID value on vmentry of L2 guests
+Date: Tue,  4 Sep 2018 14:42:58 -0400
+Message-Id: <20180904184259.12873-2-krish.sadhukhan@oracle.com>
+X-Mailer: git-send-email 2.9.5
+In-Reply-To: <20180904184259.12873-1-krish.sadhukhan@oracle.com>
+References: <20180904184259.12873-1-krish.sadhukhan@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9006
+ signatures=668708
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=1
+ malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=551
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1807170000 definitions=main-1809040191
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+According to section "Checks on VMX Controls" in Intel SDM vol 3C, the
+following check needs to be enforced on vmentry of L2 guests:
+
+    If the “enable VPID” VM-execution control is 1, the value of the
+    of the VPID VM-execution control field must not be 0000H.
+
+Signed-off-by: Krish Sadhukhan <krish.sadhukhan@oracle.com>
+Reviewed-by: Mark Kanda <mark.kanda@oracle.com>
+Reviewed-by: Liran Alon <liran.alon@oracle.com>
+Reviewed-by: Jim Mattson <jmattson@google.com>
+---
+ arch/x86/kvm/vmx.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 5d8e317..1396090 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -11591,6 +11591,9 @@ static int check_vmentry_prereqs(struct kvm_vcpu *vcpu, struct vmcs12 *vmcs12)
+ 	    vmcs12->guest_activity_state != GUEST_ACTIVITY_HLT)
+ 		return VMXERR_ENTRY_INVALID_CONTROL_FIELD;
+ 
++	if (nested_cpu_has_vpid(vmcs12) && !vmcs12->virtual_processor_id)
++		return VMXERR_ENTRY_INVALID_CONTROL_FIELD;
++
+ 	if (nested_vmx_check_io_bitmap_controls(vcpu, vmcs12))
+ 		return VMXERR_ENTRY_INVALID_CONTROL_FIELD;
+ 
+
+From patchwork Tue Sep  4 18:42:59 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Patchwork-Submitter: Krish Sadhukhan <krish.sadhukhan@oracle.com>
+X-Patchwork-Id: 10587785
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 1A9FA13BB
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Tue,  4 Sep 2018 19:06:25 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 0A45029826
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Tue,  4 Sep 2018 19:06:25 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id F1F8C29D38; Tue,  4 Sep 2018 19:06:24 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI,
+	UNPARSEABLE_RELAY autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9106729826
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Tue,  4 Sep 2018 19:06:24 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1728077AbeIDXct (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Tue, 4 Sep 2018 19:32:49 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:45716 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727781AbeIDXct (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Tue, 4 Sep 2018 19:32:49 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id
+ w84J3vU2099792;
+        Tue, 4 Sep 2018 19:06:15 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com;
+ h=from : to : cc :
+ subject : date : message-id : in-reply-to : references : mime-version :
+ content-type : content-transfer-encoding; s=corp-2018-07-02;
+ bh=ws0ZcSsklPvGdAVguYMI7/Sl+LRVcx/prHmm+LOtiLc=;
+ b=CPAR6mMz/iirNfumpxD+1cMYugI4phBLt0Hfz8v/gD8hyr6lIl59lA4kB6NTpXtjYn+j
+ zNuV63FeSmxEfmOB58rEhtcLCqCTbTOMf3P7syaCEqzARTjAVKuA5Gcw6h8r1Yv1onMK
+ JfDXjwJYFQONOg+650p9YaHKULZJUSJyHXNCCFudB+JwM2XVakvOIlQ8D1pFxnINnqxl
+ K+/4wIdwBlmVjQOK6BCD+wFDUfZnxA7aXxIynunZXM+2+4bZjyM+IsMZT5Iz24vBaRA5
+ lZ005Z4PMNyiCnazhKkrgFAWWjRA0X/4rD4J9CFuweyEQZoInC5PSfvVsrWHP1hfopGK 4g==
+Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
+        by userp2120.oracle.com with ESMTP id 2m7kdqf2dn-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256
+ verify=OK);
+        Tue, 04 Sep 2018 19:06:15 +0000
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id w84J6EI1006848
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256
+ verify=OK);
+        Tue, 4 Sep 2018 19:06:14 GMT
+Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id w84J6EIX022887;
+        Tue, 4 Sep 2018 19:06:14 GMT
+Received: from ban25x6uut29.us.oracle.com (/10.153.73.29)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Tue, 04 Sep 2018 12:06:14 -0700
+From: Krish Sadhukhan <krish.sadhukhan@oracle.com>
+To: kvm@vger.kernel.org
+Cc: pbonzini@redhat.com, rkrcmar@redhat.com, jmattson@google.com
+Subject: [PATCH 2/2][kvm-unit-test] nVMX x86: Check VPID value on vmentry of
+ L2 guests
+Date: Tue,  4 Sep 2018 14:42:59 -0400
+Message-Id: <20180904184259.12873-3-krish.sadhukhan@oracle.com>
+X-Mailer: git-send-email 2.9.5
+In-Reply-To: <20180904184259.12873-1-krish.sadhukhan@oracle.com>
+References: <20180904184259.12873-1-krish.sadhukhan@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9006
+ signatures=668708
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=1
+ malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=824
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1807170000 definitions=main-1809040191
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+According to section "Checks on VMX Controls" in Intel SDM vol 3C, the
+following check needs to be enforced on vmentry of L2 guests:
+
+    If the “enable VPID” VM-execution control is 1, the value of the
+    of the VPID VM-execution control field must not be 0000H.
+
+Signed-off-by: Krish Sadhukhan <krish.sadhukhan@oracle.com>
+Reviewed-by: Mark Kanda <mark.kanda@oracle.com>
+---
+ x86/vmx_tests.c | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 43 insertions(+)
+
+diff --git a/x86/vmx_tests.c b/x86/vmx_tests.c
+index 7a41732..99f4352 100644
+--- a/x86/vmx_tests.c
++++ b/x86/vmx_tests.c
+@@ -3757,6 +3757,48 @@ static void test_apic_ctls(void)
+ 	test_virtual_intr_ctls();
+ }
+ 
++/*
++ * If the “enable VPID” VM-execution control is 1, the value of the
++ * of the VPID VM-execution control field must not be 0000H.
++ * [Intel SDM]
++ */
++static void test_vpid(void)
++{
++	u32 saved_primary = vmcs_read(CPU_EXEC_CTRL0);
++	u32 saved_secondary = vmcs_read(CPU_EXEC_CTRL1);
++	u16 vpid = 0x0000;
++	int i;
++
++	if (!((ctrl_cpu_rev[0].clr & CPU_SECONDARY) &&
++	    (ctrl_cpu_rev[1].clr & CPU_VPID))) {
++		test_skip("Secondary controls and/or VPID not supported");
++		return;
++	}
++
++	vmcs_write(CPU_EXEC_CTRL0, saved_primary | CPU_SECONDARY);
++	vmcs_write(CPU_EXEC_CTRL1, saved_secondary & ~CPU_VPID);
++	vmcs_write(VPID, vpid);
++	report_prefix_pushf("VPID disabled; VPID value %x", vpid);
++	test_vmx_controls(true, false);
++	report_prefix_pop();
++
++	vmcs_write(CPU_EXEC_CTRL1, saved_secondary | CPU_VPID);
++	report_prefix_pushf("VPID enabled; VPID value %x", vpid);
++	test_vmx_controls(false, false);
++	report_prefix_pop();
++
++	for (i = 0; i < 16; i++) {
++		vpid = (short)1 << i;;
++		vmcs_write(VPID, vpid);
++		report_prefix_pushf("VPID enabled; VPID value %x", vpid);
++		test_vmx_controls(true, false);
++		report_prefix_pop();
++	}
++
++	vmcs_write(CPU_EXEC_CTRL0, saved_primary);
++	vmcs_write(CPU_EXEC_CTRL1, saved_secondary);
++}
++
+ static void set_vtpr(unsigned vtpr)
+ {
+ 	*(u32 *)phys_to_virt(vmcs_read(APIC_VIRT_ADDR) + APIC_TASKPRI) = vtpr;
+@@ -4304,6 +4346,7 @@ static void vmx_controls_test(void)
+ 	test_tpr_threshold();
+ 	test_nmi_ctrls();
+ 	test_invalid_event_injection();
++	test_vpid();
+ }
+ 
+ static bool valid_vmcs_for_vmentry(void)

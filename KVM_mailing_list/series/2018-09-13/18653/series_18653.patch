@@ -1,0 +1,316 @@
+From patchwork Thu Sep 13 13:47:40 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Liran Alon <liran.alon@oracle.com>
+X-Patchwork-Id: 10599635
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id E216E14E0
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Thu, 13 Sep 2018 14:13:08 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BF50A2847F
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Thu, 13 Sep 2018 14:13:08 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id B2EAD2848F; Thu, 13 Sep 2018 14:13:08 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI,
+	UNPARSEABLE_RELAY autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 644D828459
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Thu, 13 Sep 2018 14:13:07 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1730524AbeIMS6W (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Thu, 13 Sep 2018 14:58:22 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:49798 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730416AbeIMS6W (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Thu, 13 Sep 2018 14:58:22 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id
+ w8DDiAOA195208;
+        Thu, 13 Sep 2018 13:48:46 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com;
+ h=from : to : cc :
+ subject : date : message-id : in-reply-to : references; s=corp-2018-07-02;
+ bh=Z64wYMNZvMbmuPO4qlmf9Hn/2+e5tolH2gcO2dItR9o=;
+ b=lPn+NzRHQno6tL3rnlOUJ4DuzOMXJTwELcdAg67aAkq1yHI1ePfJ0c4TqosNmzBwRl66
+ ezIP7Hd8GweQ2Kewf/cATfJ3bp21J7nFvIWIh9DRxaQE2bcd6K36Hcl0lwy5r3OPR7Zm
+ xcmf66dlC/F2rbhqSBYIuTsWsZTnaJaWJbuyQhcfwfyJXH04CxW50VlcLhvyraCK4ecO
+ nABojL5TToKFGmEnBxDVfC6MT9M0D0G0VTo9IJ5WYGtYUAEfRM67NSZGRtsHWIIak9Wp
+ dx8LIy1NBJm7har1Z8p1TEpJCWsUS/1E7thdR3cglpWgmotbEIuZn9ZJ4KubNWIXaUc1 Ow==
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+        by userp2130.oracle.com with ESMTP id 2mc5utshrd-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256
+ verify=OK);
+        Thu, 13 Sep 2018 13:48:46 +0000
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id w8DDmkUh022676
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256
+ verify=OK);
+        Thu, 13 Sep 2018 13:48:46 GMT
+Received: from abhmp0008.oracle.com (abhmp0008.oracle.com [141.146.116.14])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id w8DDmjAa023370;
+        Thu, 13 Sep 2018 13:48:45 GMT
+Received: from spark.ravello.local (/213.57.127.2)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 13 Sep 2018 06:48:45 -0700
+From: Liran Alon <liran.alon@oracle.com>
+To: pbonzini@redhat.com, rkrcmar@redhat.com, kvm@vger.kernel.org
+Cc: idan.brown@oracle.com, Liran Alon <liran.alon@oracle.com>
+Subject: [PATCH v2 1/2] KVM: nVMX: Do not expose MPX VMX controls when guest
+ MPX disabled
+Date: Thu, 13 Sep 2018 16:47:40 +0300
+Message-Id: <20180913134741.19469-2-liran.alon@oracle.com>
+X-Mailer: git-send-email 2.16.1
+In-Reply-To: <20180913134741.19469-1-liran.alon@oracle.com>
+References: <20180913134741.19469-1-liran.alon@oracle.com>
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9014
+ signatures=668708
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=2
+ malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1807170000 definitions=main-1809130141
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+Before this commit, KVM exposes MPX VMX controls to L1 guest only based
+on if KVM and host processor supports MPX virtualization.
+However, these controls should be exposed to guest only in case guest
+vCPU supports MPX.
+
+Without this change, a L1 guest running with kernel which don't have
+commit 691bd4340bef ("kvm: vmx: allow host to access guest
+MSR_IA32_BNDCFGS") asserts in QEMU on the following:
+	qemu-kvm: error: failed to set MSR 0xd90 to 0x0
+	qemu-kvm: .../qemu-2.10.0/target/i386/kvm.c:1801 kvm_put_msrs:
+	Assertion 'ret == cpu->kvm_msr_buf->nmsrs failed'
+This is because L1 KVM kvm_init_msr_list() will see that
+vmx_mpx_supported() (As it only checks MPX VMX controls support) and
+therefore KVM_GET_MSR_INDEX_LIST IOCTL will include MSR_IA32_BNDCFGS.
+However, later when L1 will attempt to set this MSR via KVM_SET_MSRS
+IOCTL, it will fail because !guest_cpuid_has_mpx(vcpu).
+
+Therefore, fix the issue by exposing MPX VMX controls to L1 guest only
+when vCPU supports MPX.
+
+Fixes: 36be0b9deb23 ("KVM: x86: Add nested virtualization support for MPX")
+
+Reported-by: Eyal Moscovici <eyal.moscovici@oracle.com>
+Reviewed-by: Nikita Leshchenko <nikita.leshchenko@oracle.com>
+Reviewed-by: Darren Kenny <darren.kenny@oracle.com>
+Signed-off-by: Liran Alon <liran.alon@oracle.com>
+---
+ arch/x86/kvm/vmx.c | 26 ++++++++++++++++++++------
+ 1 file changed, 20 insertions(+), 6 deletions(-)
+
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index bf25317495da..6a82e603f2c5 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -3528,9 +3528,6 @@ static void nested_vmx_setup_ctls_msrs(struct nested_vmx_msrs *msrs, bool apicv)
+ 		VM_EXIT_LOAD_IA32_EFER | VM_EXIT_SAVE_IA32_EFER |
+ 		VM_EXIT_SAVE_VMX_PREEMPTION_TIMER | VM_EXIT_ACK_INTR_ON_EXIT;
+ 
+-	if (kvm_mpx_supported())
+-		msrs->exit_ctls_high |= VM_EXIT_CLEAR_BNDCFGS;
+-
+ 	/* We support free control of debug control saving. */
+ 	msrs->exit_ctls_low &= ~VM_EXIT_SAVE_DEBUG_CONTROLS;
+ 
+@@ -3547,8 +3544,6 @@ static void nested_vmx_setup_ctls_msrs(struct nested_vmx_msrs *msrs, bool apicv)
+ 		VM_ENTRY_LOAD_IA32_PAT;
+ 	msrs->entry_ctls_high |=
+ 		(VM_ENTRY_ALWAYSON_WITHOUT_TRUE_MSR | VM_ENTRY_LOAD_IA32_EFER);
+-	if (kvm_mpx_supported())
+-		msrs->entry_ctls_high |= VM_ENTRY_LOAD_BNDCFGS;
+ 
+ 	/* We support free control of debug control loading. */
+ 	msrs->entry_ctls_low &= ~VM_ENTRY_LOAD_DEBUG_CONTROLS;
+@@ -11235,6 +11230,23 @@ static void nested_vmx_cr_fixed1_bits_update(struct kvm_vcpu *vcpu)
+ #undef cr4_fixed1_update
+ }
+ 
++static void nested_vmx_entry_exit_ctls_update(struct kvm_vcpu *vcpu)
++{
++	struct vcpu_vmx *vmx = to_vmx(vcpu);
++
++	if (kvm_mpx_supported()) {
++		bool mpx_enabled = guest_cpuid_has(vcpu, X86_FEATURE_MPX);
++
++		if (mpx_enabled) {
++			vmx->nested.msrs.entry_ctls_high |= VM_ENTRY_LOAD_BNDCFGS;
++			vmx->nested.msrs.exit_ctls_high |= VM_EXIT_CLEAR_BNDCFGS;
++		} else {
++			vmx->nested.msrs.entry_ctls_high &= ~VM_ENTRY_LOAD_BNDCFGS;
++			vmx->nested.msrs.exit_ctls_high &= ~VM_EXIT_CLEAR_BNDCFGS;
++		}
++	}
++}
++
+ static void vmx_cpuid_update(struct kvm_vcpu *vcpu)
+ {
+ 	struct vcpu_vmx *vmx = to_vmx(vcpu);
+@@ -11251,8 +11263,10 @@ static void vmx_cpuid_update(struct kvm_vcpu *vcpu)
+ 		to_vmx(vcpu)->msr_ia32_feature_control_valid_bits &=
+ 			~FEATURE_CONTROL_VMXON_ENABLED_OUTSIDE_SMX;
+ 
+-	if (nested_vmx_allowed(vcpu))
++	if (nested_vmx_allowed(vcpu)) {
+ 		nested_vmx_cr_fixed1_bits_update(vcpu);
++		nested_vmx_entry_exit_ctls_update(vcpu);
++	}
+ }
+ 
+ static void vmx_set_supported_cpuid(u32 func, struct kvm_cpuid_entry2 *entry)
+
+From patchwork Thu Sep 13 13:47:41 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Liran Alon <liran.alon@oracle.com>
+X-Patchwork-Id: 10599583
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id A16A414DB
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Thu, 13 Sep 2018 13:48:54 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 909A72AF3C
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Thu, 13 Sep 2018 13:48:54 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 84E192AF40; Thu, 13 Sep 2018 13:48:54 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI,
+	UNPARSEABLE_RELAY autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6283F2AF3C
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Thu, 13 Sep 2018 13:48:53 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1730235AbeIMS6Z (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Thu, 13 Sep 2018 14:58:25 -0400
+Received: from aserp2120.oracle.com ([141.146.126.78]:48626 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730413AbeIMS6X (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Thu, 13 Sep 2018 14:58:23 -0400
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id
+ w8DDiJZP020281;
+        Thu, 13 Sep 2018 13:48:48 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com;
+ h=from : to : cc :
+ subject : date : message-id : in-reply-to : references; s=corp-2018-07-02;
+ bh=cZksvvvzH+eiI+JsdwUamPUT5dMV18VPepMWZBkPOF8=;
+ b=xr8ot3udogaE3e5Zqf90EyQg05SPvSiJ/8cIHDgn0YUPKJ5PBNHmo7jGu29dbJOq03LS
+ bndjQiyFLarGbYv2nx3YG2aTNcg7sSHLvNhGnaNvoXkkVZshlvTv64j1E5FJJCe93Pzv
+ BFu3k5jG0Cz6R+nEH6YzMzheG2DrK92EWHDZoqTELujRClxooC1doHa7RopykdfUYpr3
+ P154ZWjBk9Z897KhYWaVTi/0V7x92y4ne6T82H2h6pwxzkqINxVsPTsbIAJQ178Nx6yd
+ 6gK2fo+RDfdYdD62PknPc0uGUnwH+wEZanFYcMZQtkUlnWi+HJLrys/pcF6gPqXFyijO 9Q==
+Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
+        by aserp2120.oracle.com with ESMTP id 2mc6cq1gy8-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256
+ verify=OK);
+        Thu, 13 Sep 2018 13:48:48 +0000
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id w8DDmlui005300
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256
+ verify=OK);
+        Thu, 13 Sep 2018 13:48:47 GMT
+Received: from abhmp0008.oracle.com (abhmp0008.oracle.com [141.146.116.14])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id w8DDmlCu013695;
+        Thu, 13 Sep 2018 13:48:47 GMT
+Received: from spark.ravello.local (/213.57.127.2)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 13 Sep 2018 06:48:47 -0700
+From: Liran Alon <liran.alon@oracle.com>
+To: pbonzini@redhat.com, rkrcmar@redhat.com, kvm@vger.kernel.org
+Cc: idan.brown@oracle.com, Liran Alon <liran.alon@oracle.com>
+Subject: [PATCH v2 2/2] KVM: nVMX: Fix emulation of VM_ENTRY_LOAD_BNDCFGS
+Date: Thu, 13 Sep 2018 16:47:41 +0300
+Message-Id: <20180913134741.19469-3-liran.alon@oracle.com>
+X-Mailer: git-send-email 2.16.1
+In-Reply-To: <20180913134741.19469-1-liran.alon@oracle.com>
+References: <20180913134741.19469-1-liran.alon@oracle.com>
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9014
+ signatures=668708
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0
+ malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=939
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1807170000 definitions=main-1809130141
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+L2 IA32_BNDCFGS should be updated with vmcs12->guest_bndcfgs only
+when VM_ENTRY_LOAD_BNDCFGS is specified in vmcs12->vm_entry_controls.
+
+Otherwise, L2 IA32_BNDCFGS should be set to vmcs01->guest_bndcfgs which
+is L1 IA32_BNDCFGS.
+
+Reviewed-by: Nikita Leshchenko <nikita.leshchenko@oracle.com>
+Reviewed-by: Darren Kenny <darren.kenny@oracle.com>
+Signed-off-by: Liran Alon <liran.alon@oracle.com>
+---
+ arch/x86/kvm/vmx.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 6a82e603f2c5..cb4d196f5e1b 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -856,6 +856,7 @@ struct nested_vmx {
+ 
+ 	/* to migrate it to L2 if VM_ENTRY_LOAD_DEBUG_CONTROLS is off */
+ 	u64 vmcs01_debugctl;
++	u64 vmcs01_guest_bndcfgs;
+ 
+ 	u16 vpid02;
+ 	u16 last_vpid;
+@@ -12028,8 +12029,13 @@ static void prepare_vmcs02_full(struct kvm_vcpu *vcpu, struct vmcs12 *vmcs12)
+ 
+ 	set_cr4_guest_host_mask(vmx);
+ 
+-	if (vmx_mpx_supported())
+-		vmcs_write64(GUEST_BNDCFGS, vmcs12->guest_bndcfgs);
++	if (vmx_mpx_supported()) {
++		if (vmx->nested.nested_run_pending &&
++			(vmcs12->vm_entry_controls & VM_ENTRY_LOAD_BNDCFGS))
++			vmcs_write64(GUEST_BNDCFGS, vmcs12->guest_bndcfgs);
++		else
++			vmcs_write64(GUEST_BNDCFGS, vmx->nested.vmcs01_guest_bndcfgs);
++	}
+ 
+ 	if (enable_vpid) {
+ 		u16 vmcs02_vpid;
+@@ -12597,6 +12603,9 @@ static int enter_vmx_non_root_mode(struct kvm_vcpu *vcpu, u32 *exit_qual)
+ 
+ 	if (!(vmcs12->vm_entry_controls & VM_ENTRY_LOAD_DEBUG_CONTROLS))
+ 		vmx->nested.vmcs01_debugctl = vmcs_read64(GUEST_IA32_DEBUGCTL);
++	if (vmx_mpx_supported() &&
++		!(vmcs12->vm_entry_controls & VM_ENTRY_LOAD_BNDCFGS))
++		vmx->nested.vmcs01_guest_bndcfgs = vmcs_read64(GUEST_BNDCFGS);
+ 
+ 	vmx_switch_vmcs(vcpu, &vmx->nested.vmcs02);
+ 	vmx_segment_cache_clear(vmx);

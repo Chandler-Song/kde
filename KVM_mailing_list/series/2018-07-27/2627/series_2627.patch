@@ -1,0 +1,119 @@
+From patchwork Fri Jul 27 20:44:45 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Jim Mattson <jmattson@google.com>
+X-Patchwork-Id: 10547709
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 97DD514BC
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Fri, 27 Jul 2018 20:45:03 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 8815528947
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Fri, 27 Jul 2018 20:45:03 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 79CC92C4C7; Fri, 27 Jul 2018 20:45:03 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-15.5 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI,
+	USER_IN_DEF_DKIM_WL autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6317E28947
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Fri, 27 Jul 2018 20:45:02 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2389386AbeG0WIf (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Fri, 27 Jul 2018 18:08:35 -0400
+Received: from mail-qt0-f202.google.com ([209.85.216.202]:52191 "EHLO
+        mail-qt0-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731012AbeG0WIe (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Fri, 27 Jul 2018 18:08:34 -0400
+Received: by mail-qt0-f202.google.com with SMTP id x9-v6so4852918qto.18
+        for <kvm@vger.kernel.org>; Fri, 27 Jul 2018 13:45:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=date:message-id:mime-version:subject:from:to:cc;
+        bh=Nq3z35uv8w2qyJIei5hBJ2gcWDVh77JVGdpLNCQYYZ0=;
+        b=X5kglRlP/8be6RJunypMq7VattLjjCNwdMUo2iQg9BUfO8nMLc+H88HAERmp2GjURL
+         3nXLM7enMD5BwFJSPis14VDm0Un593pGS4WXeWRcoYLgbk06C9ChNlOzKZGDXcboPSd+
+         xrjTYYxq4YedelEYU/u4zVzP+L/7rz8NPVERvids8pC2bQwCll9sdYO9yL8pZNNC2fz2
+         76jwGzHeoLe2fdasGvw7NUPaAvHO7XLtH7/GhUYf+c3qo/Oh3HA+rT0E9O1G8z8eTwYV
+         YY6DYNLlt8Rf+Wx3YbCOe1ThcYCrY0hxxh1D0Ggfz9gBWuK6t9vpyKKrJ0+e3zaeq6SS
+         15Ww==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:message-id:mime-version:subject:from:to:cc;
+        bh=Nq3z35uv8w2qyJIei5hBJ2gcWDVh77JVGdpLNCQYYZ0=;
+        b=RMCCoNCA99+veOGedU4FXm1g2Y/uhRWfrVtkA1omlC6bKZMNE6sIT/FYgI1wU7KclA
+         vCODlnhvkn665SBpE1CEejoE6tPdXPNr68dKRxvj4/23LQBAD7q/vVKxVq1IcAhIIB1s
+         MHOcqu7r6yReYaEBj9ClEfw6dtij/4MC6q0EANEeLwOuQs16I5Rg4EaMwXGBUDnvPgOb
+         QAmOsUAMmVlDvPBxansN0twJIHbyIvVv4oWoPQLLDZ9sr3UEuYhwZzHLrA+eiyZfI00J
+         tHNrSNilWwLpXIXhQ2mi1aRB4h73/5gxzOTrzJ5cgP0TU/juJvc7VKTYXQsUixCRDV6E
+         fH/Q==
+X-Gm-Message-State: AOUpUlEl+A1Cy2bmPSfRiDN8hb4bRhTCWFsdABYsHiZJvA+cZyZkD+Qr
+        hepkZ73a7SaVFcnfvrDGTei1NhtVVFNghQZpRXGsUQ1a9Gbx5W/KDFEvJVEUMB0psz/npdfejrX
+        REWJhJyHOdCqEwJnDpykbAT7ElI2asb4I8LrYzcpruASRvL8DydzZp4ypzhfk4P0=
+X-Google-Smtp-Source: 
+ AAOMgpfU+cFO/RVNRFZkE2zF4VzDyawYndVWsP83SGlKXHsLJ9SJIpnWW/P+cWgbTfvz3TlsaCfNE3SpGaIUZg==
+X-Received: by 2002:a37:9a4c:: with SMTP id
+ c73-v6mr4457143qke.33.1532724299660;
+ Fri, 27 Jul 2018 13:44:59 -0700 (PDT)
+Date: Fri, 27 Jul 2018 13:44:45 -0700
+Message-Id: <20180727204445.46571-1-jmattson@google.com>
+Mime-Version: 1.0
+X-Mailer: git-send-email 2.18.0.345.g5c9ce644c3-goog
+Subject: [PATCH] kvm: nVMX: Fix fault priority for VMX operations
+From: Jim Mattson <jmattson@google.com>
+To: kvm@vger.kernel.org, Felix Wilhelm <fwilhelm@google.com>,
+        Paolo Bonzini <pbonzini@redhat.com>,
+        Eric Northup <digitaleric@google.com>
+Cc: Jim Mattson <jmattson@google.com>
+Content-Type: text/plain; charset="UTF-8"
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+When checking emulated VMX instructions for faults, the #UD for "IF
+(not in VMX operation)" should take precedence over the #GP for "ELSIF
+CPL > 0."
+
+Suggested-by: Eric Northup <digitaleric@google.com>
+Signed-off-by: Jim Mattson <jmattson@google.com>
+Reviewed-by: David Hildenbrand <david@redhat.com>
+---
+ arch/x86/kvm/vmx.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index cb51808c73206..6568ddf9e7e3b 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -8004,15 +8004,16 @@ static int handle_vmon(struct kvm_vcpu *vcpu)
+  */
+ static int nested_vmx_check_permission(struct kvm_vcpu *vcpu)
+ {
+-	if (vmx_get_cpl(vcpu)) {
+-		kvm_inject_gp(vcpu, 0);
++	if (!to_vmx(vcpu)->nested.vmxon) {
++		kvm_queue_exception(vcpu, UD_VECTOR);
+ 		return 0;
+ 	}
+ 
+-	if (!to_vmx(vcpu)->nested.vmxon) {
+-		kvm_queue_exception(vcpu, UD_VECTOR);
++	if (vmx_get_cpl(vcpu)) {
++		kvm_inject_gp(vcpu, 0);
+ 		return 0;
+ 	}
++
+ 	return 1;
+ }
+ 

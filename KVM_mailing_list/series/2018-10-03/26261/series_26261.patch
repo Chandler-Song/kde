@@ -1,0 +1,191 @@
+From patchwork Wed Oct  3 15:26:10 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Patchwork-Submitter: Paolo Bonzini <pbonzini@redhat.com>
+X-Patchwork-Id: 10625043
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id EB55913BB
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Wed,  3 Oct 2018 15:26:22 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D040B28E37
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Wed,  3 Oct 2018 15:26:22 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id C355828E3F; Wed,  3 Oct 2018 15:26:22 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-7.7 required=2.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 4FA9228E37
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Wed,  3 Oct 2018 15:26:22 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1726871AbeJCWPH (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Wed, 3 Oct 2018 18:15:07 -0400
+Received: from mail-wm1-f67.google.com ([209.85.128.67]:54705 "EHLO
+        mail-wm1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726748AbeJCWPH (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Wed, 3 Oct 2018 18:15:07 -0400
+Received: by mail-wm1-f67.google.com with SMTP id r63-v6so6147354wma.4;
+        Wed, 03 Oct 2018 08:26:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=5svFZIsdXV+syn4g/3GIQxoNUj58v1SSlLrDA1mRdpc=;
+        b=qvr0zzn07ucF8umccglw1q0XINIKYN1rUnnyQTTnsiiSaOJ6O3qEi0eJ6oO9/DlceQ
+         ahI/319qLQIn4BqOw3kGWMAGBKlWCEpSt8nMwhvcjWtlXmE15P/22GvfK9Jp22C0y5Je
+         1hjVdYTl5WLpXrksGcpAxqVMcMpbG7O1U6/IfmXeUVjwEzAHqfPHoqzBv1GFqVR931FL
+         jQIAYRYmDVDyWof74mg2hoq6yPPUC79uR9oIGGYphLUhgufTEGgvj2Yj+dylceormc4x
+         FEgwdtSZW74Tf/jbzYTGeVTP78RLHu5qR7fvue2DG3bekB4wAWQ6kwawnJalN3Pzek/W
+         tpnA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :mime-version:content-transfer-encoding;
+        bh=5svFZIsdXV+syn4g/3GIQxoNUj58v1SSlLrDA1mRdpc=;
+        b=OVV/W/79Cdk+N4VJJwhpM0ltybsapTG0JjqC5vbK9iG4RbxcIlhXTyBoXjjEHXjXFO
+         8tv5erh22SNew3LSoLoZeW+kjqjfOlvkExH9JJmJGyRvV1cvWG6M54IpRydo85aEEJoZ
+         oGANBr/06pbWJcZZ3vb4QMNFxD8yICoxwjR7DoOl9Ze04uEaiUW7pvuhnW8P72gIUhfU
+         3/VsdRnsfZw9+at2qmEoQPMWb5k82hgO0EyFNoZ1y/psB/8TowUtsnNqJrLyvdvEHdP3
+         nlxZJGiRaZ+RETs8nOIhhW9V2BOZnqHev9xXgO6I3FBDsxFMldQTSo2Sw+m4UzY7GHTm
+         3fzw==
+X-Gm-Message-State: ABuFfohB6rq3KJKZTBsLwJnIXgmDRecQtkXHNntCr/29FtsgwXAJVW4Q
+        BMTPyYymZIFjwtMVnFes+fDFiffd
+X-Google-Smtp-Source: 
+ ACcGV63nt5YJP6bAykwpa0PnxjK/6srIIbIWofStTEEgQtckMEmUUF+GJbo3zdwDUZD3qXfAxu46Xg==
+X-Received: by 2002:a1c:681:: with SMTP id 123-v6mr1804208wmg.7.1538580372310;
+        Wed, 03 Oct 2018 08:26:12 -0700 (PDT)
+Received: from 640k.lan (94-36-187-248.adsl-ull.clienti.tiscali.it.
+ [94.36.187.248])
+        by smtp.gmail.com with ESMTPSA id
+ e127-v6sm1223991wmg.45.2018.10.03.08.26.11
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 03 Oct 2018 08:26:11 -0700 (PDT)
+From: Paolo Bonzini <pbonzini@redhat.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org
+Cc: Nikita Leshchenko <nikita.leshchenko@oracle.com>,
+ Sean Christopherson <sean.j.christopherson@intel.com>,
+ Liran Alon <liran.alon@oracle.com>,
+ =?utf-8?b?UmFkaW0gS3LEjW3DocWZ?= <rkrcmar@redhat.com>
+Subject: [PATCH v2] kvm: nVMX: fix entry with pending interrupt if APICv is
+ enabled
+Date: Wed,  3 Oct 2018 17:26:10 +0200
+Message-Id: <1538580370-9634-1-git-send-email-pbonzini@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+Commit b5861e5cf2fcf83031ea3e26b0a69d887adf7d21 introduced a check on
+the interrupt-window and NMI-window CPU execution controls in order to
+inject an external interrupt vmexit before the first guest instruction
+executes.  However, when APIC virtualization is enabled the host does not
+need a vmexit in order to inject an interrupt at the next interrupt window;
+instead, it just places the interrupt vector in RVI and the processor will
+inject it as soon as possible.  Therefore, on machines with APICv it is
+not enough to check the CPU execution controls: the same scenario can also
+happen if RVI>0.
+
+Fixes: b5861e5cf2fcf83031ea3e26b0a69d887adf7d21
+Cc: Nikita Leshchenko <nikita.leshchenko@oracle.com>
+Cc: Sean Christopherson <sean.j.christopherson@intel.com>
+Cc: Liran Alon <liran.alon@oracle.com>
+Cc: Radim Krčmář <rkrcmar@redhat.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+Reviewed-by: Nikita Leshenko <nikita.leshchenko@oracle.com>
+---
+ arch/x86/kvm/vmx.c | 38 ++++++++++++++++++++++++++------------
+ 1 file changed, 26 insertions(+), 12 deletions(-)
+
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 6ef2d5b139b9..c7ae8ea87bc4 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -6162,6 +6162,11 @@ static void vmx_complete_nested_posted_interrupt(struct kvm_vcpu *vcpu)
+ 	nested_mark_vmcs12_pages_dirty(vcpu);
+ }
+ 
++static u8 vmx_get_rvi(void)
++{
++	return vmcs_read16(GUEST_INTR_STATUS) & 0xff;
++}
++
+ static bool vmx_guest_apic_has_interrupt(struct kvm_vcpu *vcpu)
+ {
+ 	struct vcpu_vmx *vmx = to_vmx(vcpu);
+@@ -6174,7 +6179,7 @@ static bool vmx_guest_apic_has_interrupt(struct kvm_vcpu *vcpu)
+ 		WARN_ON_ONCE(!vmx->nested.virtual_apic_page))
+ 		return false;
+ 
+-	rvi = vmcs_read16(GUEST_INTR_STATUS) & 0xff;
++	rvi = vmx_get_rvi();
+ 
+ 	vapic_page = kmap(vmx->nested.virtual_apic_page);
+ 	vppr = *((u32 *)(vapic_page + APIC_PROCPRI));
+@@ -10349,6 +10354,14 @@ static int vmx_sync_pir_to_irr(struct kvm_vcpu *vcpu)
+ 	return max_irr;
+ }
+ 
++static u8 vmx_has_apicv_interrupt(struct kvm_vcpu *vcpu)
++{
++	u8 rvi = vmx_get_rvi();
++	u8 vppr = kvm_lapic_get_reg(vcpu->arch.apic, APIC_PROCPRI);
++
++	return ((rvi & 0xf0) > (vppr & 0xf0));
++}
++
+ static void vmx_load_eoi_exitmap(struct kvm_vcpu *vcpu, u64 *eoi_exit_bitmap)
+ {
+ 	if (!kvm_vcpu_apicv_active(vcpu))
+@@ -12593,10 +12606,13 @@ static int enter_vmx_non_root_mode(struct kvm_vcpu *vcpu, u32 *exit_qual)
+ 	struct vmcs12 *vmcs12 = get_vmcs12(vcpu);
+ 	bool from_vmentry = !!exit_qual;
+ 	u32 dummy_exit_qual;
+-	u32 vmcs01_cpu_exec_ctrl;
++	bool evaluate_pending_interrupts;
+ 	int r = 0;
+ 
+-	vmcs01_cpu_exec_ctrl = vmcs_read32(CPU_BASED_VM_EXEC_CONTROL);
++	evaluate_pending_interrupts = vmcs_read32(CPU_BASED_VM_EXEC_CONTROL) &
++		(CPU_BASED_VIRTUAL_INTR_PENDING | CPU_BASED_VIRTUAL_NMI_PENDING);
++	if (likely(!evaluate_pending_interrupts) && kvm_vcpu_apicv_active(vcpu))
++		evaluate_pending_interrupts |= vmx_has_apicv_interrupt(vcpu);
+ 
+ 	enter_guest_mode(vcpu);
+ 
+@@ -12644,16 +12660,14 @@ static int enter_vmx_non_root_mode(struct kvm_vcpu *vcpu, u32 *exit_qual)
+ 	 * to L1 or delivered directly to L2 (e.g. In case L1 don't
+ 	 * intercept EXTERNAL_INTERRUPT).
+ 	 *
+-	 * Usually this would be handled by L0 requesting a
+-	 * IRQ/NMI window by setting VMCS accordingly. However,
+-	 * this setting was done on VMCS01 and now VMCS02 is active
+-	 * instead. Thus, we force L0 to perform pending event
+-	 * evaluation by requesting a KVM_REQ_EVENT.
+-	 */
+-	if (vmcs01_cpu_exec_ctrl &
+-		(CPU_BASED_VIRTUAL_INTR_PENDING | CPU_BASED_VIRTUAL_NMI_PENDING)) {
++	 * Usually this would be handled by the processor noticing an
++	 * IRQ/NMI window request, or checking RVI during evaluation of
++	 * pending virtual interrupts.  However, this setting was done
++	 * on VMCS01 and now VMCS02 is active instead. Thus, we force L0
++	 * to perform pending event evaluation by requesting a KVM_REQ_EVENT.
++	 */
++	if (unlikely(evaluate_pending_interrupts))
+ 		kvm_make_request(KVM_REQ_EVENT, vcpu);
+-	}
+ 
+ 	/*
+ 	 * Note no nested_vmx_succeed or nested_vmx_fail here. At this point

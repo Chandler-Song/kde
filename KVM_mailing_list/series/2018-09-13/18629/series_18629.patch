@@ -1,0 +1,107 @@
+From patchwork Thu Sep 13 13:15:29 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Geert Uytterhoeven <geert+renesas@glider.be>
+X-Patchwork-Id: 10599529
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id ED7A814BD
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Thu, 13 Sep 2018 13:15:39 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id DB8322AD3D
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Thu, 13 Sep 2018 13:15:39 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id CF98B2AD64; Thu, 13 Sep 2018 13:15:39 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-7.9 required=2.0 tests=BAYES_00,MAILING_LIST_MULTI,
+	RCVD_IN_DNSWL_HI autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 7121B2AD3D
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Thu, 13 Sep 2018 13:15:39 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1727152AbeIMSZD (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Thu, 13 Sep 2018 14:25:03 -0400
+Received: from michel.telenet-ops.be ([195.130.137.88]:54200 "EHLO
+        michel.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727002AbeIMSZD (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Thu, 13 Sep 2018 14:25:03 -0400
+Received: from ramsan.of.borg ([84.194.111.163])
+        by michel.telenet-ops.be with bizsmtp
+        id b1FY1y0043XaVaC061FY3S; Thu, 13 Sep 2018 15:15:36 +0200
+Received: from rox.of.borg ([192.168.97.57])
+        by ramsan.of.borg with esmtp (Exim 4.86_2)
+        (envelope-from <geert@linux-m68k.org>)
+        id 1g0RT1-0005h3-Ui; Thu, 13 Sep 2018 15:15:31 +0200
+Received: from geert by rox.of.borg with local (Exim 4.90_1)
+        (envelope-from <geert@linux-m68k.org>)
+        id 1g0RT1-00035h-SB; Thu, 13 Sep 2018 15:15:31 +0200
+From: Geert Uytterhoeven <geert+renesas@glider.be>
+To: Alex Williamson <alex.williamson@redhat.com>,
+        Robin Murphy <robin.murphy@arm.com>,
+        Jean-Philippe Brucker <jean-philippe.brucker@arm.com>
+Cc: Magnus Damm <magnus.damm@gmail.com>,
+        Laurent Pinchart <laurent.pinchart+renesas@ideasonboard.com>,
+        David Howells <dhowells@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Stephen Rothwell <sfr@canb.auug.org.au>, kvm@vger.kernel.org,
+        iommu@lists.linux-foundation.org,
+        linux-renesas-soc@vger.kernel.org,
+        Geert Uytterhoeven <geert+renesas@glider.be>
+Subject: [PATCH v2] drivers/vfio: Allow type-1 IOMMU instantiation with all
+ ARM/ARM64 IOMMUs
+Date: Thu, 13 Sep 2018 15:15:29 +0200
+Message-Id: <20180913131529.11837-1-geert+renesas@glider.be>
+X-Mailer: git-send-email 2.17.1
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+Currently the type-1 IOMMU instantiation depends on "ARM_SMMU ||
+ARM_SMMU_V3", while it applies to other ARM/ARM64 platforms with an
+IOMMU (e.g. Renesas VMSA-compatible IPMMUs).
+
+Instead of extending the list of IOMMU types on ARM platforms, replace
+the list by "ARM || ARM64", like other architectures do.  The feature is
+still restricted to ARM/ARM64 platforms with an IOMMU by the dependency
+on IOMMU_API.
+
+Signed-off-by: Geert Uytterhoeven <geert+renesas@glider.be>
+Reviewed-by: Robin Murphy <robin.murphy@arm.com>
+Reviewed-by: Simon Horman <horms+renesas@verge.net.au>
+---
+Tested with sata_rcar on Renesas R-Car H3 ES2.0.
+
+This causes a trivial merge conflict with commit c01eaa95ad30897b ("Make
+anon_inodes unconditional") in vfs/for-next.
+
+v2:
+  - Make the feature just depend on ARM || ARM64, instead of adding yet
+    another IPMMU_VMSA dependency, as suggested by Robin Murphy
+    <robin.murphy@arm.com>.
+---
+ drivers/vfio/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/vfio/Kconfig b/drivers/vfio/Kconfig
+index c84333eb5eb59bef..9de5ed38da830a91 100644
+--- a/drivers/vfio/Kconfig
++++ b/drivers/vfio/Kconfig
+@@ -21,7 +21,7 @@ config VFIO_VIRQFD
+ menuconfig VFIO
+ 	tristate "VFIO Non-Privileged userspace driver framework"
+ 	depends on IOMMU_API
+-	select VFIO_IOMMU_TYPE1 if (X86 || S390 || ARM_SMMU || ARM_SMMU_V3)
++	select VFIO_IOMMU_TYPE1 if (X86 || S390 || ARM || ARM64)
+ 	select ANON_INODES
+ 	help
+ 	  VFIO provides a framework for secure userspace device drivers.

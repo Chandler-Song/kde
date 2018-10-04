@@ -1,0 +1,214 @@
+From patchwork Mon Sep 24 15:38:39 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Paolo Bonzini <pbonzini@redhat.com>
+X-Patchwork-Id: 10612643
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 5300E112B
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 24 Sep 2018 15:38:50 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 48F0C2A163
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 24 Sep 2018 15:38:50 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 3D5D82A168; Mon, 24 Sep 2018 15:38:50 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-7.8 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI,T_DKIM_INVALID autolearn=ham
+ version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B28912A163
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 24 Sep 2018 15:38:49 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1729744AbeIXVl2 (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 24 Sep 2018 17:41:28 -0400
+Received: from mail-wr1-f65.google.com ([209.85.221.65]:39830 "EHLO
+        mail-wr1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726400AbeIXVl2 (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 24 Sep 2018 17:41:28 -0400
+Received: by mail-wr1-f65.google.com with SMTP id s14-v6so20151287wrw.6;
+        Mon, 24 Sep 2018 08:38:42 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:from:to:cc:subject:date:message-id;
+        bh=o3FyP2jco71996jGdaIIk834N/BVDrFl+zt7fThFWA8=;
+        b=oyoXxFahIyuL2b2feYmDejrMFuuT3Ku2ZS6p8exy//NmGzeQV8qX1JaDuv7sYylreG
+         EPX4Nh5x+zhiFP6s5rKJBkpvcM71bDCgiSsKiVPyUOB+XxC8vwhT16PUdwCvfR/YCMi6
+         5zV4g4t7nvci0tfVqd2MWunPNONeAY1SzXRETCcd4KByNf4R39ARaTO5CjeWXtoaigf4
+         1ZqCl27uX9PEojhg56Tkuqz1YY9hAO5R180bsOFjsjvmo5z0pojYtj6d1lvegsDmExLF
+         Tqpdu0/kDZQkh6pHwMBkeIKdYRpiv9Gy+cfqPqg/Hd1cZTdBjFSUxyZubvJVCa/WBKC5
+         DPGA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id;
+        bh=o3FyP2jco71996jGdaIIk834N/BVDrFl+zt7fThFWA8=;
+        b=qQh9cjdcyR19cCKJ/U8ntDN5ZTQtrl4CO2HrHjMfsClfVNnViZb+RTbakIHuEH9i8j
+         2xdhIPbp75UV08+iqoLLhHXe+tk4NZ1gn0J/xeqshyjejVtjB0uZR8ARDPxwoVBxKpSJ
+         quv8D/n457qbj5w5ONhzkbUluKkVpC5oX2ZCtph8owT/OUEONNva95KM54AdI8aszk6h
+         RmSKK5rcDHRHmGFYvGWScd8aAjqw11hIptP0oVP8FqqhpnYpIAa1SNS8srx+Pk1SrSlO
+         PQtUoH+QCBPu86F46QSg0+JrZoEQEzGqjNYwTwZAMHOl1FeZ092E804Sm0Ky3V4UC5+Z
+         EZfA==
+X-Gm-Message-State: ABuFfoh07OddEIDOh4pVcEcB8TA7bwXJOZ6sw2V/89X5257Zfq7RHt16
+        z6pLzOR8vU6x5UKMaNFlgh31v2/s
+X-Google-Smtp-Source: 
+ ACcGV63jK+zl3kpye4mMlZtrx0Tp4d5WSqQO+sz5AjFsdKBKjL6Faa7jXBu8zbf/cfAtFJGmfd5BOg==
+X-Received: by 2002:a5d:51ce:: with SMTP id
+ n14-v6mr9066337wrv.107.1537803521118;
+        Mon, 24 Sep 2018 08:38:41 -0700 (PDT)
+Received: from 640k.lan (94-36-187-248.adsl-ull.clienti.tiscali.it.
+ [94.36.187.248])
+        by smtp.gmail.com with ESMTPSA id
+ x15-v6sm29421152wrt.53.2018.09.24.08.38.40
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 24 Sep 2018 08:38:40 -0700 (PDT)
+From: Paolo Bonzini <pbonzini@redhat.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org
+Cc: Sean Christopherson <sean.j.christopherson@intel.com>
+Subject: [PATCH] KVM: x86: never trap MSR_KERNEL_GS_BASE
+Date: Mon, 24 Sep 2018 17:38:39 +0200
+Message-Id: <1537803519-17941-1-git-send-email-pbonzini@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+KVM has an old optimization whereby accesses to the kernel GS base MSR
+are trapped when the guest is in 32-bit and not when it is in 64-bit mode.
+The idea is that swapgs is not available in 32-bit mode and thus the
+guest has no reason to access the MSR unless in 64-bit mode.  Therefore
+32-bit applications need not pay the price of switching the kernel GS
+base between the host and the guest values, 64-bit applications.
+
+However, this optimization adds complexity to the code for little
+benefit (these days most guests are going to be 64-bit anyway) and in fact
+broke after commit 678e315e78a7 ("KVM: vmx: add dedicated utility to
+access guest's kernel_gs_base", 2018-08-06); the guest kernel GS base
+can be corrupted across SMIs and UEFI Secure Boot is therefore broken
+(a secure boot Linux guest, for example, fails to reach the login prompt
+about half the time).  This patch just removes the optimization; the
+kernel GS base MSR is now never trapped by KVM, similarly to the FS and
+GS base MSRs.
+
+Fixes: 678e315e78a780dbef384b92339c8414309dbc11
+Cc: Sean Christopherson <sean.j.christopherson@intel.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+Reviewed-by: Sean Christopherson <sean.j.christopherson@intel.com>
+---
+ arch/x86/kvm/vmx.c | 47 ++++++++++-------------------------------------
+ 1 file changed, 10 insertions(+), 37 deletions(-)
+
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 06412ba46aa3..8b066480224b 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -121,7 +121,6 @@
+ 
+ #define MSR_BITMAP_MODE_X2APIC		1
+ #define MSR_BITMAP_MODE_X2APIC_APICV	2
+-#define MSR_BITMAP_MODE_LM		4
+ 
+ #define KVM_VMX_TSC_MULTIPLIER_MAX     0xffffffffffffffffULL
+ 
+@@ -2899,8 +2898,7 @@ static void vmx_prepare_switch_to_guest(struct kvm_vcpu *vcpu)
+ 		vmx->msr_host_kernel_gs_base = read_msr(MSR_KERNEL_GS_BASE);
+ 	}
+ 
+-	if (is_long_mode(&vmx->vcpu))
+-		wrmsrl(MSR_KERNEL_GS_BASE, vmx->msr_guest_kernel_gs_base);
++	wrmsrl(MSR_KERNEL_GS_BASE, vmx->msr_guest_kernel_gs_base);
+ #else
+ 	savesegment(fs, fs_sel);
+ 	savesegment(gs, gs_sel);
+@@ -2951,8 +2949,7 @@ static void vmx_prepare_switch_to_host(struct vcpu_vmx *vmx)
+ 	vmx->loaded_cpu_state = NULL;
+ 
+ #ifdef CONFIG_X86_64
+-	if (is_long_mode(&vmx->vcpu))
+-		rdmsrl(MSR_KERNEL_GS_BASE, vmx->msr_guest_kernel_gs_base);
++	rdmsrl(MSR_KERNEL_GS_BASE, vmx->msr_guest_kernel_gs_base);
+ #endif
+ 	if (host_state->ldt_sel || (host_state->gs_sel & 7)) {
+ 		kvm_load_ldt(host_state->ldt_sel);
+@@ -2980,24 +2977,19 @@ static void vmx_prepare_switch_to_host(struct vcpu_vmx *vmx)
+ #ifdef CONFIG_X86_64
+ static u64 vmx_read_guest_kernel_gs_base(struct vcpu_vmx *vmx)
+ {
+-	if (is_long_mode(&vmx->vcpu)) {
+-		preempt_disable();
+-		if (vmx->loaded_cpu_state)
+-			rdmsrl(MSR_KERNEL_GS_BASE,
+-			       vmx->msr_guest_kernel_gs_base);
+-		preempt_enable();
+-	}
++	preempt_disable();
++	if (vmx->loaded_cpu_state)
++		rdmsrl(MSR_KERNEL_GS_BASE, vmx->msr_guest_kernel_gs_base);
++	preempt_enable();
+ 	return vmx->msr_guest_kernel_gs_base;
+ }
+ 
+ static void vmx_write_guest_kernel_gs_base(struct vcpu_vmx *vmx, u64 data)
+ {
+-	if (is_long_mode(&vmx->vcpu)) {
+-		preempt_disable();
+-		if (vmx->loaded_cpu_state)
+-			wrmsrl(MSR_KERNEL_GS_BASE, data);
+-		preempt_enable();
+-	}
++	preempt_disable();
++	if (vmx->loaded_cpu_state)
++		wrmsrl(MSR_KERNEL_GS_BASE, data);
++	preempt_enable();
+ 	vmx->msr_guest_kernel_gs_base = data;
+ }
+ #endif
+@@ -5073,19 +5065,6 @@ static void vmx_set_efer(struct kvm_vcpu *vcpu, u64 efer)
+ 	if (!msr)
+ 		return;
+ 
+-	/*
+-	 * MSR_KERNEL_GS_BASE is not intercepted when the guest is in
+-	 * 64-bit mode as a 64-bit kernel may frequently access the
+-	 * MSR.  This means we need to manually save/restore the MSR
+-	 * when switching between guest and host state, but only if
+-	 * the guest is in 64-bit mode.  Sync our cached value if the
+-	 * guest is transitioning to 32-bit mode and the CPU contains
+-	 * guest state, i.e. the cache is stale.
+-	 */
+-#ifdef CONFIG_X86_64
+-	if (!(efer & EFER_LMA))
+-		(void)vmx_read_guest_kernel_gs_base(vmx);
+-#endif
+ 	vcpu->arch.efer = efer;
+ 	if (efer & EFER_LMA) {
+ 		vm_entry_controls_setbit(to_vmx(vcpu), VM_ENTRY_IA32E_MODE);
+@@ -6078,9 +6057,6 @@ static u8 vmx_msr_bitmap_mode(struct kvm_vcpu *vcpu)
+ 			mode |= MSR_BITMAP_MODE_X2APIC_APICV;
+ 	}
+ 
+-	if (is_long_mode(vcpu))
+-		mode |= MSR_BITMAP_MODE_LM;
+-
+ 	return mode;
+ }
+ 
+@@ -6121,9 +6097,6 @@ static void vmx_update_msr_bitmap(struct kvm_vcpu *vcpu)
+ 	if (!changed)
+ 		return;
+ 
+-	vmx_set_intercept_for_msr(msr_bitmap, MSR_KERNEL_GS_BASE, MSR_TYPE_RW,
+-				  !(mode & MSR_BITMAP_MODE_LM));
+-
+ 	if (changed & (MSR_BITMAP_MODE_X2APIC | MSR_BITMAP_MODE_X2APIC_APICV))
+ 		vmx_update_msr_bitmap_x2apic(msr_bitmap, mode);
+ 

@@ -1,0 +1,200 @@
+From patchwork Mon Aug  6 22:54:14 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Peter Shier <pshier@google.com>
+X-Patchwork-Id: 10558089
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 11DB613AC
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon,  6 Aug 2018 22:54:26 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 00371294DB
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon,  6 Aug 2018 22:54:25 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id E87672984B; Mon,  6 Aug 2018 22:54:25 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-15.5 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI,
+	USER_IN_DEF_DKIM_WL autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 749B7294DB
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon,  6 Aug 2018 22:54:25 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1733295AbeHGBFk (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 6 Aug 2018 21:05:40 -0400
+Received: from mail-yw1-f74.google.com ([209.85.161.74]:42888 "EHLO
+        mail-yw1-f74.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732135AbeHGBFk (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 6 Aug 2018 21:05:40 -0400
+Received: by mail-yw1-f74.google.com with SMTP id r144-v6so2466502ywg.9
+        for <kvm@vger.kernel.org>; Mon, 06 Aug 2018 15:54:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=date:message-id:mime-version:subject:from:to:cc;
+        bh=1ibQcXfTQcQdU4gH6QdMpGwq7phLNF2JMCtHD/5+Unc=;
+        b=NotFNp6tZBLOMRMXgOyLQmKeEyfbfHRprenwa2jAXJy5dBcYgPRxYYBrMfR2mLfrrn
+         4TPyxXsxpfFy2QOikI6ER1IiKVeB4hAuuw6t9Tq7E2DKS2o73LSAK+42vnDVG1zGTTas
+         NlOGLM0B9uTSRK8Cb0I9bXpITCDdMwG4ZGTHhawodFBFOjY4c4GU6RRntGUl/3N6jFGJ
+         MHjGntSwwau5UbdcyajnV2XWW8mhHRnXnaXhZq6t6bqQjHU7eNL/1hTtf2lQlnJWuTg4
+         NhePCnv3De+ttiOSttwlPpzxIDQXX1CtrN3o2m19PtV3dBs4BN795LUwZ9Zr1qdlNWSY
+         FDhg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:message-id:mime-version:subject:from:to:cc;
+        bh=1ibQcXfTQcQdU4gH6QdMpGwq7phLNF2JMCtHD/5+Unc=;
+        b=AO0b9YykAXukhmMtR0wzgCvMWZWzFHellTcFCO4McFXzLzjHJMSKQDZWGEHgydOiL0
+         8Qbu/OzMVA9G7PTGtHouvkVJQj5FKL6yi19RlrC3NsURzuj+ArUU4ZsI7rg2zxJXz9Z6
+         e8tRqRcuaW5vD8q1dgUnP2zqmCfyIqcdw6CpwXXfwuJ/tkPVSUjzM2UMMu1QfoRfKEgn
+         ZSXtnAM/zXnN7x7q6RYcb6p7NiMOdsEG35/yFk+IONmCVjWGTiveXokDfXjDlx3EQ/SB
+         HLY66Rm5l6PZxOfRCa/SiCv/WekFO1hdZDySabQIXuk5QfAVrVSGNl5ChjxfHvJyfHLT
+         rfwg==
+X-Gm-Message-State: AOUpUlHk/rwW91KHYzWDOYahvNfe0D3ga1DUYJtllK0/LU1PrJKbNh2q
+        CgNCgS6KVbYYQAoY3auFCV3av6GlZlB9BYtQfpp8VCuFwtfj7a5CfSlrCfNYG9hIiV1+WL19K7d
+        Qg+n5jimE8ECDigUOKndjCw35qEPnaKHVkWhZ3ioWmpLmP1a9Qpfetwh7bA==
+X-Google-Smtp-Source: 
+ AAOMgpfRccKYXTZPXd7zO22BSqsB52gYiPcMrTqD+CymPY4UPTkzUz4k40iy/ozCQ/3kSyRbMIQN2g+BXq0=
+X-Received: by 2002:a5b:80e:: with SMTP id x14-v6mr4777196ybp.4.1533596062905;
+ Mon, 06 Aug 2018 15:54:22 -0700 (PDT)
+Date: Mon,  6 Aug 2018 15:54:14 -0700
+Message-Id: <20180806225414.137991-1-pshier@google.com>
+Mime-Version: 1.0
+X-Mailer: git-send-email 2.18.0.597.ga71716f1ad-goog
+Subject: [PATCH] kvm: x86 mmu: avoid mmu_page_hash lookup for direct_map-only
+ VM
+From: Peter Shier <pshier@google.com>
+To: kvm@vger.kernel.org
+Cc: Peter Feiner <pfeiner@google.com>, Peter Shier <pshier@google.com>
+Content-Type: text/plain; charset="UTF-8"
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+From: Peter Feiner <pfeiner@google.com>
+
+Optimization for avoiding lookups in mmu_page_hash. When there's a
+single direct root, a shadow page has at most one parent SPTE
+(non-root SPs have exactly one; the root has none). Thus, if an SPTE
+is non-present, it can be linked to a newly allocated SP without
+first checking if the SP already exists.
+
+Signed-off-by: Peter Feiner <pfeiner@google.com>
+Signed-off-by: Peter Shier <pshier@google.com>
+Reviewed-by: Jim Mattson <jmattson@google.com>
+---
+ arch/x86/include/asm/kvm_host.h | 13 ++++++++
+ arch/x86/kvm/mmu.c              | 55 +++++++++++++++++++--------------
+ 2 files changed, 45 insertions(+), 23 deletions(-)
+
+diff --git a/arch/x86/include/asm/kvm_host.h b/arch/x86/include/asm/kvm_host.h
+index c18958ef17d2c..b214788397b7f 100644
+--- a/arch/x86/include/asm/kvm_host.h
++++ b/arch/x86/include/asm/kvm_host.h
+@@ -800,6 +800,19 @@ struct kvm_arch {
+ 	struct kvm_page_track_notifier_node mmu_sp_tracker;
+ 	struct kvm_page_track_notifier_head track_notifier_head;
+ 
++	/*
++	 * Optimization for avoiding lookups in mmu_page_hash. When there's a
++	 * single direct root, a shadow page has at most one parent SPTE
++	 * (non-root SPs have exactly one; the root has none). Thus, if an SPTE
++	 * is non-present, it can be linked to a newly allocated SP without
++	 * first checking if the SP already exists.
++	 *
++	 * False initially because there are no indirect roots.
++	 *
++	 * Guarded by mmu_lock.
++	 */
++	bool shadow_page_may_have_multiple_parents;
++
+ 	struct list_head assigned_dev_head;
+ 	struct iommu_domain *iommu_domain;
+ 	bool iommu_noncoherent;
+diff --git a/arch/x86/kvm/mmu.c b/arch/x86/kvm/mmu.c
+index f5aef52b148bf..7307cf76cddc8 100644
+--- a/arch/x86/kvm/mmu.c
++++ b/arch/x86/kvm/mmu.c
+@@ -2343,35 +2343,40 @@ static struct kvm_mmu_page *kvm_mmu_get_page(struct kvm_vcpu *vcpu,
+ 		quadrant &= (1 << ((PT32_PT_BITS - PT64_PT_BITS) * level)) - 1;
+ 		role.quadrant = quadrant;
+ 	}
+-	for_each_valid_sp(vcpu->kvm, sp, gfn) {
+-		if (sp->gfn != gfn) {
+-			collisions++;
+-			continue;
+-		}
+ 
+-		if (!need_sync && sp->unsync)
+-			need_sync = true;
++	if (vcpu->kvm->arch.shadow_page_may_have_multiple_parents ||
++	    level == vcpu->arch.mmu.root_level) {
++		for_each_valid_sp(vcpu->kvm, sp, gfn) {
++			if (sp->gfn != gfn) {
++				collisions++;
++				continue;
++			}
+ 
+-		if (sp->role.word != role.word)
+-			continue;
++			if (!need_sync && sp->unsync)
++				need_sync = true;
+ 
+-		if (sp->unsync) {
+-			/* The page is good, but __kvm_sync_page might still end
+-			 * up zapping it.  If so, break in order to rebuild it.
+-			 */
+-			if (!__kvm_sync_page(vcpu, sp, &invalid_list))
+-				break;
++			if (sp->role.word != role.word)
++				continue;
+ 
+-			WARN_ON(!list_empty(&invalid_list));
+-			kvm_make_request(KVM_REQ_TLB_FLUSH, vcpu);
+-		}
++			if (sp->unsync) {
++				/* The page is good, but __kvm_sync_page might
++				 * still end up zapping it.  If so, break in
++				 * order to rebuild it.
++				 */
++				if (!__kvm_sync_page(vcpu, sp, &invalid_list))
++					break;
+ 
+-		if (sp->unsync_children)
+-			kvm_make_request(KVM_REQ_MMU_SYNC, vcpu);
++				WARN_ON(!list_empty(&invalid_list));
++				kvm_make_request(KVM_REQ_TLB_FLUSH, vcpu);
++			}
+ 
+-		__clear_sp_write_flooding_count(sp);
+-		trace_kvm_mmu_get_page(sp, false);
+-		goto out;
++			if (sp->unsync_children)
++				kvm_make_request(KVM_REQ_MMU_SYNC, vcpu);
++
++			__clear_sp_write_flooding_count(sp);
++			trace_kvm_mmu_get_page(sp, false);
++			goto out;
++		}
+ 	}
+ 
+ 	++vcpu->kvm->stat.mmu_cache_miss;
+@@ -3542,6 +3547,10 @@ static int mmu_alloc_shadow_roots(struct kvm_vcpu *vcpu)
+ 	gfn_t root_gfn;
+ 	int i;
+ 
++	spin_lock(&vcpu->kvm->mmu_lock);
++	vcpu->kvm->arch.shadow_page_may_have_multiple_parents = true;
++	spin_unlock(&vcpu->kvm->mmu_lock);
++
+ 	root_gfn = vcpu->arch.mmu.get_cr3(vcpu) >> PAGE_SHIFT;
+ 
+ 	if (mmu_check_root(vcpu, root_gfn))

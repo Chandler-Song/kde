@@ -1,0 +1,130 @@
+From patchwork Wed Sep  5 21:58:16 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Wei Yang <richard.weiyang@gmail.com>
+X-Patchwork-Id: 10589535
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 68A5B920
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Wed,  5 Sep 2018 21:58:26 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5869A2A909
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Wed,  5 Sep 2018 21:58:26 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 4C5AD2A96D; Wed,  5 Sep 2018 21:58:26 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI
+	autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id EF4872A909
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Wed,  5 Sep 2018 21:58:25 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S1727856AbeIFCad (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Wed, 5 Sep 2018 22:30:33 -0400
+Received: from mail-pl1-f196.google.com ([209.85.214.196]:40581 "EHLO
+        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727704AbeIFCad (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Wed, 5 Sep 2018 22:30:33 -0400
+Received: by mail-pl1-f196.google.com with SMTP id s17-v6so3924811plp.7
+        for <kvm@vger.kernel.org>; Wed, 05 Sep 2018 14:58:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=FibBKWrkbOI7HtBh9TrClTsMTSW/g2qzDnpeA83uH8c=;
+        b=WuuNfIIR8HWlCkJ40AtkVS9nDRiuTT30MpA4Z2fZiivYXcEmvuhX8+WEQZo05ysgV3
+         MbN8mM43d/od4sSBAFdqSWxJMdfl3mt0TR69Wop/egz2PJnqyHOSUpcVEc0QKBvtkuZM
+         ix0jaCmucrOf9oQ74tdDQJe3jVCJPOCrQbwX3vleZPgLEYfl51+8KLXyAceypTogRDD1
+         fmlB3G9G+zDAWsDSMiWrQO94HWMX37hbzZBOrfl+FqT6djSj3eJ7W/pQ6fgmZf9OZfxg
+         bc/ofY64yegrL8bYEFKE1j/KmqZr49zxPyhhRpoCXzFhBcUo4N0+sRYkn5rFRxX53nb5
+         QNog==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=FibBKWrkbOI7HtBh9TrClTsMTSW/g2qzDnpeA83uH8c=;
+        b=aI8tliyi+sxp6CtstYZBnii9oB25a73gd9ZhwMGGqg3h8EYfoT/IqKlFxCKlE/Qvya
+         /U+MRfSyB2nGLXVrWtX//i2luD9FdCknBtP9jH0lZTuZ2cHjgfJbZJri1vgmuHa15Mrb
+         4nkQSY7nOYFy94bU/f4Q/dp0AO7Cwfhzu/ilKepaIHWDJ/hGtf73f7z6a3883spUgaqn
+         2wLLlonaVH89TYQ8T3/aiRpFwHWiE39w0zScrYq/mFwrqB/ACcTOCSpMsx0uyMRwLnI2
+         tE4xL0hdZpPjoJxMCsfoi5QwG0yidl7cYLZVqivbo239XmB7JKn7pEJCz6eOq3wVKMHF
+         bP1w==
+X-Gm-Message-State: APzg51BJeIvsqsZN9bdRiHqWUQ+vf3fImOPf6hILFBJKsVG+rvPa4GWz
+        FEY9AzfNwYxjzw1MEs4gf1jnZjm8m84=
+X-Google-Smtp-Source: 
+ ANB0Vda3ElJTPhJB37cG3a0xx0k/4ApOTqft/vSnSnxZ3qelFDsBzmz4j1DmdP+ulQwNy6Xqeq9jyQ==
+X-Received: by 2002:a17:902:6b83:: with SMTP id
+ p3-v6mr41419122plk.133.1536184703622;
+        Wed, 05 Sep 2018 14:58:23 -0700 (PDT)
+Received: from localhost (65.49.233.5.16clouds.com. [65.49.233.5])
+        by smtp.gmail.com with ESMTPSA id
+ g5-v6sm4285438pfc.77.2018.09.05.14.58.22
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 05 Sep 2018 14:58:23 -0700 (PDT)
+From: Wei Yang <richard.weiyang@gmail.com>
+To: pbonzini@redhat.com, rkrcmar@redhat.com
+Cc: x86@kernel.org, kvm@vger.kernel.org,
+        Wei Yang <richard.weiyang@gmail.com>
+Subject: [PATCH] KVM: x86: adjust kvm_mmu_page member to save 8 bytes
+Date: Thu,  6 Sep 2018 05:58:16 +0800
+Message-Id: <20180905215816.4779-1-richard.weiyang@gmail.com>
+X-Mailer: git-send-email 2.15.1
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+On a 64bits machine, struct is naturally aligned with 8 bytes. Since
+kvm_mmu_page member *unsync* and *role* are less then 4 bytes, we can
+rearrange the sequence to compace the struct.
+
+As the comment shows, *role* and *gfn* are used to key the shadow page. In
+order to keep the comment valid, this patch moves the *unsync* up and
+exchange the position of *role* and *gfn*.
+
+From /proc/slabinfo, it shows the size of kvm_mmu_page is 8 bytes less and
+with one more object per slap after applying this patch.
+
+    # name            <active_objs> <num_objs> <objsize> <objperslab>
+    kvm_mmu_page_header      0           0       168         24
+
+    kvm_mmu_page_header      0           0       160         25
+
+Signed-off-by: Wei Yang <richard.weiyang@gmail.com>
+---
+ arch/x86/include/asm/kvm_host.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/x86/include/asm/kvm_host.h b/arch/x86/include/asm/kvm_host.h
+index 00ddb0c9e612..f1a4e520ef5c 100644
+--- a/arch/x86/include/asm/kvm_host.h
++++ b/arch/x86/include/asm/kvm_host.h
+@@ -280,18 +280,18 @@ struct kvm_rmap_head {
+ struct kvm_mmu_page {
+ 	struct list_head link;
+ 	struct hlist_node hash_link;
++	bool unsync;
+ 
+ 	/*
+ 	 * The following two entries are used to key the shadow page in the
+ 	 * hash table.
+ 	 */
+-	gfn_t gfn;
+ 	union kvm_mmu_page_role role;
++	gfn_t gfn;
+ 
+ 	u64 *spt;
+ 	/* hold the gfn of each spte inside spt */
+ 	gfn_t *gfns;
+-	bool unsync;
+ 	int root_count;          /* Currently serving as active root */
+ 	unsigned int unsync_children;
+ 	struct kvm_rmap_head parent_ptes; /* rmap pointers to parent sptes */

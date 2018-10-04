@@ -1,0 +1,1124 @@
+From patchwork Mon Jul 23 06:39:51 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Patchwork-Submitter: Wanpeng Li <kernellwp@gmail.com>
+X-Patchwork-Id: 10539665
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 3D0AD17FD
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:07 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 27594284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:07 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 18243284EE; Mon, 23 Jul 2018 06:40:07 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI
+	autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B5745284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:06 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2388001AbeGWHjo (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 03:39:44 -0400
+Received: from mail-pl0-f68.google.com ([209.85.160.68]:33385 "EHLO
+        mail-pl0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387838AbeGWHjn (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 03:39:43 -0400
+Received: by mail-pl0-f68.google.com with SMTP id 6-v6so7847289plb.0;
+        Sun, 22 Jul 2018 23:40:03 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=DDljZacJxZG2OWdhiAliNYhkc3j//3d2iZVEuKfWFo4=;
+        b=WWKXLpzW2P8TJVzw+otdmQn7P/POYpDTSaOxqd1lOvJZvXCw56vqNueJxqaLU2MlQS
+         B+GTQdye6nOAYPUTaZFtfJ/JOIazrA3r0oXbnKo2ayAfMRrfVq4e+R+HHl6wkF3Z7jZm
+         3MKGmDliYma0AcoZ2/FwdQpOgVOQ1Lcb49wFjJQQECOdO3a5AuGY0zP9NKQGOh0mRopG
+         flWgggcbsaUnw9WHUl2Np2i+8cMe1M7uP1avl0+ZplUNQXuhNKc5kZEWWzMtb4FyRjXF
+         stec2ldwC9zhn4a43uin7RucJ4VAXdwXQEiN2u150XeZ9f4orYy+0Pias9VeTPhWaHsj
+         yUKA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=DDljZacJxZG2OWdhiAliNYhkc3j//3d2iZVEuKfWFo4=;
+        b=D2EI7xnhdFOYJJLp8fWpaozQdJlrd/fawrUssQAbLIpR31rdaOFQRBQJmlDZ/+8uUq
+         LlyS/EOYfYbY7po6ZyRUn4E5Kjhkrwq+SHz2G54aE/RhDUBbMrJTqKCdiH3vQh7QF/h4
+         USUndplZDN1ABbdbiFJsoBVGX1VAHRynKU7JpkN8TutU9pcHtOficItsXY8kh1upnLpH
+         ZwBxyMJB3WeSnug5V8G9g6hoSLGU6RZCUjK7sW9VzYJ9Yg2oIyrNEq8XsJw0vreMj+HR
+         OevGelT3Um9ANvMocSxLoXcHQW5K1WKXVO1DfXi+F9cd/NwiCnKbH4cVnUd1Z6z6YeHq
+         Mo4Q==
+X-Gm-Message-State: AOUpUlEFxxpU72OuXzJw3QPmyiq7HpKmNOG1Z52R0jRKE4qw915EEqZW
+        TIeYCwnAW1B6Hufiyczzy7CYtKZW
+X-Google-Smtp-Source: 
+ AAOMgpeQMzjRz+HXPewKBhMJOGweYwlHcnBEsPRJ/e91uHY6pk7xB53E8teeUna1TTT+7Z2nYSMs+A==
+X-Received: by 2002:a17:902:7898:: with SMTP id
+ q24-v6mr5536423pll.222.1532328003471;
+        Sun, 22 Jul 2018 23:40:03 -0700 (PDT)
+Received: from localhost.localdomain ([203.205.141.123])
+        by smtp.googlemail.com with ESMTPSA id
+ p17-v6sm8165598pgv.26.2018.07.22.23.40.01
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
+        Sun, 22 Jul 2018 23:40:02 -0700 (PDT)
+From: Wanpeng Li <kernellwp@gmail.com>
+X-Google-Original-From: Wanpeng Li <wanpengli@tencent.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org
+Cc: Paolo Bonzini <pbonzini@redhat.com>,
+ =?utf-8?b?UmFkaW0gS3LEjW3DocWZ?= <rkrcmar@redhat.com>,
+ Vitaly Kuznetsov <vkuznets@redhat.com>
+Subject: [PATCH v5 1/6] KVM: X86: Add kvm hypervisor init time platform setup
+ callback
+Date: Mon, 23 Jul 2018 14:39:51 +0800
+Message-Id: <1532327996-17619-2-git-send-email-wanpengli@tencent.com>
+X-Mailer: git-send-email 2.7.4
+In-Reply-To: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+References: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+From: Wanpeng Li <wanpengli@tencent.com>
+
+Add kvm hypervisor init time platform setup callback which
+will be used to replace native apic hooks by pararvirtual
+hooks.
+
+Cc: Paolo Bonzini <pbonzini@redhat.com>
+Cc: Radim Krčmář <rkrcmar@redhat.com>
+Cc: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: Wanpeng Li <wanpengli@tencent.com>
+---
+ arch/x86/kernel/kvm.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/arch/x86/kernel/kvm.c b/arch/x86/kernel/kvm.c
+index 5b2300b..591bcf2 100644
+--- a/arch/x86/kernel/kvm.c
++++ b/arch/x86/kernel/kvm.c
+@@ -624,12 +624,22 @@ static uint32_t __init kvm_detect(void)
+ 	return kvm_cpuid_base();
+ }
+ 
++static void __init kvm_apic_init(void)
++{
++}
++
++static void __init kvm_init_platform(void)
++{
++	x86_platform.apic_post_init = kvm_apic_init;
++}
++
+ const __initconst struct hypervisor_x86 x86_hyper_kvm = {
+ 	.name			= "KVM",
+ 	.detect			= kvm_detect,
+ 	.type			= X86_HYPER_KVM,
+ 	.init.guest_late_init	= kvm_guest_init,
+ 	.init.x2apic_available	= kvm_para_available,
++	.init.init_platform	= kvm_init_platform,
+ };
+ 
+ static __init int activate_jump_labels(void)
+
+From patchwork Mon Jul 23 06:39:52 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Patchwork-Submitter: Wanpeng Li <kernellwp@gmail.com>
+X-Patchwork-Id: 10539675
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 7B53913BB
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:38 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 670A3284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:38 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 5B56E284EE; Mon, 23 Jul 2018 06:40:38 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI
+	autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id E083C284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:37 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2388027AbeGWHjp (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 03:39:45 -0400
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:40928 "EHLO
+        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388004AbeGWHjp (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 03:39:45 -0400
+Received: by mail-pg1-f193.google.com with SMTP id x5-v6so11521460pgp.7;
+        Sun, 22 Jul 2018 23:40:05 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=pp3fa4FZs7ME/d9V/uiE2NR8oz6VbzvCcdyF66Zlgxk=;
+        b=mihqylpwwAHrXVmDu3+21drOmjyhmOwzUAHNPPdSt1q0ED4C+yums7tfgO9O3xfrla
+         vO65Jb8cd6Ilf9ftAOCSgCrEVLamoO/iNQwRv/+VHouhUl0YCOCLkUr6vRMz3m87vvAE
+         j+DS2KQTjvXL1upSg5rBTYTo5bDy9FgFsRB2VhtIQYDw8mcWLY8dR1YAwNDouobUOHmp
+         CEPzEvcoISD1kDmEItn8HpNYgT5tEWX2PLIqOV1L+lvT7H+pWbckpiuxbqswekm/CDeG
+         3+/S/SiTsXPYdsWhTZ8dIrKRUCdMcZqq6Aoj9c6fyX1/lT7N3+Xf1QuFYO23uo17K0rl
+         pL+Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=pp3fa4FZs7ME/d9V/uiE2NR8oz6VbzvCcdyF66Zlgxk=;
+        b=GPf0jUs+n4bTyc7wXdMEziWKctz8ibX+gSzlQhi/Fo+0k8EtM770unTO0SHD8TG1Eg
+         Nzh28YgduBk6mUwIMktLnJxUrVN5sqkCfHgYeEnH7HzNeLUuxLUpxEq4sjqFonLlck9l
+         lJ3v31R+vU1Y6kaTUYYlgf8sbeIU/C287SUij7HSGBGHZC6/VV2mciHH9O5nJlkpQ2aE
+         hjWSiHMZ7dfC/4Pocak0iLK+fJHvj7VNQzuhGcf0Fi1zx9MiAKE93yXUl+v0nwzTVeoH
+         zMx82hWLq45Bsc/AKRHM39sm8rF4oWkZziW8DLAloU67cu5VX2bJglWiQuGtSmy2Kjfw
+         0LaQ==
+X-Gm-Message-State: AOUpUlF3ozVKzir5tdxiLMaj8PiOVurPs483TaJBfmaRcf+5UbmqYF8u
+        Oh2hBs64yCMGuZe//noKtBq1tZt4
+X-Google-Smtp-Source: 
+ AAOMgpfdNZ9yH0xus8QOzAmEHl0fXRB7PAGf4rH1aIUGzuvHH690PoWAhuvIMa4lCWPi93DuNJJvtw==
+X-Received: by 2002:a62:f50b:: with SMTP id
+ n11-v6mr11955980pfh.120.1532328005490;
+        Sun, 22 Jul 2018 23:40:05 -0700 (PDT)
+Received: from localhost.localdomain ([203.205.141.123])
+        by smtp.googlemail.com with ESMTPSA id
+ p17-v6sm8165598pgv.26.2018.07.22.23.40.03
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
+        Sun, 22 Jul 2018 23:40:05 -0700 (PDT)
+From: Wanpeng Li <kernellwp@gmail.com>
+X-Google-Original-From: Wanpeng Li <wanpengli@tencent.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org
+Cc: Paolo Bonzini <pbonzini@redhat.com>,
+ =?utf-8?b?UmFkaW0gS3LEjW3DocWZ?= <rkrcmar@redhat.com>,
+ Vitaly Kuznetsov <vkuznets@redhat.com>
+Subject: [PATCH v5 2/6] KVM: X86: Implement PV IPIs in linux guest
+Date: Mon, 23 Jul 2018 14:39:52 +0800
+Message-Id: <1532327996-17619-3-git-send-email-wanpengli@tencent.com>
+X-Mailer: git-send-email 2.7.4
+In-Reply-To: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+References: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+From: Wanpeng Li <wanpengli@tencent.com>
+
+Implement paravirtual apic hooks to enable PV IPIs.
+
+apic->send_IPI_mask
+apic->send_IPI_mask_allbutself
+apic->send_IPI_allbutself
+apic->send_IPI_all
+
+This patch lets a guest send multicast IPIs, with at most 128 destinations 
+per hypercall in 64-bit mode and 64 vCPUs per hypercall in 32-bit mode.
+
+Cc: Paolo Bonzini <pbonzini@redhat.com>
+Cc: Radim Krčmář <rkrcmar@redhat.com>
+Cc: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: Wanpeng Li <wanpengli@tencent.com>
+---
+ arch/x86/include/uapi/asm/kvm_para.h |  1 +
+ arch/x86/kernel/kvm.c                | 86 ++++++++++++++++++++++++++++++++++++
+ include/uapi/linux/kvm_para.h        |  1 +
+ 3 files changed, 88 insertions(+)
+
+diff --git a/arch/x86/include/uapi/asm/kvm_para.h b/arch/x86/include/uapi/asm/kvm_para.h
+index 0ede697..19980ec 100644
+--- a/arch/x86/include/uapi/asm/kvm_para.h
++++ b/arch/x86/include/uapi/asm/kvm_para.h
+@@ -28,6 +28,7 @@
+ #define KVM_FEATURE_PV_UNHALT		7
+ #define KVM_FEATURE_PV_TLB_FLUSH	9
+ #define KVM_FEATURE_ASYNC_PF_VMEXIT	10
++#define KVM_FEATURE_PV_SEND_IPI	11
+ 
+ #define KVM_HINTS_REALTIME      0
+ 
+diff --git a/arch/x86/kernel/kvm.c b/arch/x86/kernel/kvm.c
+index 591bcf2..eed6046 100644
+--- a/arch/x86/kernel/kvm.c
++++ b/arch/x86/kernel/kvm.c
+@@ -454,6 +454,88 @@ static void __init sev_map_percpu_data(void)
+ }
+ 
+ #ifdef CONFIG_SMP
++static void __send_ipi_mask(const struct cpumask *mask, int vector)
++{
++	unsigned long flags;
++	int cpu, apic_id, min = 0, max = 0;
++#ifdef CONFIG_X86_64
++	__uint128_t ipi_bitmap = 0;
++	int cluster_size = 128;
++#else
++	u64 ipi_bitmap = 0;
++	int cluster_size = 64;
++#endif
++
++	if (cpumask_empty(mask))
++		return;
++
++	local_irq_save(flags);
++
++	for_each_cpu(cpu, mask) {
++		apic_id = per_cpu(x86_cpu_to_apicid, cpu);
++		if (!ipi_bitmap) {
++			min = max = apic_id;
++		} else if (apic_id < min && max - apic_id < cluster_size) {
++			ipi_bitmap <<= min - apic_id;
++			min = apic_id;
++		} else if (apic_id < min + cluster_size) {
++			max = apic_id < max ? max : apic_id;
++		} else {
++			kvm_hypercall4(KVM_HC_SEND_IPI, (unsigned long)ipi_bitmap,
++				(unsigned long)(ipi_bitmap >> BITS_PER_LONG), min, vector);
++			min = max = apic_id;
++			ipi_bitmap = 0;
++		}
++		__set_bit(apic_id - min, (unsigned long *)&ipi_bitmap);
++	}
++
++	if (ipi_bitmap) {
++		kvm_hypercall4(KVM_HC_SEND_IPI, (unsigned long)ipi_bitmap,
++			(unsigned long)(ipi_bitmap >> BITS_PER_LONG), min, vector);
++	}
++
++	local_irq_restore(flags);
++}
++
++static void kvm_send_ipi_mask(const struct cpumask *mask, int vector)
++{
++	__send_ipi_mask(mask, vector);
++}
++
++static void kvm_send_ipi_mask_allbutself(const struct cpumask *mask, int vector)
++{
++	unsigned int this_cpu = smp_processor_id();
++	struct cpumask new_mask;
++	const struct cpumask *local_mask;
++
++	cpumask_copy(&new_mask, mask);
++	cpumask_clear_cpu(this_cpu, &new_mask);
++	local_mask = &new_mask;
++	__send_ipi_mask(local_mask, vector);
++}
++
++static void kvm_send_ipi_allbutself(int vector)
++{
++	kvm_send_ipi_mask_allbutself(cpu_online_mask, vector);
++}
++
++static void kvm_send_ipi_all(int vector)
++{
++	__send_ipi_mask(cpu_online_mask, vector);
++}
++
++/*
++ * Set the IPI entry points
++ */
++static void kvm_setup_pv_ipi(void)
++{
++	apic->send_IPI_mask = kvm_send_ipi_mask;
++	apic->send_IPI_mask_allbutself = kvm_send_ipi_mask_allbutself;
++	apic->send_IPI_allbutself = kvm_send_ipi_allbutself;
++	apic->send_IPI_all = kvm_send_ipi_all;
++	pr_info("KVM setup pv IPIs\n");
++}
++
+ static void __init kvm_smp_prepare_cpus(unsigned int max_cpus)
+ {
+ 	native_smp_prepare_cpus(max_cpus);
+@@ -626,6 +708,10 @@ static uint32_t __init kvm_detect(void)
+ 
+ static void __init kvm_apic_init(void)
+ {
++#if defined(CONFIG_SMP)
++	if (kvm_para_has_feature(KVM_FEATURE_PV_SEND_IPI))
++		kvm_setup_pv_ipi();
++#endif
+ }
+ 
+ static void __init kvm_init_platform(void)
+diff --git a/include/uapi/linux/kvm_para.h b/include/uapi/linux/kvm_para.h
+index dcf629d..a98217d 100644
+--- a/include/uapi/linux/kvm_para.h
++++ b/include/uapi/linux/kvm_para.h
+@@ -26,6 +26,7 @@
+ #define KVM_HC_MIPS_EXIT_VM		7
+ #define KVM_HC_MIPS_CONSOLE_OUTPUT	8
+ #define KVM_HC_CLOCK_PAIRING		9
++#define KVM_HC_SEND_IPI		10
+ 
+ /*
+  * hypercalls use architecture specific
+
+From patchwork Mon Jul 23 06:39:53 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Patchwork-Submitter: Wanpeng Li <kernellwp@gmail.com>
+X-Patchwork-Id: 10539673
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 130D21823
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:35 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id F3AE6284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:34 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id E84A5284EE; Mon, 23 Jul 2018 06:40:34 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI
+	autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 8589A284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:34 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2388044AbeGWHjs (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 03:39:48 -0400
+Received: from mail-pf1-f193.google.com ([209.85.210.193]:40152 "EHLO
+        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388004AbeGWHjr (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 03:39:47 -0400
+Received: by mail-pf1-f193.google.com with SMTP id e13-v6so696999pff.7;
+        Sun, 22 Jul 2018 23:40:08 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=kw6302ch86pg258GLepkuZEk2pw2bUxOqBJi45V/0IA=;
+        b=LmQP9NhvqYalMKYmPOW6WmfontXkDePLE8oOv5WqLNI3lKMV/pzzccVUh7jM9cYpnM
+         GLWvVWwYS7Aw9HZwF1udnWRcc8wEHjrXdMr4r5boxwU+36JKkyrNEnB0MrJC8yAZZRfa
+         /9pumDgZS3h77200r29jME5aXVEGw+776YPHvu/OYOeSOFVhKfpEBEDhKkQX2c5UvLA3
+         5Enrs00IgaWVSBcwgcAUPBmv7pIolBVHPTdzdOdPW6Qo6pKEsJlZ90j0CvGIfDTCoTaO
+         V8CYXrJpJHNy2A7UATXaukA60K3pNb9QWCfGOjoYDA6MQwRa8dDfCnHkFkxGU9gEFiXS
+         GGLQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=kw6302ch86pg258GLepkuZEk2pw2bUxOqBJi45V/0IA=;
+        b=msCkkd2sZ+SbpabzCxFJHwNhKsVKyCcxZ5jPNG3QZIE4adDMAhkGgsGUUR/4HgT4pb
+         LhkZJDOFOFCSMHYwCr8klPsGLs/CHlKPwOnmT97gp3NEb/Cw+vhmn+KsE2VOHKmc7HDo
+         fOfXFRzuRz38R1uCMv8u3Ug1x+/5qqnEor/oPOdBQQJWhK8l6uAhLyoIi2seEjDbzPR6
+         4fOe8LHmZTJoa9ch2sxH3UYf0vaPtvamhjYEhKdeCAE6+f0D60q1RYTQBcGfVxwUEvPv
+         BPR6uM9BDjWFDLTbBI8PoYNhTGujZUwPOefS+qQW8ha0q586BtK0taLnz1rO/uox8+2f
+         cmPw==
+X-Gm-Message-State: AOUpUlHb25bTGOcpiryvIBiAO8Vg7O7K47SSArnqKl4Nn8W3Fmc+CIzB
+        z1eqgjfG/dpBRCoScDTS7Mrvclnf
+X-Google-Smtp-Source: 
+ AAOMgpeB2KNJCiF0yrv1XidZ1ijEwkxnIbjLOUBFhbf+V4mB1jiSQvdnKQBH92EVksyNLtILqDdT1Q==
+X-Received: by 2002:a63:f309:: with SMTP id
+ l9-v6mr10807134pgh.369.1532328007514;
+        Sun, 22 Jul 2018 23:40:07 -0700 (PDT)
+Received: from localhost.localdomain ([203.205.141.123])
+        by smtp.googlemail.com with ESMTPSA id
+ p17-v6sm8165598pgv.26.2018.07.22.23.40.05
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
+        Sun, 22 Jul 2018 23:40:07 -0700 (PDT)
+From: Wanpeng Li <kernellwp@gmail.com>
+X-Google-Original-From: Wanpeng Li <wanpengli@tencent.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org
+Cc: Paolo Bonzini <pbonzini@redhat.com>,
+ =?utf-8?b?UmFkaW0gS3LEjW3DocWZ?= <rkrcmar@redhat.com>,
+ Vitaly Kuznetsov <vkuznets@redhat.com>
+Subject: [PATCH v5 3/6] KVM: X86: Fallback to original apic hooks when bad
+ happens
+Date: Mon, 23 Jul 2018 14:39:53 +0800
+Message-Id: <1532327996-17619-4-git-send-email-wanpengli@tencent.com>
+X-Mailer: git-send-email 2.7.4
+In-Reply-To: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+References: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+From: Wanpeng Li <wanpengli@tencent.com>
+
+Fallback to original apic hooks when unlikely kvm fails to add the
+pending IRQ to lapic.
+
+Cc: Paolo Bonzini <pbonzini@redhat.com>
+Cc: Radim Krčmář <rkrcmar@redhat.com>
+Cc: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: Wanpeng Li <wanpengli@tencent.com>
+---
+ arch/x86/kernel/kvm.c | 20 +++++++++++++-------
+ 1 file changed, 13 insertions(+), 7 deletions(-)
+
+diff --git a/arch/x86/kernel/kvm.c b/arch/x86/kernel/kvm.c
+index eed6046..57eb4a2 100644
+--- a/arch/x86/kernel/kvm.c
++++ b/arch/x86/kernel/kvm.c
+@@ -47,6 +47,7 @@
+ #include <asm/hypervisor.h>
+ #include <asm/kvm_guest.h>
+ 
++static struct apic orig_apic;
+ static int kvmapf = 1;
+ 
+ static int __init parse_no_kvmapf(char *arg)
+@@ -454,10 +455,10 @@ static void __init sev_map_percpu_data(void)
+ }
+ 
+ #ifdef CONFIG_SMP
+-static void __send_ipi_mask(const struct cpumask *mask, int vector)
++static int __send_ipi_mask(const struct cpumask *mask, int vector)
+ {
+ 	unsigned long flags;
+-	int cpu, apic_id, min = 0, max = 0;
++	int cpu, apic_id, min = 0, max = 0, ret = 0;
+ #ifdef CONFIG_X86_64
+ 	__uint128_t ipi_bitmap = 0;
+ 	int cluster_size = 128;
+@@ -467,7 +468,7 @@ static void __send_ipi_mask(const struct cpumask *mask, int vector)
+ #endif
+ 
+ 	if (cpumask_empty(mask))
+-		return;
++		return 0;
+ 
+ 	local_irq_save(flags);
+ 
+@@ -481,7 +482,7 @@ static void __send_ipi_mask(const struct cpumask *mask, int vector)
+ 		} else if (apic_id < min + cluster_size) {
+ 			max = apic_id < max ? max : apic_id;
+ 		} else {
+-			kvm_hypercall4(KVM_HC_SEND_IPI, (unsigned long)ipi_bitmap,
++			ret = kvm_hypercall4(KVM_HC_SEND_IPI, (unsigned long)ipi_bitmap,
+ 				(unsigned long)(ipi_bitmap >> BITS_PER_LONG), min, vector);
+ 			min = max = apic_id;
+ 			ipi_bitmap = 0;
+@@ -490,11 +491,12 @@ static void __send_ipi_mask(const struct cpumask *mask, int vector)
+ 	}
+ 
+ 	if (ipi_bitmap) {
+-		kvm_hypercall4(KVM_HC_SEND_IPI, (unsigned long)ipi_bitmap,
++		ret = kvm_hypercall4(KVM_HC_SEND_IPI, (unsigned long)ipi_bitmap,
+ 			(unsigned long)(ipi_bitmap >> BITS_PER_LONG), min, vector);
+ 	}
+ 
+ 	local_irq_restore(flags);
++	return ret;
+ }
+ 
+ static void kvm_send_ipi_mask(const struct cpumask *mask, int vector)
+@@ -511,7 +513,8 @@ static void kvm_send_ipi_mask_allbutself(const struct cpumask *mask, int vector)
+ 	cpumask_copy(&new_mask, mask);
+ 	cpumask_clear_cpu(this_cpu, &new_mask);
+ 	local_mask = &new_mask;
+-	__send_ipi_mask(local_mask, vector);
++	if (__send_ipi_mask(local_mask, vector))
++		orig_apic.send_IPI_mask_allbutself(mask, vector);
+ }
+ 
+ static void kvm_send_ipi_allbutself(int vector)
+@@ -521,7 +524,8 @@ static void kvm_send_ipi_allbutself(int vector)
+ 
+ static void kvm_send_ipi_all(int vector)
+ {
+-	__send_ipi_mask(cpu_online_mask, vector);
++	if (__send_ipi_mask(cpu_online_mask, vector))
++		orig_apic.send_IPI_all(vector);
+ }
+ 
+ /*
+@@ -529,6 +533,8 @@ static void kvm_send_ipi_all(int vector)
+  */
+ static void kvm_setup_pv_ipi(void)
+ {
++	orig_apic = *apic;
++
+ 	apic->send_IPI_mask = kvm_send_ipi_mask;
+ 	apic->send_IPI_mask_allbutself = kvm_send_ipi_mask_allbutself;
+ 	apic->send_IPI_allbutself = kvm_send_ipi_allbutself;
+
+From patchwork Mon Jul 23 06:39:54 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Patchwork-Submitter: Wanpeng Li <kernellwp@gmail.com>
+X-Patchwork-Id: 10539671
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 62F001823
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:29 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 4ED76284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:29 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 435E0284EE; Mon, 23 Jul 2018 06:40:29 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI
+	autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B110F284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:28 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2388069AbeGWHju (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 03:39:50 -0400
+Received: from mail-pf1-f194.google.com ([209.85.210.194]:41059 "EHLO
+        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388004AbeGWHjt (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 03:39:49 -0400
+Received: by mail-pf1-f194.google.com with SMTP id y10-v6so645687pfn.8;
+        Sun, 22 Jul 2018 23:40:10 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=07tgC2NhRGJJFeudTQ2D6feQ+qtfTI+yBjXaPz1hor0=;
+        b=a4jAXSItfPiRPjZlsUanDHzdWnGGBVc8UjCPRtjQdiYL3lZjaPS5WLaifHPGJ5OQNI
+         2qjOOqYSTXb8QOxDzOtg0ZMRP6LOGrFpbCCTouZmIv4Ser4u2poSb4rL3OZ9u9qTs3m+
+         ZZT+EpxkSCUZZkHB/dvtnecP6Kkx9LsI1VexNeMLUzsGfQxYdHnFo2yf6/vER0f58rr+
+         dkWJsticF0MoHEh5S6M/2ktv1EtHxBN73FvEryRpDXkmszCMMv1EFNUQporYXHt/Q68+
+         +bPOvWUu0ETJiGZ9+LvO+2h0K3fkXPLLHRTtZIYj6JmdP6z9plduBv26P8itKqfVoX7L
+         6N4Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=07tgC2NhRGJJFeudTQ2D6feQ+qtfTI+yBjXaPz1hor0=;
+        b=B0R4V7rclqLpS6g+loLY0IkWvFYIk5cWpTEziH0YyU3TxJVZJ1erHa/pxyPb0I3cCv
+         p8sWpnCiMRQ0tGB1mMSKEVYm85fXgtwDlHqKf7Ec4NN+t/qDFtTw/5hhfKMM3nHxvZDI
+         /fXJhhk6aUBE+p9XysDEhNzyWYsWTqV7fJHVEZ5ODNb6N9lBQBE24kvDJwHnlLG8U1NY
+         x+PJYAnFlWBeZJa5eILboCfMq49i9GfXg3kkKJRY4X8w+FWJ515YvjNE7vaWaVA4T3CY
+         EwS2XtDTG5+iJ7AE5aFi3v3fJ1a4LYsgzNFwdft0j+O9O43F8vEmDOcU8BBtMzj8tUxn
+         sITg==
+X-Gm-Message-State: AOUpUlFImiPL/wey4xr6oEueB+veCSpY8wiOfIzA3FXOhmhxE/u6dW64
+        wXUPcHOk/9KHe/PGD5/tME8PRzrg
+X-Google-Smtp-Source: 
+ AAOMgpeMW/7LLogMpBMyWDxRL75LE3GIcGGuTDapstgXiGNGoTGhbglGqAja9w+53+bSyt9/GaOjxA==
+X-Received: by 2002:a63:9856:: with SMTP id
+ l22-v6mr11343671pgo.208.1532328009609;
+        Sun, 22 Jul 2018 23:40:09 -0700 (PDT)
+Received: from localhost.localdomain ([203.205.141.123])
+        by smtp.googlemail.com with ESMTPSA id
+ p17-v6sm8165598pgv.26.2018.07.22.23.40.07
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
+        Sun, 22 Jul 2018 23:40:09 -0700 (PDT)
+From: Wanpeng Li <kernellwp@gmail.com>
+X-Google-Original-From: Wanpeng Li <wanpengli@tencent.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org
+Cc: Paolo Bonzini <pbonzini@redhat.com>,
+ =?utf-8?b?UmFkaW0gS3LEjW3DocWZ?= <rkrcmar@redhat.com>,
+ Vitaly Kuznetsov <vkuznets@redhat.com>
+Subject: [PATCH v5 4/6] KVM: X86: Implement PV IPIs send hypercall
+Date: Mon, 23 Jul 2018 14:39:54 +0800
+Message-Id: <1532327996-17619-5-git-send-email-wanpengli@tencent.com>
+X-Mailer: git-send-email 2.7.4
+In-Reply-To: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+References: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+From: Wanpeng Li <wanpengli@tencent.com>
+
+Using hypercall to send IPIs by one vmexit instead of one by one for
+xAPIC/x2APIC physical mode and one vmexit per-cluster for x2APIC cluster 
+mode. Intel guest can enter x2apic cluster mode when interrupt remmaping 
+is enabled in qemu, however, latest AMD EPYC still just supports xapic 
+mode which can get great improvement by Exit-less IPIs. This patchset 
+lets a guest send multicast IPIs, with at most 128 destinations per 
+hypercall in 64-bit mode and 64 vCPUs per hypercall in 32-bit mode.
+
+Hardware: Xeon Skylake 2.5GHz, 2 sockets, 40 cores, 80 threads, the VM 
+is 80 vCPUs, IPI microbenchmark(https://lkml.org/lkml/2017/12/19/141):
+
+x2apic cluster mode, vanilla
+
+ Dry-run:                         0,            2392199 ns
+ Self-IPI:                  6907514,           15027589 ns
+ Normal IPI:              223910476,          251301666 ns
+ Broadcast IPI:                   0,         9282161150 ns
+ Broadcast lock:                  0,         8812934104 ns
+
+x2apic cluster mode, pv-ipi 
+
+ Dry-run:                         0,            2449341 ns
+ Self-IPI:                  6720360,           15028732 ns
+ Normal IPI:              228643307,          255708477 ns
+ Broadcast IPI:                   0,         7572293590 ns  => 22% performance boost 
+ Broadcast lock:                  0,         8316124651 ns
+
+x2apic physical mode, vanilla
+
+ Dry-run:                         0,            3135933 ns
+ Self-IPI:                  8572670,           17901757 ns
+ Normal IPI:              226444334,          255421709 ns
+ Broadcast IPI:                   0,        19845070887 ns
+ Broadcast lock:                  0,        19827383656 ns
+
+x2apic physical mode, pv-ipi
+
+ Dry-run:                         0,            2446381 ns
+ Self-IPI:                  6788217,           15021056 ns
+ Normal IPI:              219454441,          249583458 ns
+ Broadcast IPI:                   0,         7806540019 ns  => 154% performance boost 
+ Broadcast lock:                  0,         9143618799 ns
+
+Cc: Paolo Bonzini <pbonzini@redhat.com>
+Cc: Radim Krčmář <rkrcmar@redhat.com>
+Cc: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: Wanpeng Li <wanpengli@tencent.com>
+---
+ Documentation/virtual/kvm/hypercalls.txt | 20 +++++++++++++++++
+ arch/x86/kvm/x86.c                       | 37 ++++++++++++++++++++++++++++++++
+ 2 files changed, 57 insertions(+)
+
+diff --git a/Documentation/virtual/kvm/hypercalls.txt b/Documentation/virtual/kvm/hypercalls.txt
+index a890529..9895123 100644
+--- a/Documentation/virtual/kvm/hypercalls.txt
++++ b/Documentation/virtual/kvm/hypercalls.txt
+@@ -121,3 +121,23 @@ compute the CLOCK_REALTIME for its clock, at the same instant.
+ 
+ Returns KVM_EOPNOTSUPP if the host does not use TSC clocksource,
+ or if clock type is different than KVM_CLOCK_PAIRING_WALLCLOCK.
++
++6. KVM_HC_SEND_IPI
++------------------------
++Architecture: x86
++Status: active
++Purpose: Hypercall used to send IPIs.
++
++a0: lower part of the bitmap of destination APIC IDs
++a1: higher part of the bitmap of destination APIC IDs
++a2: the lowest APIC ID in bitmap
++a3: APIC ICR
++
++The hypercall lets a guest send multicast IPIs, with at most 128
++128 destinations per hypercall in 64-bit mode and 64 vCPUs per
++hypercall in 32-bit mode.  The destinations are represented by a
++bitmap contained in the first two arguments (a0 and a1). Bit 0 of
++a0 corresponds to the APIC ID in the third argument (a2), bit 1
++corresponds to the APIC ID a2+1, and so on.
++
++Returns 0 if successfully delivery the IPIs and 1 if discarded.
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index 2b812b3..a43a29f 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -6691,6 +6691,40 @@ static void kvm_pv_kick_cpu_op(struct kvm *kvm, unsigned long flags, int apicid)
+ 	kvm_irq_delivery_to_apic(kvm, NULL, &lapic_irq, NULL);
+ }
+ 
++/*
++ * Return 0 if successfully added and 1 if discarded.
++ */
++static int kvm_pv_send_ipi(struct kvm *kvm, unsigned long ipi_bitmap_low,
++		unsigned long ipi_bitmap_high, int min, int vector, int op_64_bit)
++{
++	int i;
++	struct kvm_apic_map *map;
++	struct kvm_vcpu *vcpu;
++	struct kvm_lapic_irq irq = {
++		.delivery_mode = APIC_DM_FIXED,
++		.vector = vector,
++	};
++	int cluster_size = op_64_bit ? 64 : 32;
++
++	rcu_read_lock();
++	map = rcu_dereference(kvm->arch.apic_map);
++
++	for_each_set_bit(i, &ipi_bitmap_low, cluster_size) {
++		vcpu = map->phys_map[min + i]->vcpu;
++		if (!kvm_apic_set_irq(vcpu, &irq, NULL))
++			return 1;
++	}
++
++	for_each_set_bit(i, &ipi_bitmap_high, cluster_size) {
++		vcpu = map->phys_map[min + i + cluster_size]->vcpu;
++		if (!kvm_apic_set_irq(vcpu, &irq, NULL))
++			return 1;
++	}
++
++	rcu_read_unlock();
++	return 0;
++}
++
+ void kvm_vcpu_deactivate_apicv(struct kvm_vcpu *vcpu)
+ {
+ 	vcpu->arch.apicv_active = false;
+@@ -6739,6 +6773,9 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
+ 	case KVM_HC_CLOCK_PAIRING:
+ 		ret = kvm_pv_clock_pairing(vcpu, a0, a1);
+ 		break;
++	case KVM_HC_SEND_IPI:
++		ret = kvm_pv_send_ipi(vcpu->kvm, a0, a1, a2, a3, op_64_bit);
++		break;
+ #endif
+ 	default:
+ 		ret = -KVM_ENOSYS;
+
+From patchwork Mon Jul 23 06:39:55 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Patchwork-Submitter: Wanpeng Li <kernellwp@gmail.com>
+X-Patchwork-Id: 10539669
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 206C7180E
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:27 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 0BC1B284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:27 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id F41B4284EE; Mon, 23 Jul 2018 06:40:26 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI
+	autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 8F8BE284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:26 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2388038AbeGWHjw (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 03:39:52 -0400
+Received: from mail-pl0-f67.google.com ([209.85.160.67]:41063 "EHLO
+        mail-pl0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388004AbeGWHjv (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 03:39:51 -0400
+Received: by mail-pl0-f67.google.com with SMTP id w8-v6so7830346ply.8;
+        Sun, 22 Jul 2018 23:40:12 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=6hLPPMYGdD0fm1elVKuI1+Qq8XS3C+8cQ2h0sKkGQNY=;
+        b=a7ArqycpEChtuKCBEZYQK8B16YK00dN5IFCdvfXk2eumFmDC3UPExHsEA2irUXkhvR
+         z62A71OykmAylouI5zQEGtwQR134JEPN9hIFBgZ4CE72BzOLc4qgUCuDXeQ1rZLa+pq3
+         H6c/rAc5sLSp52/tsJBEs6Un1wW9zaFwh0Hq7E5chnEaN5M6UXccEw/+r/AwKszCv/ZM
+         yzWIP2ANNmpumCsN/X515Yx1u9fgUG1QAacw2ixJuv2CPZERQDHEKaMvUD7atfUvPNBu
+         vKN6XhPMem3BBjAlPPCSVarG1fdwVUuXkPDFoci/e1RqjkUnxXxkg9T7HAEgCmXvMr5W
+         bXJg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=6hLPPMYGdD0fm1elVKuI1+Qq8XS3C+8cQ2h0sKkGQNY=;
+        b=hwL4y2wAPDhGis0waZyBBplPeL28BQJNU2zfWjbzZeqqosAPNl7EvJOrvJ0JMMCEG5
+         XdINkQeyexHULJcLLb9jYEEZm7RFfPNyrdhoZBDCSYZYrj0jjtPM4K2awpPktLYLJ3vA
+         VvysLKoRYFP5dR41HCoSVmM04vDGtgC1JI7R0rGVYXhxtsbPtUcjdcBa+2ls6u14a0ls
+         9pf6jy2Jx0Qkw+llg4s2O+k41RTvqTRxi9HSWCAYg4vrfl5mdzA7/BPASoAx/jjQqz9/
+         0ELO5s5gT2GhOoIH5a8yyLqO5dUrhriheTflrzO03blM94kAyfN91M/1wI1X60HVe6X4
+         jwGQ==
+X-Gm-Message-State: AOUpUlHnglYyKo5FXqP8djdqKpKlUR0b9znKtKLbTCP4zUcw9+OYekBK
+        1KFQwdlkHN1O8PzzBMJy1pL51Ne6
+X-Google-Smtp-Source: 
+ AAOMgpeFTPmIEkwOdETtzXw5aIEdhrxiqO/GWkYJ4+h7UW7zCLVvfuDgS3Nq+PZm1o3DicWVrenCKw==
+X-Received: by 2002:a17:902:4324:: with SMTP id
+ i33-v6mr11620445pld.43.1532328011668;
+        Sun, 22 Jul 2018 23:40:11 -0700 (PDT)
+Received: from localhost.localdomain ([203.205.141.123])
+        by smtp.googlemail.com with ESMTPSA id
+ p17-v6sm8165598pgv.26.2018.07.22.23.40.09
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
+        Sun, 22 Jul 2018 23:40:11 -0700 (PDT)
+From: Wanpeng Li <kernellwp@gmail.com>
+X-Google-Original-From: Wanpeng Li <wanpengli@tencent.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org
+Cc: Paolo Bonzini <pbonzini@redhat.com>,
+ =?utf-8?b?UmFkaW0gS3LEjW3DocWZ?= <rkrcmar@redhat.com>,
+ Vitaly Kuznetsov <vkuznets@redhat.com>
+Subject: [PATCH v5 5/6] KVM: X86: Add NMI support to PV IPIs
+Date: Mon, 23 Jul 2018 14:39:55 +0800
+Message-Id: <1532327996-17619-6-git-send-email-wanpengli@tencent.com>
+X-Mailer: git-send-email 2.7.4
+In-Reply-To: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+References: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+From: Wanpeng Li <wanpengli@tencent.com>
+
+The NMI delivery mode of ICR is used to deliver an NMI to the processor, 
+and the vector information is ignored.
+
+Cc: Paolo Bonzini <pbonzini@redhat.com>
+Cc: Radim Krčmář <rkrcmar@redhat.com>
+Cc: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: Wanpeng Li <wanpengli@tencent.com>
+---
+ arch/x86/kernel/kvm.c | 15 ++++++++++++---
+ arch/x86/kvm/x86.c    | 16 +++++++++++-----
+ 2 files changed, 23 insertions(+), 8 deletions(-)
+
+diff --git a/arch/x86/kernel/kvm.c b/arch/x86/kernel/kvm.c
+index 57eb4a2..3456531 100644
+--- a/arch/x86/kernel/kvm.c
++++ b/arch/x86/kernel/kvm.c
+@@ -458,7 +458,7 @@ static void __init sev_map_percpu_data(void)
+ static int __send_ipi_mask(const struct cpumask *mask, int vector)
+ {
+ 	unsigned long flags;
+-	int cpu, apic_id, min = 0, max = 0, ret = 0;
++	int cpu, apic_id, min = 0, max = 0, ret = 0, icr = 0;
+ #ifdef CONFIG_X86_64
+ 	__uint128_t ipi_bitmap = 0;
+ 	int cluster_size = 128;
+@@ -472,6 +472,15 @@ static int __send_ipi_mask(const struct cpumask *mask, int vector)
+ 
+ 	local_irq_save(flags);
+ 
++	switch (vector) {
++	default:
++		icr = APIC_DM_FIXED | vector;
++		break;
++	case NMI_VECTOR:
++		icr = APIC_DM_NMI;
++		break;
++	}
++
+ 	for_each_cpu(cpu, mask) {
+ 		apic_id = per_cpu(x86_cpu_to_apicid, cpu);
+ 		if (!ipi_bitmap) {
+@@ -483,7 +492,7 @@ static int __send_ipi_mask(const struct cpumask *mask, int vector)
+ 			max = apic_id < max ? max : apic_id;
+ 		} else {
+ 			ret = kvm_hypercall4(KVM_HC_SEND_IPI, (unsigned long)ipi_bitmap,
+-				(unsigned long)(ipi_bitmap >> BITS_PER_LONG), min, vector);
++				(unsigned long)(ipi_bitmap >> BITS_PER_LONG), min, icr);
+ 			min = max = apic_id;
+ 			ipi_bitmap = 0;
+ 		}
+@@ -492,7 +501,7 @@ static int __send_ipi_mask(const struct cpumask *mask, int vector)
+ 
+ 	if (ipi_bitmap) {
+ 		ret = kvm_hypercall4(KVM_HC_SEND_IPI, (unsigned long)ipi_bitmap,
+-			(unsigned long)(ipi_bitmap >> BITS_PER_LONG), min, vector);
++			(unsigned long)(ipi_bitmap >> BITS_PER_LONG), min, icr);
+ 	}
+ 
+ 	local_irq_restore(flags);
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index a43a29f..c118040 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -6695,17 +6695,23 @@ static void kvm_pv_kick_cpu_op(struct kvm *kvm, unsigned long flags, int apicid)
+  * Return 0 if successfully added and 1 if discarded.
+  */
+ static int kvm_pv_send_ipi(struct kvm *kvm, unsigned long ipi_bitmap_low,
+-		unsigned long ipi_bitmap_high, int min, int vector, int op_64_bit)
++		unsigned long ipi_bitmap_high, int min, unsigned long icr, int op_64_bit)
+ {
+ 	int i;
+ 	struct kvm_apic_map *map;
+ 	struct kvm_vcpu *vcpu;
+-	struct kvm_lapic_irq irq = {
+-		.delivery_mode = APIC_DM_FIXED,
+-		.vector = vector,
+-	};
++	struct kvm_lapic_irq irq = {0};
+ 	int cluster_size = op_64_bit ? 64 : 32;
+ 
++	switch (icr & APIC_VECTOR_MASK) {
++	default:
++		irq.vector = icr & APIC_VECTOR_MASK;
++		break;
++	case NMI_VECTOR:
++		break;
++	}
++	irq.delivery_mode = icr & APIC_MODE_MASK;
++
+ 	rcu_read_lock();
+ 	map = rcu_dereference(kvm->arch.apic_map);
+ 
+
+From patchwork Mon Jul 23 06:39:56 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Patchwork-Submitter: Wanpeng Li <kernellwp@gmail.com>
+X-Patchwork-Id: 10539667
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id CC833180E
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:19 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B6616284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:19 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id AA7D4284EE; Mon, 23 Jul 2018 06:40:19 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI
+	autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 56B45284D4
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 06:40:19 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2388104AbeGWHjy (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 03:39:54 -0400
+Received: from mail-pf1-f193.google.com ([209.85.210.193]:42266 "EHLO
+        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388085AbeGWHjx (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 03:39:53 -0400
+Received: by mail-pf1-f193.google.com with SMTP id l9-v6so696395pff.9;
+        Sun, 22 Jul 2018 23:40:14 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=HVOb+vFJlwfEy9YaU1RuD0B68qKfBVjS/jc+VgEZqW0=;
+        b=AKYEiZ6grUztwCK8Bdvk9/GjbxzIm/JU2nCbghqXoh2bUfAWX+pIyiSZo7AIBCTAqV
+         uWNbCixFhOLnDaoObnAoI4d/jO8fM5uN3hyJfpvwqui4hwhQkx22tQFzy770n3fEF2ru
+         P5bZBsqb7DNGUDxvIt8NzUeHfm1PcxqMauNBC4G1PWCn9m1FshB6iKCQg1b86lb5WQxs
+         cCUXp3a6ggfLHEIB79iO2fbG7Qz0rJjYUK/iglH79Kh+njzZcjzyFsCq3hBT0P5yJjA0
+         lvZUJHhaGbCcAlLkKU8PLA4GmY2gcqFqD1DSotvIPptzVhiISFubUW8JAaXGg1kPds3h
+         O99Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=HVOb+vFJlwfEy9YaU1RuD0B68qKfBVjS/jc+VgEZqW0=;
+        b=S+/AO07SLmiqNPVkWMeapIjltpdbOxZK7OjQIBkb9waY15mcKt7PqV5todbx1BJHFQ
+         FOT3uoYfmoqxFmvQF+FXyl7OqqlnAGCEWHdxiQ4MeCkTWr23Rlmmcdao0bC6HzGQe9tk
+         Lp0uWtpxckzNs4Ggv++h4CR7o8328KB1zhXIaxaC2wXbGDc0ufadL9fSVBie+YrOSaYm
+         jteczyY7z3X+y6YHPfmeZMvIFmv8+GaLIbtMpBlwya0VsWeyx9KxzmLh11m9Q/ljPxVS
+         HbieY64j/REn87Qn5xew0RSCYWjURPayYMZZ9RQ+ZbW+CaREhuHsR8L9OtbPL+o8wZqi
+         soiQ==
+X-Gm-Message-State: AOUpUlEW/npwCCKnM40MHJapILVbm4xeEQkZS0+fTLo3h929AMUf/8WF
+        rfUTof4UV3x0KV3fm4phc/PkSU2Q
+X-Google-Smtp-Source: 
+ AAOMgpc7MSMywQAZcU8M7GrhtX/q4Vk7GEwmgK6Lj/fIFlLn4fSw3m5R0maPJwkrQv65A9JHO0aJKw==
+X-Received: by 2002:a62:9c17:: with SMTP id
+ f23-v6mr12020643pfe.209.1532328013683;
+        Sun, 22 Jul 2018 23:40:13 -0700 (PDT)
+Received: from localhost.localdomain ([203.205.141.123])
+        by smtp.googlemail.com with ESMTPSA id
+ p17-v6sm8165598pgv.26.2018.07.22.23.40.11
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
+        Sun, 22 Jul 2018 23:40:13 -0700 (PDT)
+From: Wanpeng Li <kernellwp@gmail.com>
+X-Google-Original-From: Wanpeng Li <wanpengli@tencent.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org
+Cc: Paolo Bonzini <pbonzini@redhat.com>,
+ =?utf-8?b?UmFkaW0gS3LEjW3DocWZ?= <rkrcmar@redhat.com>,
+ Vitaly Kuznetsov <vkuznets@redhat.com>
+Subject: [PATCH v5 6/6] KVM: X86: Expose PV_SEND_IPI CPUID feature bit to
+ guest
+Date: Mon, 23 Jul 2018 14:39:56 +0800
+Message-Id: <1532327996-17619-7-git-send-email-wanpengli@tencent.com>
+X-Mailer: git-send-email 2.7.4
+In-Reply-To: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+References: <1532327996-17619-1-git-send-email-wanpengli@tencent.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+From: Wanpeng Li <wanpengli@tencent.com>
+
+Expose PV_SEND_IPI feature bit to guest, the guest can check this feature
+bit before using paravirtualized send IPIs.
+
+Cc: Paolo Bonzini <pbonzini@redhat.com>
+Cc: Radim Krčmář <rkrcmar@redhat.com>
+Cc: Vitaly Kuznetsov <vkuznets@redhat.com>
+Signed-off-by: Wanpeng Li <wanpengli@tencent.com>
+---
+ Documentation/virtual/kvm/cpuid.txt | 4 ++++
+ arch/x86/kvm/cpuid.c                | 3 ++-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/virtual/kvm/cpuid.txt b/Documentation/virtual/kvm/cpuid.txt
+index ab022dc..97ca194 100644
+--- a/Documentation/virtual/kvm/cpuid.txt
++++ b/Documentation/virtual/kvm/cpuid.txt
+@@ -62,6 +62,10 @@ KVM_FEATURE_ASYNC_PF_VMEXIT        ||    10 || paravirtualized async PF VM exit
+                                    ||       || can be enabled by setting bit 2
+                                    ||       || when writing to msr 0x4b564d02
+ ------------------------------------------------------------------------------
++KVM_FEATURE_PV_SEND_IPI            ||    11 || guest checks this feature bit
++                                   ||       || before using paravirtualized
++                                   ||       || send IPIs.
++------------------------------------------------------------------------------
+ KVM_FEATURE_CLOCKSOURCE_STABLE_BIT ||    24 || host will warn if no guest-side
+                                    ||       || per-cpu warps are expected in
+                                    ||       || kvmclock.
+diff --git a/arch/x86/kvm/cpuid.c b/arch/x86/kvm/cpuid.c
+index 7e042e3..7bcfa61 100644
+--- a/arch/x86/kvm/cpuid.c
++++ b/arch/x86/kvm/cpuid.c
+@@ -621,7 +621,8 @@ static inline int __do_cpuid_ent(struct kvm_cpuid_entry2 *entry, u32 function,
+ 			     (1 << KVM_FEATURE_CLOCKSOURCE_STABLE_BIT) |
+ 			     (1 << KVM_FEATURE_PV_UNHALT) |
+ 			     (1 << KVM_FEATURE_PV_TLB_FLUSH) |
+-			     (1 << KVM_FEATURE_ASYNC_PF_VMEXIT);
++			     (1 << KVM_FEATURE_ASYNC_PF_VMEXIT) |
++			     (1 << KVM_FEATURE_PV_SEND_IPI);
+ 
+ 		if (sched_info_on())
+ 			entry->eax |= (1 << KVM_FEATURE_STEAL_TIME);

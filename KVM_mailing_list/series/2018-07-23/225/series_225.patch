@@ -1,0 +1,224 @@
+From patchwork Mon Jul 23 07:47:57 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Tianyu Lan <Tianyu.Lan@microsoft.com>
+X-Patchwork-Id: 10539703
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 84F3C13BB
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 07:48:13 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6BBFE23794
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 07:48:13 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 5E894251F9; Mon, 23 Jul 2018 07:48:13 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI autolearn=ham
+	version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D76C123794
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 07:48:12 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2388094AbeGWIsA (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 04:48:00 -0400
+Received: from mail-sg2apc01on0092.outbound.protection.outlook.com
+ ([104.47.125.92]:24479
+        "EHLO APC01-SG2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2388002AbeGWIr7 (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 04:47:59 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=g6RfPrblGnwjXb4RMyS9NWxtgTUMCrJ0Tz7ugaxdX3Y=;
+ b=PR+6IrOw90sIvqRVNqqN59rAFNv4n+yheorUd0eamR5qRYFxFFJqFQsvqH0UB97wsKvUUCXVTselMNNU+K/R0v4xv/vZlNulVTx2SkGudM3tTWqmdADnfMRov6mFdv7hadPVOVcRUfKjkMswQXlQeaswPaFyYwlXEWS/UNlu6Ko=
+Received: from SG2P15301MB0093.APCP153.PROD.OUTLOOK.COM (10.170.136.145) by
+ SG2P15301MB0063.APCP153.PROD.OUTLOOK.COM (10.170.136.19) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1017.1; Mon, 23 Jul 2018 07:47:58 +0000
+Received: from SG2P15301MB0093.APCP153.PROD.OUTLOOK.COM
+ ([fe80::f916:a637:8730:be25]) by SG2P15301MB0093.APCP153.PROD.OUTLOOK.COM
+ ([fe80::f916:a637:8730:be25%4]) with mapi id 15.20.1017.000; Mon, 23 Jul 2018
+ 07:47:57 +0000
+From: Tianyu Lan <Tianyu.Lan@microsoft.com>
+CC: Tianyu Lan <Tianyu.Lan@microsoft.com>,
+        "pbonzini@redhat.com" <pbonzini@redhat.com>,
+        "rkrcmar@redhat.com" <rkrcmar@redhat.com>,
+        "tglx@linutronix.de" <tglx@linutronix.de>,
+        "mingo@redhat.com" <mingo@redhat.com>,
+        "hpa@zytor.com" <hpa@zytor.com>, "x86@kernel.org" <x86@kernel.org>,
+        "kvm@vger.kernel.org" <kvm@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: [PATCH] KVM: Compile hv_remote_flush_tlb() and check_ept_pointer()
+ when CONFIG_HYPERV is enabled.
+Thread-Topic: [PATCH] KVM: Compile hv_remote_flush_tlb() and
+ check_ept_pointer() when CONFIG_HYPERV is enabled.
+Thread-Index: AQHUIll4KTxoeOfqCUGRiILNDH573A==
+Date: Mon, 23 Jul 2018 07:47:57 +0000
+Message-ID: <20180723074747.14231-1-Tianyu.Lan@microsoft.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-originating-ip: [52.168.54.252]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 
+ 1;SG2P15301MB0063;6:R7Bp7oaiDDHnva51adImYPEj5UrYRgygs8O7FiD8cR4Aj6BRCYTfiW/mzf3VWEi+zV2DrCCaXkNxJ7JtJCZ0+hq1gK8k9VLky6celXXshiLFigvyS0R+9G1pguJGmIyz81H5e6LjWL8Hvy4G9T6pK+DqteF6TAfP6Nv2K4nLoaPy4xz8b2hQhHlKND3TuaNeRPkDeUysPx6Kw9X18KsdRbXMNyfNwk9UlFQiRuLatVNeUME+y8WSbi8mAJzIo9/JXUS02bxI6V6PEhF7CNuctnwaTG7J1UjRTSZnlJ0SrY82Dw3lbeJc7e4zOK9J+SvP0TEIEE5Uw2kXWn1JYNeqEwz0vfDkUeqwrmF39oKKph/O4EQVM5h9UDJ4Zlc9vCph4j6U6kYjEROFcRdDUrNLWuPHEnFNsd+ZOXzS4sZosfnGEAjqpA0GAcPIPIBaPo27/nT9jSZP2DDqX05nxNS/Mw==;5:Xwk2vtdgOG6f5JuoC+wp6Scmm45bUAasQRQEqSlu9OWLCnUH36x2wFPNDq8pbbsCII4Xn2NzFoy9xMcKNZmBWjWb4Qp6jZiAR1mUohmPgopqyQMx8FOMUMhtJfSS2Iw3XFlw87wKlCS/RHPkNZKMGC8r2I/VobRGYy+bbSW2QXY=;7:Wz9VnpZ08Tu5oH7KuyAf+XdFrhiqKGjsHAuEfotjHjJQTMyEOujFS3uGB+2qtR6kuPlU7fmu8ZzJwn+xqCzqkQEMtacWi/Vwqu9sZvQbC/bjw2uohXmqj5ExdJz7nUIyRDWc+Lv6WTTMsLU0GFY4/21yI0CKkaiTBUHMxbA/xBdC8zTvrEtitEP2Ye291QGbd4YRc9P6kf4eoAZp8I71UXTktxqoLUKN02UGlFSeFQB7VFylqtZnSeRxBAG7THkx
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: ffca6283-f784-4c59-055f-08d5f0709b8d
+x-ms-office365-filtering-ht: Tenant
+x-microsoft-antispam: 
+ BCL:0;PCL:0;RULEID:(7020095)(4652040)(8989117)(5600073)(711020)(4618075)(2017052603328)(7193020);SRVR:SG2P15301MB0063;
+x-ms-traffictypediagnostic: SG2P15301MB0063:
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=Tianyu.Lan@microsoft.com;
+x-microsoft-antispam-prvs: 
+ <SG2P15301MB00636129C6E1CA2F90280F6E92560@SG2P15301MB0063.APCP153.PROD.OUTLOOK.COM>
+x-exchange-antispam-report-test: UriScan:(28532068793085)(89211679590171);
+x-ms-exchange-senderadcheck: 1
+x-exchange-antispam-report-cfa-test: 
+ BCL:0;PCL:0;RULEID:(8211001083)(6040522)(2401047)(5005006)(8121501046)(3002001)(3231311)(944501410)(52105095)(93006095)(93001095)(10201501046)(6055026)(149027)(150027)(6041310)(20161123560045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123558120)(20161123562045)(20161123564045)(6072148)(201708071742011)(7699016);SRVR:SG2P15301MB0063;BCL:0;PCL:0;RULEID:;SRVR:SG2P15301MB0063;
+x-forefront-prvs: 0742443479
+x-forefront-antispam-report: 
+ SFV:NSPM;SFS:(10019020)(396003)(346002)(39860400002)(136003)(376002)(366004)(199004)(189003)(6116002)(59246006)(97736004)(86612001)(3846002)(1076002)(10290500003)(10090500001)(54906003)(53936002)(36756003)(4326008)(25786009)(106356001)(105586002)(72206003)(256004)(6486002)(22452003)(86362001)(14454004)(316002)(478600001)(99286004)(7736002)(1671002)(5250100002)(305945005)(6512007)(5660300001)(476003)(2616005)(6436002)(8936002)(14444005)(102836004)(6506007)(486006)(2900100001)(68736007)(109986005)(26005)(66066001)(1857600001)(2906002)(81156014)(8676002)(81166006);DIR:OUT;SFP:1102;SCL:1;SRVR:SG2P15301MB0063;H:SG2P15301MB0093.APCP153.PROD.OUTLOOK.COM;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: microsoft.com does not designate
+ permitted sender hosts)
+x-microsoft-antispam-message-info: 
+ LyBjBNdGR6YgKH2xWkUDNvHTcbFv+5r0QNABhLbcjek+ujcrqUwvfMVLJ3b5aTG92B6L6gbNwXzhSASEwFSxnqtZKdrfNMKIIk99e9HFzFAHqAxZyCDoPcDinzSzBDvuk5ZE42Oi9EDszTYuYC9BrwP++dhc/4WUl+Yc3zJiPFqlTg70DawIb85O8o2a7dEdFrdZwXTPFtFTZDOBJNTyq7UNjuhTvA/1noWSMqZpqercKm6pYazEANCdnVbCcy1ughhMqg/AujaxHJoASMwoTfp2vPsdBrG4uC+3DHwOMX5ExbdeQADbUMG6EB5UXFVAeLVBoLSjW8/0eUDtSW6HDJeyPwQEfuuMYpsJD76M9iY=
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="iso-8859-1"
+MIME-Version: 1.0
+X-OriginatorOrg: microsoft.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 
+ ffca6283-f784-4c59-055f-08d5f0709b8d
+X-MS-Exchange-CrossTenant-originalarrivaltime: 23 Jul 2018 07:47:57.5082
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 72f988bf-86f1-41af-91ab-2d7cd011db47
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SG2P15301MB0063
+To: unlisted-recipients:; (no To-header on input)
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+This patch is to avoid compilation warning when CONFIG_HYPERV isn't enabled.
+
+Signed-off-by: Lan Tianyu <Tianyu.Lan@microsoft.com>
+---
+ arch/x86/kvm/vmx.c | 84 +++++++++++++++++++++++++++---------------------------
+ 1 file changed, 42 insertions(+), 42 deletions(-)
+
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 16ea8b629416..2f379e575940 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -1367,6 +1367,48 @@ static void evmcs_sanitize_exec_ctrls(struct vmcs_config *vmcs_conf)
+ 	 *	GUEST_IA32_RTIT_CTL		= 0x00002814,
+ 	 */
+ }
++
++/* check_ept_pointer() should be under protection of ept_pointer_lock. */
++static void check_ept_pointer(struct kvm *kvm)
++{
++	struct kvm_vcpu *vcpu;
++	u64 tmp_eptp = INVALID_PAGE;
++	int i;
++
++	kvm_for_each_vcpu(i, vcpu, kvm) {
++		if (!VALID_PAGE(tmp_eptp)) {
++			tmp_eptp = to_vmx(vcpu)->ept_pointer;
++		} else if (tmp_eptp != to_vmx(vcpu)->ept_pointer) {
++			to_kvm_vmx(kvm)->ept_pointers_match
++				= EPT_POINTERS_MISMATCH;
++			return;
++		}
++	}
++
++	to_kvm_vmx(kvm)->ept_pointers_match = EPT_POINTERS_MATCH;
++}
++
++static int hv_remote_flush_tlb(struct kvm *kvm)
++{
++	int ret;
++
++	spin_lock(&to_kvm_vmx(kvm)->ept_pointer_lock);
++
++	if (to_kvm_vmx(kvm)->ept_pointers_match == EPT_POINTERS_CHECK)
++		check_ept_pointer(kvm);
++
++	if (to_kvm_vmx(kvm)->ept_pointers_match != EPT_POINTERS_MATCH) {
++		ret = -ENOTSUPP;
++		goto out;
++	}
++
++	ret = hyperv_flush_guest_mapping(
++			to_vmx(kvm_get_vcpu(kvm, 0))->ept_pointer);
++
++out:
++	spin_unlock(&to_kvm_vmx(kvm)->ept_pointer_lock);
++	return ret;
++}
+ #else /* !IS_ENABLED(CONFIG_HYPERV) */
+ static inline void evmcs_write64(unsigned long field, u64 value) {}
+ static inline void evmcs_write32(unsigned long field, u32 value) {}
+@@ -4827,48 +4869,6 @@ static inline void __vmx_flush_tlb(struct kvm_vcpu *vcpu, int vpid,
+ 	}
+ }
+ 
+-/* check_ept_pointer() should be under protection of ept_pointer_lock. */
+-static void check_ept_pointer(struct kvm *kvm)
+-{
+-	struct kvm_vcpu *vcpu;
+-	u64 tmp_eptp = INVALID_PAGE;
+-	int i;
+-
+-	kvm_for_each_vcpu(i, vcpu, kvm) {
+-		if (!VALID_PAGE(tmp_eptp)) {
+-			tmp_eptp = to_vmx(vcpu)->ept_pointer;
+-		} else if (tmp_eptp != to_vmx(vcpu)->ept_pointer) {
+-			to_kvm_vmx(kvm)->ept_pointers_match
+-				= EPT_POINTERS_MISMATCH;
+-			return;
+-		}
+-	}
+-
+-	to_kvm_vmx(kvm)->ept_pointers_match = EPT_POINTERS_MATCH;
+-}
+-
+-static int hv_remote_flush_tlb(struct kvm *kvm)
+-{
+-	int ret;
+-
+-	spin_lock(&to_kvm_vmx(kvm)->ept_pointer_lock);
+-
+-	if (to_kvm_vmx(kvm)->ept_pointers_match == EPT_POINTERS_CHECK)
+-		check_ept_pointer(kvm);
+-
+-	if (to_kvm_vmx(kvm)->ept_pointers_match != EPT_POINTERS_MATCH) {
+-		ret = -ENOTSUPP;
+-		goto out;
+-	}
+-
+-	ret = hyperv_flush_guest_mapping(
+-			to_vmx(kvm_get_vcpu(kvm, 0))->ept_pointer);
+-
+-out:
+-	spin_unlock(&to_kvm_vmx(kvm)->ept_pointer_lock);
+-	return ret;
+-}
+-
+ static void vmx_flush_tlb(struct kvm_vcpu *vcpu, bool invalidate_gpa)
+ {
+ 	__vmx_flush_tlb(vcpu, to_vmx(vcpu)->vpid, invalidate_gpa);

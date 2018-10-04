@@ -1,0 +1,319 @@
+From patchwork Mon Jul 23 21:31:21 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Isaku Yamahata <isaku.yamahata@gmail.com>
+X-Patchwork-Id: 10541109
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 76BF8112B
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 21:31:46 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 66ADD28639
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 21:31:46 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 5AAEA2860B; Mon, 23 Jul 2018 21:31:46 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI
+	autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 1253728607
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 21:31:46 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2388133AbeGWWev (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 18:34:51 -0400
+Received: from mail-pg1-f194.google.com ([209.85.215.194]:34990 "EHLO
+        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388088AbeGWWev (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 18:34:51 -0400
+Received: by mail-pg1-f194.google.com with SMTP id e6-v6so1280032pgv.2
+        for <kvm@vger.kernel.org>; Mon, 23 Jul 2018 14:31:44 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references;
+        bh=MQh2cohwrQ3Nh/q9mNsOgVAu3JAxsaFw3h+5JNSBJ0s=;
+        b=AcypDaNkfgbz0FTyBKp2W2oL5oOG0th81oMPrgpNKlTtct7wBaYHUB29uat+/A97ku
+         gm3VbpYuFkSqyHe06Zjaac+nY65TFP6+Jz/c90BSHSOPq1PlP1kjjY7ajGbzckAJnK8f
+         UgOqWivki0xTGkNcr3tPYY+rx+URzhau2vMrCh4S1iWg5kmjICtebZRbtki2UBPp1ZsQ
+         T4Z9DUF2hDaNyrRatb/EdEZXXl+s+na1MGL2Fnnsdn+ArRn9e7wWqX4U0lzprHu//rxn
+         oWwWrTyNzNbEQe26tjkdhhus0GdjeU+e1flQ/s+uMO4IbpBFAgobET3HmNm5JxVcXdCw
+         EMpQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references;
+        bh=MQh2cohwrQ3Nh/q9mNsOgVAu3JAxsaFw3h+5JNSBJ0s=;
+        b=mEvHannzSOoKxmMLRyM8/H/Fs7LtJzxoz1arEbzhMl5rNXMHj+vzrt/7JKyDmz3ZKX
+         ytbUPv+aZ4hoNiOMRNhHMbGYRfYjAC1yQwXg9kaTCqEQprpCQ7Q98Ym1FfjViKpD/EUG
+         SSZfYT1thNsdlDdFjjfBRuhvS1fwPVKS2AoZTc6bUVsGHeEXjTPJ8XxngZ+NYMMslNwK
+         Rv9PuBICmKaqZKeIwb/+XdUJkv8T9Ms1+MTWBwsDuU98Z6G1MexEIHebOUPKX84SdbMO
+         Fjo7xQmpJ2DvRNQbKqKnjjjGQRwERC2fYF7qAJSzUgznRY9XSKRR2mgmx1dKOyjsabyI
+         GqpQ==
+X-Gm-Message-State: AOUpUlGeJnosgaDN2zU8em+agg8CsNlov2RtP7I1KCEwUYnhiGGuLZM6
+        QkHrPaGyKVCxVU1k4z5cON3mMMNA
+X-Google-Smtp-Source: 
+ AAOMgpfwTQwYjEbWNKekS1riBSdMhkGjWYFeOL87gmjCy+uQhy0xzPvqAAm5Kd6RJvgPGlxsxIjhGA==
+X-Received: by 2002:a65:630e:: with SMTP id
+ g14-v6mr13893599pgv.153.1532381503543;
+        Mon, 23 Jul 2018 14:31:43 -0700 (PDT)
+Received: from localhost ([192.55.54.58])
+        by smtp.gmail.com with ESMTPSA id
+ z8-v6sm14078854pfe.163.2018.07.23.14.31.42
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Mon, 23 Jul 2018 14:31:42 -0700 (PDT)
+From: Isaku Yamahata <isaku.yamahata@gmail.com>
+To: kvm@vger.kernel.org
+Cc: pbonzini@redhat.com, rkrcmar@redhat.com, isaku.yamahata@gmail.com,
+        Isaku Yamahata <isaku.yamahata@intel.com>
+Subject: [PATCH 1/2] x86/kvm: typo kvm_emulate.h
+Date: Mon, 23 Jul 2018 14:31:21 -0700
+Message-Id: 
+ <49f3453c5abccc57fa32e9db6b226e34fdb4c207.1532381257.git.isaku.yamahata@gmail.com>
+X-Mailer: git-send-email 2.14.1
+In-Reply-To: <cover.1532381257.git.isaku.yamahata@gmail.com>
+References: <cover.1532381257.git.isaku.yamahata@gmail.com>
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+From: Isaku Yamahata <isaku.yamahata@intel.com>
+
+ICTP -> ICPT
+
+Signed-off-by: Isaku Yamahata <isaku.yamahata@gmail.com>
+---
+ arch/x86/include/asm/kvm_emulate.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/include/asm/kvm_emulate.h b/arch/x86/include/asm/kvm_emulate.h
+index 0f82cd91cd3c..3ed391dfc551 100644
+--- a/arch/x86/include/asm/kvm_emulate.h
++++ b/arch/x86/include/asm/kvm_emulate.h
+@@ -369,7 +369,7 @@ struct x86_emulate_ctxt {
+ #define X86EMUL_CPUID_VENDOR_GenuineIntel_edx 0x49656e69
+ 
+ enum x86_intercept_stage {
+-	X86_ICTP_NONE = 0,   /* Allow zero-init to not match anything */
++	X86_ICPT_NONE = 0,   /* Allow zero-init to not match anything */
+ 	X86_ICPT_PRE_EXCEPT,
+ 	X86_ICPT_POST_EXCEPT,
+ 	X86_ICPT_POST_MEMACCESS,
+
+From patchwork Mon Jul 23 21:31:22 2018
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Isaku Yamahata <isaku.yamahata@gmail.com>
+X-Patchwork-Id: 10541111
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+ [172.30.200.125])
+	by pdx-korg-patchwork-2.web.codeaurora.org (Postfix) with ESMTP id 3E2E3180E
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 21:31:51 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2EA20285F2
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 21:31:51 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 2311028643; Mon, 23 Jul 2018 21:31:51 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.0 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,RCVD_IN_DNSWL_HI
+	autolearn=ham version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A439A2864E
+	for <patchwork-kvm@patchwork.kernel.org>;
+ Mon, 23 Jul 2018 21:31:50 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+        id S2388146AbeGWWe4 (ORCPT
+        <rfc822;patchwork-kvm@patchwork.kernel.org>);
+        Mon, 23 Jul 2018 18:34:56 -0400
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:38460 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388135AbeGWWe4 (ORCPT <rfc822;kvm@vger.kernel.org>);
+        Mon, 23 Jul 2018 18:34:56 -0400
+Received: by mail-pg1-f196.google.com with SMTP id k3-v6so1276705pgq.5
+        for <kvm@vger.kernel.org>; Mon, 23 Jul 2018 14:31:48 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :in-reply-to:references;
+        bh=vWBD18OhvZSJwlMS5ehyalSKt9NO9aKAlPpOK48WE8g=;
+        b=KyYojXeYxzulq0J1Cdmelm1RlJJTcIpfeaMf6r24LF0JFeKZOjLPVHI6Q9yxknaY7E
+         d2KAVX+iCliRfpGXaPwXX6RgROVDJjBu/GBClh4MV4t3ys9BZZCn01qT7Er76s1dPqM+
+         L9Uii1kKjIKs/OFsNz+OBsdJ0s4WwWHyx0exmcjsbw413d8nQ9wGSJJ6MsendmZGswzg
+         8ZI/bsHGJblEvsI7zik5KvD+OPLcCiUHLCMDOCvZwftc7SKgn1An9TxCnrUW1Fe5FEdP
+         N5RudSn4RtYy5dg4GYFyE1wpDSO1ujWdqiFkgBPfSF+1ch9il1NamN5N2HOhQ8CmT/t6
+         tSEQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:in-reply-to:references;
+        bh=vWBD18OhvZSJwlMS5ehyalSKt9NO9aKAlPpOK48WE8g=;
+        b=MFSGh1mbQXP9lpxElY5C2KoFT7Qucy42l6V8c1cU95k2R96EPJbtB+ZpFE2lLay24n
+         Dn02LoElCRRDySAWZ3ohwxLMAgd+OsfMgZiotCslNsT6PUTiBvGbrKabLqclOTfEqv4t
+         Ev4pmFCPA5VNnhCuSydAjNr2s+5TtjxBEI2xwETcDYsTonyJs4unzzoihog8jAiAECv1
+         n+ZavsCfXVASPoc7bGmjqnRA5wz7PzkBfPg2LWRz3w4XKnv6yGzR1Sypam0yFUO33WOk
+         qtCMjJu5lKKVqCFHzxqOUX8VB69cFPVEqvOCKM2+rFgBDrBfvlD4zhPRh1E2DojL9DVl
+         mH8g==
+X-Gm-Message-State: AOUpUlGBT/N8O8sfWZWHC7dd9BdKNLGSd4KTyowcV2RX/v29tOuINIPe
+        F/7zgG/7/UY1kX2uaJKkRpAuqgvb
+X-Google-Smtp-Source: 
+ AAOMgpclkvadu88poy5QWz+y1zPIpZid7IFCX/oZieDllgjxmCv03GbUXD1TYcV+ALMi6k+ITf4U3g==
+X-Received: by 2002:a63:e355:: with SMTP id
+ o21-v6mr13976211pgj.251.1532381508148;
+        Mon, 23 Jul 2018 14:31:48 -0700 (PDT)
+Received: from localhost ([192.55.54.58])
+        by smtp.gmail.com with ESMTPSA id
+ w11-v6sm12954104pgm.82.2018.07.23.14.31.46
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Mon, 23 Jul 2018 14:31:47 -0700 (PDT)
+From: Isaku Yamahata <isaku.yamahata@gmail.com>
+To: kvm@vger.kernel.org
+Cc: pbonzini@redhat.com, rkrcmar@redhat.com, isaku.yamahata@gmail.com,
+        Isaku Yamahata <isaku.yamahata@intel.com>
+Subject: [PATCH 2/2] kvm/x86/vmx: sprinkle
+ __read_mostly/__init/__ro_after_init
+Date: Mon, 23 Jul 2018 14:31:22 -0700
+Message-Id: 
+ <c1ea02cc95ecb9e9831bef98746562756b120d23.1532381257.git.isaku.yamahata@gmail.com>
+X-Mailer: git-send-email 2.14.1
+In-Reply-To: 
+ <49f3453c5abccc57fa32e9db6b226e34fdb4c207.1532381257.git.isaku.yamahata@gmail.com>
+References: 
+ <49f3453c5abccc57fa32e9db6b226e34fdb4c207.1532381257.git.isaku.yamahata@gmail.com>
+In-Reply-To: <cover.1532381257.git.isaku.yamahata@gmail.com>
+References: <cover.1532381257.git.isaku.yamahata@gmail.com>
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+From: Isaku Yamahata <isaku.yamahata@intel.com>
+
+Signed-off-by: Isaku Yamahata <isaku.yamahata@gmail.com>
+---
+ arch/x86/kvm/vmx.c | 28 ++++++++++++++--------------
+ 1 file changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index e30da9a2430c..c66e75347a2e 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -887,18 +887,18 @@ static struct pi_desc *vcpu_to_pi_desc(struct kvm_vcpu *vcpu)
+ 	[ROL16(number##_HIGH, 6)] = VMCS12_OFFSET(name) + sizeof(u32)
+ 
+ 
+-static u16 shadow_read_only_fields[] = {
++static u16 shadow_read_only_fields[] __ro_after_init = {
+ #define SHADOW_FIELD_RO(x) x,
+ #include "vmx_shadow_fields.h"
+ };
+-static int max_shadow_read_only_fields =
++static int max_shadow_read_only_fields __ro_after_init =
+ 	ARRAY_SIZE(shadow_read_only_fields);
+ 
+-static u16 shadow_read_write_fields[] = {
++static u16 shadow_read_write_fields[] __ro_after_init = {
+ #define SHADOW_FIELD_RW(x) x,
+ #include "vmx_shadow_fields.h"
+ };
+-static int max_shadow_read_write_fields =
++static int max_shadow_read_write_fields __ro_after_init =
+ 	ARRAY_SIZE(shadow_read_write_fields);
+ 
+ static const unsigned short vmcs_field_to_offset_table[] = {
+@@ -1117,8 +1117,8 @@ static unsigned long *vmx_bitmap[VMX_BITMAP_NR];
+ #define vmx_vmread_bitmap                    (vmx_bitmap[VMX_VMREAD_BITMAP])
+ #define vmx_vmwrite_bitmap                   (vmx_bitmap[VMX_VMWRITE_BITMAP])
+ 
+-static bool cpu_has_load_ia32_efer;
+-static bool cpu_has_load_perf_global_ctrl;
++static __ro_after_init bool cpu_has_load_ia32_efer;
++static __ro_after_init bool cpu_has_load_perf_global_ctrl;
+ 
+ static DECLARE_BITMAP(vmx_vpid_bitmap, VMX_NR_VPIDS);
+ static DEFINE_SPINLOCK(vmx_vpid_lock);
+@@ -1134,12 +1134,12 @@ static struct vmcs_config {
+ 	u32 vmexit_ctrl;
+ 	u32 vmentry_ctrl;
+ 	struct nested_vmx_msrs nested;
+-} vmcs_config;
++} vmcs_config __ro_after_init;
+ 
+ static struct vmx_capability {
+ 	u32 ept;
+ 	u32 vpid;
+-} vmx_capability;
++} vmx_capability __ro_after_init;
+ 
+ #define VMX_SEGMENT_FIELD(seg)					\
+ 	[VCPU_SREG_##seg] = {                                   \
+@@ -1165,7 +1165,7 @@ static const struct kvm_vmx_segment_field {
+ 	VMX_SEGMENT_FIELD(LDTR),
+ };
+ 
+-static u64 host_efer;
++static u64 __read_mostly host_efer;
+ 
+ static void ept_save_pdptrs(struct kvm_vcpu *vcpu);
+ 
+@@ -1187,7 +1187,7 @@ DEFINE_STATIC_KEY_FALSE(enable_evmcs);
+ #define KVM_EVMCS_VERSION 1
+ 
+ #if IS_ENABLED(CONFIG_HYPERV)
+-static bool __read_mostly enlightened_vmcs = true;
++static bool __ro_after_init enlightened_vmcs = true;
+ module_param(enlightened_vmcs, bool, 0444);
+ 
+ static inline void evmcs_write64(unsigned long field, u64 value)
+@@ -1276,7 +1276,7 @@ static void evmcs_load(u64 phys_addr)
+ 	vp_ap->enlighten_vmentry = 1;
+ }
+ 
+-static void evmcs_sanitize_exec_ctrls(struct vmcs_config *vmcs_conf)
++static __init void evmcs_sanitize_exec_ctrls(struct vmcs_config *vmcs_conf)
+ {
+ 	/*
+ 	 * Enlightened VMCSv1 doesn't support these:
+@@ -1461,7 +1461,7 @@ static inline bool cpu_has_vmx_virtual_intr_delivery(void)
+  * Refer from
+  * https://www.virtualbox.org/svn/vbox/trunk/src/VBox/VMM/VMMR0/HMR0.cpp
+  */
+-static u32 vmx_preemption_cpu_tfms[] = {
++static const u32 vmx_preemption_cpu_tfms[] __initconst = {
+ /* 323344.pdf - BA86   - D0 - Xeon 7500 Series */
+ 0x000206E6,
+ /* 323056.pdf - AAX65  - C2 - Xeon L3406 */
+@@ -4496,7 +4496,7 @@ static inline int vmcs_field_readonly(unsigned long field)
+ 	return (((field >> 10) & 0x3) == 1);
+ }
+ 
+-static void init_vmcs_shadow_fields(void)
++static __init void init_vmcs_shadow_fields(void)
+ {
+ 	int i, j;
+ 
+@@ -7487,7 +7487,7 @@ static void wakeup_handler(void)
+ 	spin_unlock(&per_cpu(blocked_vcpu_on_cpu_lock, cpu));
+ }
+ 
+-static void vmx_enable_tdp(void)
++static __init void vmx_enable_tdp(void)
+ {
+ 	kvm_mmu_set_mask_ptes(VMX_EPT_READABLE_MASK,
+ 		enable_ept_ad_bits ? VMX_EPT_ACCESS_BIT : 0ull,
