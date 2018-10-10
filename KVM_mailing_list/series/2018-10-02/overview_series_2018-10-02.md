@@ -2,7 +2,6 @@
 ##### From: Eric Farman <farman@linux.ibm.com>
 
 ```c
-
 We have two nested loops to check the entries within the pfn_array_table
 arrays.  But we mistakenly use the outer array as an index in our check,
 and completely ignore the indexing performed by the inner loop.
@@ -17,7 +16,6 @@ Signed-off-by: Eric Farman <farman@linux.ibm.com>
 ##### From: Alexey Kardashevskiy <aik@ozlabs.ru>
 
 ```c
-
 So far we only allowed mapping of MMIO BARs to the userspace. However
 there there are GPUs with on-board coherent RAM accessible via side
 channels which we also want to map to the userspace. The first client
@@ -40,7 +38,6 @@ Signed-off-by: Alexey Kardashevskiy <aik@ozlabs.ru>
 ##### From: Alexey Kardashevskiy <aik@ozlabs.ru>
 
 ```c
-
 VFIO regions already support region capabilities with a limited set of
 fields. However the subdriver might have to report to the userspace
 additional bits.
@@ -68,7 +65,6 @@ This is based on top of "vfio_pci: Allow mapping extra regions"
 ##### From: Christian Borntraeger <borntraeger@de.ibm.com>
 
 ```c
-
 From: David Hildenbrand <david@redhat.com>
 
 VCPU requests and VCPU blocking right now don't take care of the vSIE
@@ -102,11 +98,10 @@ Signed-off-by: Christian Borntraeger <borntraeger@de.ibm.com>
  3 files changed, 26 insertions(+), 5 deletions(-)
 
 ```
-#### [PATCH v3 01/33] powerpc: Turn off CPU_FTR_P9_TM_HV_ASSIST in
+#### [PATCH v3 01/33] powerpc: Turn off CPU_FTR_P9_TM_HV_ASSIST in non-hypervisor mode
 ##### From: Paul Mackerras <paulus@ozlabs.org>
 
 ```c
-
 When doing nested virtualization, it is only necessary to do the
 transactional memory hypervisor assist at level 0, that is, when
 we are in hypervisor mode.  Nested hypervisors can just use the TM
@@ -129,7 +124,6 @@ Signed-off-by: Paul Mackerras <paulus@ozlabs.org>
 ##### From: Cornelia Huck <cohuck@redhat.com>
 
 ```c
-
 From: Eric Farman <farman@linux.ibm.com>
 
 We have two nested loops to check the entries within the pfn_array_table

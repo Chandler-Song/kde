@@ -135,7 +135,7 @@ do
             echo "\`\`\`" >> ${FILE}
             # i=`expr $i + 1`
             done
-            rm *.patch
+            # rm *.patch
         done
         cd ..
         ;;
@@ -146,9 +146,9 @@ do
     esac
 done
 
-rm */*.json
-rm */*/*.json
-rm */wget-log
+# rm */*.json
+# rm */*/*.json
+# rm */wget-log
 
 
 # cat *.patch | grep "Subject: " > patches.list
