@@ -182,20 +182,6 @@ Suraj Jitindar Singh (9):
  45 files changed, 3933 insertions(+), 905 deletions(-)
  create mode 100644 arch/powerpc/kvm/book3s_hv_nested.c
 ```
-#### [PATCH] KVM/x86: Fix invvpid and invept register operand size in 64-bit mode
-##### From: Uros Bizjak <ubizjak@gmail.com>
-
-```c
-Register operand size of invvpid and invept instruction in 64-bit mode
-has always 64 bits. Adjust inline function argument type to reflect
-correct size.
-
-Signed-off-by: Uros Bizjak <ubizjak@gmail.com>
----
- arch/x86/kvm/vmx.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-```
 #### [PATCH v2 1/2] KVM: x86: hyperv: fix 'tlb_lush' typo
 ##### From: Vitaly Kuznetsov <vkuznets@redhat.com>
 
@@ -209,5 +195,19 @@ Reviewed-by: Roman Kagan <rkagan@virtuozzo.com>
  arch/x86/include/asm/kvm_host.h | 2 +-
  arch/x86/kvm/hyperv.c           | 6 +++---
  2 files changed, 4 insertions(+), 4 deletions(-)
+
+```
+#### [PATCH] KVM/x86: Fix invvpid and invept register operand size in 64-bit mode
+##### From: Uros Bizjak <ubizjak@gmail.com>
+
+```c
+Register operand size of invvpid and invept instruction in 64-bit mode
+has always 64 bits. Adjust inline function argument type to reflect
+correct size.
+
+Signed-off-by: Uros Bizjak <ubizjak@gmail.com>
+---
+ arch/x86/kvm/vmx.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 ```

@@ -1,2 +1,3 @@
 #!/bin/bash
-rm -rf `find -name "*.json"`
+# rm -rf `find . -name *.json`
+find . -name *.json -delete
