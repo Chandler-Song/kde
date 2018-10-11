@@ -1,6 +1,6 @@
 #!/bin/bash
 # demo sh batch.sh
-for i in `seq 1 1 10`
+for i in `seq 6 1 9`
 do
     for j in `seq 1 1 31`
     do
