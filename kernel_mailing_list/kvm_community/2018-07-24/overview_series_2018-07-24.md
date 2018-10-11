@@ -1,4 +1,4 @@
-#### VM boot failure on nodes not having DMA32 zoneTo: pbonzini@redhat.com, rkrcmar@redhat.com
+#### VM boot failure on nodes not having DMA32
 ##### From: Liang C <liangchen.linux@gmail.com>
 
 ```c
