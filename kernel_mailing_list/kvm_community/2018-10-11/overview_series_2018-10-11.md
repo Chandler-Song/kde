@@ -1,3 +1,34 @@
+#### [PATCH 1/3] KVM/x86: Fix invvpid and invept register operand size in 64-bit mode
+##### From: Uros Bizjak <ubizjak@gmail.com>
+
+```c
+Register operand size of invvpid and invept instruction in 64-bit mode
+has always 64 bits. Adjust inline function argument type to reflect
+correct size.
+
+Signed-off-by: Uros Bizjak <ubizjak@gmail.com>
+---
+ arch/x86/kvm/vmx.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+```
+#### [PATCH] KVM: nVMX: unconditionally cancel preemption timer in free_nested
+##### From: Peter Shier <pshier@google.com>
+
+```c
+There are multiple code paths where an hrtimer may have been started to
+emulate an L1 VMX preemption timer that can result in a call to free_nested
+without an intervening L2 exit where the hrtimer is normally
+cancelled. Unconditionally cancel in free_nested to cover all cases.
+
+Signed-off-by: Peter Shier <pshier@google.com>
+Reviewed-by: Jim Mattson <jmattson@google.com>
+Reported-by: Jim Mattson <jmattson@google.com>
+---
+ arch/x86/kvm/vmx.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+```
 #### [PATCH] KVM: vmx: hyper-v: don't pass EPT configuration info to vmx_hv_remote_flush_tlb()
 ##### From: Vitaly Kuznetsov <vkuznets@redhat.com>
 
@@ -32,6 +63,7 @@ Renaming this function can make code readable.
 Cc: James Morse <james.morse@arm.com>
 Reviewed-by: Suzuki K Poulose <suzuki.poulose@arm.com>
 Signed-off-by: Dongjiu Geng <gengdongjiu@huawei.com>
+Acked-by: James Morse <james.morse@arm.com>
 ---
 I remeber James also mentioned that rename this function.
 ---
