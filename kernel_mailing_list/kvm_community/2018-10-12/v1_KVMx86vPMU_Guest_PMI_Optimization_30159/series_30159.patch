@@ -2,7 +2,7 @@ From patchwork Fri Oct 12 12:20:17 2018
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
-X-Patchwork-Submitter: Wei Wang <wei.w.wang@intel.com>
+X-Patchwork-Submitter: "Wang, Wei W" <wei.w.wang@intel.com>
 X-Patchwork-Id: 10638647
 Return-Path: <kvm-owner@kernel.org>
 Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
