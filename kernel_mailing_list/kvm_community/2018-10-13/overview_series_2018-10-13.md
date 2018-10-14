@@ -40,6 +40,20 @@ Vitaly Kuznetsov (1):
  arch/x86/kvm/vmx.c    | 6 +++++-
  3 files changed, 14 insertions(+), 6 deletions(-)
 ```
+#### [PATCH V5 1/3]  kvm/x86 : add coalesced pio support
+##### From: Peng Hao <peng.hao2@zte.com.cn>
+
+```c
+add coalesced pio support.
+ 
+Signed-off-by: Peng Hao <peng.hao2@zte.com.cn>
+---
+ include/uapi/linux/kvm.h  | 11 +++++++++--
+ virt/kvm/coalesced_mmio.c | 12 +++++++++---
+ virt/kvm/kvm_main.c       |  2 ++
+ 3 files changed, 20 insertions(+), 5 deletions(-)
+
+```
 #### [PATCH v2 1/2] libnvdimm: nd_region flush callback support
 ##### From: Pankaj Gupta <pagupta@redhat.com>
 
@@ -63,5 +77,25 @@ Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
  drivers/nvdimm/region_devs.c | 38 ++++++++++++++++++++++++++++++++++++--
  include/linux/libnvdimm.h    |  5 ++++-
  6 files changed, 55 insertions(+), 11 deletions(-)
+
+```
+#### [PATCH V4 1/15] KVM: Add tlb_remote_flush_with_range callback in kvm_x86_ops
+##### From: lantianyu1986@gmail.com
+
+```c
+From: Lan Tianyu <Tianyu.Lan@microsoft.com>
+
+Add flush range call back in the kvm_x86_ops and platform can use it
+to register its associated function. The parameter "kvm_tlb_range"
+accepts a single range and flush list which contains a list of ranges.
+
+Signed-off-by: Lan Tianyu <Tianyu.Lan@microsoft.com>
+---
+Change since v1:
+       Change "end_gfn" to "pages" to aviod confusion as to whether
+"end_gfn" is inclusive or exlusive.
+---
+ arch/x86/include/asm/kvm_host.h | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 ```

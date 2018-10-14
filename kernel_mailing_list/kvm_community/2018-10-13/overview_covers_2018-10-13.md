@@ -129,3 +129,129 @@ Pankaj Gupta (2):
  include/linux/libnvdimm.h    |   10 ++++-
  6 files changed, 110 insertions(+), 22 deletions(-)
 ```
+#### [PATCH V4 00/15] x86/KVM/Hyper-v: Add HV ept tlb range flush
+##### From: lantianyu1986@gmail.com
+X-Google-Original-From: Tianyu.Lan@microsoft.com
+From: Lan Tianyu <Tianyu.Lan@microsoft.com>
+
+```c
+
+From: Lan Tianyu <Tianyu.Lan@microsoft.com>
+
+For nested memory virtualization, Hyper-v doesn't set write-protect
+L1 hypervisor EPT page directory and page table node to track changes 
+while it relies on guest to tell it changes via HvFlushGuestAddressLlist
+hypercall. HvFlushGuestAddressLlist hypercall provides a way to flush
+EPT page table with ranges which are specified by L1 hypervisor.
+
+If L1 hypervisor uses INVEPT or HvFlushGuestAddressSpace hypercall to
+flush EPT tlb, Hyper-V will invalidate associated EPT shadow page table
+and sync L1's EPT table when next EPT page fault is triggered.
+HvFlushGuestAddressLlist hypercall helps to avoid such redundant EPT
+page fault and synchronization of shadow page table.
+
+
+Change since v3:
+	1) Remove code of updating "tlbs_dirty" in kvm_flush_remote_tlbs_with_range()
+	2) Remove directly tlb flush in the kvm_handle_hva_range()
+	3) Move tlb flush in kvm_set_pte_rmapp() to kvm_mmu_notifier_change_pte()
+	4) Combine Vitaly's "don't pass EPT configuration info to
+vmx_hv_remote_flush_tlb()" fix
+
+Change since v2:
+       1) Fix comment in the kvm_flush_remote_tlbs_with_range()
+       2) Move HV_MAX_FLUSH_PAGES and HV_MAX_FLUSH_REP_COUNT to
+	hyperv-tlfs.h.
+       3) Calculate HV_MAX_FLUSH_REP_COUNT in the macro definition
+       4) Use HV_MAX_FLUSH_REP_COUNT to define length of gpa_list in
+	struct hv_guest_mapping_flush_list.
+
+Change since v1:
+       1) Convert "end_gfn" of struct kvm_tlb_range to "pages" in order
+          to avoid confusion as to whether "end_gfn" is inclusive or exlusive.
+       2) Add hyperv tlb range struct and replace kvm tlb range struct
+          with new struct in order to avoid using kvm struct in the hyperv
+	  code directly.
+
+
+
+Lan Tianyu (15):
+  KVM: Add tlb_remote_flush_with_range callback in kvm_x86_ops
+  KVM/MMU: Add tlb flush with range helper function
+  KVM: Replace old tlb flush function with new one to flush a specified
+    range.
+  KVM: Make kvm_set_spte_hva() return int
+  KVM/MMU: Move tlb flush in kvm_set_pte_rmapp() to
+    kvm_mmu_notifier_change_pte()
+  KVM/MMU: Flush tlb directly in the kvm_set_pte_rmapp()
+  KVM/MMU: Flush tlb directly in the kvm_zap_gfn_range()
+  KVM/MMU: Flush tlb directly in kvm_mmu_zap_collapsible_spte()
+  KVM: Add flush_link and parent_pte in the struct kvm_mmu_page
+  KVM: Add spte's point in the struct kvm_mmu_page
+  KVM/MMU: Replace tlb flush function with range list flush function
+  x86/hyper-v: Add HvFlushGuestAddressList hypercall support
+  x86/Hyper-v: Add trace in the
+    hyperv_nested_flush_guest_mapping_range()
+  KVM/VMX: Change hv flush logic when ept tables are mismatched.
+  KVM/VMX: Add hv tlb range flush support
+
+ arch/arm/include/asm/kvm_host.h     |   2 +-
+ arch/arm64/include/asm/kvm_host.h   |   2 +-
+ arch/mips/include/asm/kvm_host.h    |   2 +-
+ arch/mips/kvm/mmu.c                 |   3 +-
+ arch/powerpc/include/asm/kvm_host.h |   2 +-
+ arch/powerpc/kvm/book3s.c           |   3 +-
+ arch/powerpc/kvm/e500_mmu_host.c    |   3 +-
+ arch/x86/hyperv/nested.c            |  85 ++++++++++++++++++++++
+ arch/x86/include/asm/hyperv-tlfs.h  |  32 +++++++++
+ arch/x86/include/asm/kvm_host.h     |  12 +++-
+ arch/x86/include/asm/mshyperv.h     |  16 +++++
+ arch/x86/include/asm/trace/hyperv.h |  14 ++++
+ arch/x86/kvm/mmu.c                  | 138 ++++++++++++++++++++++++++++++------
+ arch/x86/kvm/paging_tmpl.h          |  10 ++-
+ arch/x86/kvm/vmx.c                  |  70 +++++++++++++++---
+ virt/kvm/arm/mmu.c                  |   6 +-
+ virt/kvm/kvm_main.c                 |   5 +-
+ 17 files changed, 360 insertions(+), 45 deletions(-)
+```
+#### [PATCH V5 0/3] introduce coalesced pio support
+##### From: Peng Hao <peng.hao2@zte.com.cn>
+
+```c
+
+Coalesced pio is based on coalesced mmio and can be used for some port
+like rtc port, pci-host config port and so on.
+
+Specially in case of rtc as coalesced pio, some versions of windows guest
+access rtc frequently because of rtc as system tick. guest access rtc like
+this: write register index to 0x70, then write or read data from 0x71.
+writing 0x70 port is just as index and do nothing else. So we can use
+coalesced pio to handle this scene to reduce VM-EXIT time.
+
+When starting and closing a virtual machine, it will access pci-host config
+port frequently. So setting these port as coalesced pio can reduce startup 
+and shutdown time. 
+
+without my patch, get the vm-exit time of accessing rtc 0x70 and piix 0xcf8
+using perf tools: (guest OS : windows 7 64bit)
+IO Port Access  Samples Samples%  Time%  Min Time  Max Time  Avg time
+0x70:POUT        86     30.99%    74.59%   9us      29us    10.75us (+- 3.41%)
+0xcf8:POUT     1119     2.60%     2.12%   2.79us    56.83us 3.41us (+- 2.23%)
+
+with my patch
+IO Port Access  Samples Samples%  Time%   Min Time  Max Time   Avg time
+0x70:POUT       106    32.02%    29.47%    0us      10us     1.57us (+- 7.38%)
+0xcf8:POUT      1065    1.67%     0.28%   0.41us    65.44us   0.66us (+- 10.55%)
+
+
+Peng Hao (3):
+  kvm/x86 : add coalesced pio support
+  kvm/x86 : add document for coalesced mmio
+  kvm/x86 : add document for coalesced pio
+
+ Documentation/virtual/kvm/api.txt             | 28 +++++++++++++++++++++++++++
+ include/uapi/linux/kvm.h                      | 11 +++++++++--
+ virt/kvm/coalesced_mmio.c                     | 12 +++++++++---
+ virt/kvm/kvm_main.c                           |  2 ++
+ 4 files changed, 48 insertions(+), 5 deletions(-)
+```
