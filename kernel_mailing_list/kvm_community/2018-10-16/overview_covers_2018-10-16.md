@@ -173,3 +173,106 @@ Xiao Guangrong (4):
  create mode 100644 include/qemu/ptr_ring.h
  create mode 100644 util/lockless-threads.c
 ```
+#### [PATCH v6 00/13] KVM: nVMX: Enlightened VMCS for Hyper-V on KVM
+##### From: Vitaly Kuznetsov <vkuznets@redhat.com>
+
+```c
+
+Changes since v5:
+- Rebase to kvm/queue.
+- Add "KVM: selftests: state_test: test bare VMXON migration" patch.
+
+Original description:
+
+This is an initial implementation of Enlightened VMCS for nested Hyper-V on
+KVM. Using it helps to spare 1500 cpu cycles for nested vmexit (tight cpuid
+loop in WS2016 with Hyper-V role on KVM: 15200 cycles -> 13700 cycles).
+
+Ladi Prosek (1):
+  KVM: hyperv: define VP assist page helpers
+
+Vitaly Kuznetsov (12):
+  KVM: VMX: refactor evmcs_sanitize_exec_ctrls()
+  KVM: nVMX: add KVM_CAP_HYPERV_ENLIGHTENED_VMCS capability
+  KVM: nVMX: add enlightened VMCS state
+  KVM: nVMX: implement enlightened VMPTRLD and VMCLEAR
+  KVM: nVMX: optimize prepare_vmcs02{,_full} for Enlightened VMCS case
+  x86/kvm/hyperv: don't clear VP assist pages on init
+  x86/kvm/lapic: preserve gfn_to_hva_cache len on cache reinit
+  x86/kvm/nVMX: allow bare VMXON state migration
+  KVM: selftests: state_test: test bare VMXON migration
+  x86/kvm/nVMX: nested state migration for Enlightened VMCS
+  tools/headers: update kvm.h
+  KVM: selftests: add Enlightened VMCS test
+
+ arch/x86/include/asm/kvm_host.h               |    3 +
+ arch/x86/include/uapi/asm/kvm.h               |    1 +
+ arch/x86/kvm/hyperv.c                         |   31 +-
+ arch/x86/kvm/hyperv.h                         |    4 +
+ arch/x86/kvm/lapic.c                          |   14 +-
+ arch/x86/kvm/lapic.h                          |    2 +-
+ arch/x86/kvm/svm.c                            |    9 +
+ arch/x86/kvm/vmx.c                            |  887 ++++++++++---
+ arch/x86/kvm/x86.c                            |   23 +-
+ include/uapi/linux/kvm.h                      |    1 +
+ tools/include/uapi/linux/kvm.h                |    5 +
+ tools/testing/selftests/kvm/Makefile          |    1 +
+ tools/testing/selftests/kvm/include/evmcs.h   | 1098 +++++++++++++++++
+ .../selftests/kvm/include/x86_64/vmx.h        |   29 +
+ tools/testing/selftests/kvm/lib/x86_64/vmx.c  |   51 +-
+ .../testing/selftests/kvm/x86_64/evmcs_test.c |  159 +++
+ .../testing/selftests/kvm/x86_64/state_test.c |   22 +-
+ .../kvm/x86_64/vmx_tsc_adjust_test.c          |    1 +
+ 18 files changed, 2159 insertions(+), 182 deletions(-)
+ create mode 100644 tools/testing/selftests/kvm/include/evmcs.h
+ create mode 100644 tools/testing/selftests/kvm/x86_64/evmcs_test.c
+```
+#### [RFC PATCH v1 0/4] Add migration support for VFIO device
+##### From: Kirti Wankhede <kwankhede@nvidia.com>
+
+```c
+
+Add migration support for VFIO device
+
+This Patch set include patches as below:
+- Define KABI for VFIO device for migration support.
+- Generic migration functionality for VFIO device.
+  * This patch set adds functionality only for PCI devices, but can be
+    extended to other VFIO devices.
+  * Added all the basic functions required for pre-copy, stop-and-copy and
+    resume phases of migration.
+  * Added state change notifier and from that notifier function, VFIO
+    device's state changed is conveyed to VFIO vendor driver.
+  * During save setup phase and resume/load setup phase, migration region
+    is queried from vendor driver and is mmaped by QEMU. This region is
+    used to read/write data from and to vendor driver.
+  * .save_live_pending, .save_live_iterate and .is_active_iterate are
+    implemented to use QEMU's functionality of iteration during pre-copy
+    phase.
+  * In .save_live_complete_precopy, that is in stop-and-copy phase,
+    iteration to read data from vendor driver is implemented till pending
+    bytes returned by vendor driver are not zero.
+  * .save_cleanup and .load_cleanup are implemented to unmap migration
+    region that was setup duing setup phase.
+  * Added function to get dirty pages bitmap from vendor driver.
+- Add vfio_listerner_log_sync to mark dirty pages.
+- Make VFIO PCI device migration capable.
+
+Thanks,
+Kirti
+
+Kirti Wankhede (4):
+  VFIO KABI for migration interface
+  Add migration functions for VFIO devices
+  Add vfio_listerner_log_sync to mark dirty pages
+  Make vfio-pci device migration capable.
+
+ hw/vfio/Makefile.objs         |   2 +-
+ hw/vfio/common.c              |  32 ++
+ hw/vfio/migration.c           | 716 ++++++++++++++++++++++++++++++++++++++++++
+ hw/vfio/pci.c                 |  13 +-
+ include/hw/vfio/vfio-common.h |  23 ++
+ linux-headers/linux/vfio.h    |  91 ++++++
+ 6 files changed, 869 insertions(+), 8 deletions(-)
+ create mode 100644 hw/vfio/migration.c
+```

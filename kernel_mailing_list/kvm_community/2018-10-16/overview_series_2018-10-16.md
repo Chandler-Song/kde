@@ -1,3 +1,81 @@
+#### [RFC PATCH v1 1/4] VFIO KABI for migration interface
+##### From: Kirti Wankhede <kwankhede@nvidia.com>
+
+```c
+- Added vfio_device_migration_info structure to use interact with vendor
+  driver.
+- Different flags are used to get or set migration related information
+  from/to vendor driver.
+Flag VFIO_MIGRATION_PROBE: To query if feature is supported
+Flag VFIO_MIGRATION_GET_REGION: To get migration region info
+Flag VFIO_MIGRATION_SET_STATE: To convey device state in vendor driver
+Flag VFIO_MIGRATION_GET_PENDING: To get pending bytes yet to be migrated
+  from vendor driver
+Flag VFIO_MIGRATION_GET_BUFFER: On this flag, vendor driver should write
+  data to migration region and return number of bytes written in the region
+Flag VFIO_MIGRATION_SET_BUFFER: In migration resume path, user space app
+  writes to migration region and communicates it to vendor driver with
+  this ioctl with this flag.
+Flag VFIO_MIGRATION_GET_DIRTY_PFNS: Get bitmap of dirty pages from vendor
+  driver from given start address
+
+- Added enum for possible device states.
+
+Signed-off-by: Kirti Wankhede <kwankhede@nvidia.com>
+Reviewed-by: Neo Jia <cjia@nvidia.com>
+---
+ linux-headers/linux/vfio.h | 91 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 91 insertions(+)
+
+```
+#### [PATCH v6 01/13] KVM: hyperv: define VP assist page helpers
+##### From: Vitaly Kuznetsov <vkuznets@redhat.com>
+
+```c
+From: Ladi Prosek <lprosek@redhat.com>
+
+The state related to the VP assist page is still managed by the LAPIC
+code in the pv_eoi field.
+
+Signed-off-by: Ladi Prosek <lprosek@redhat.com>
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Reviewed-by: Liran Alon <liran.alon@oracle.com>
+---
+ arch/x86/kvm/hyperv.c | 23 +++++++++++++++++++++--
+ arch/x86/kvm/hyperv.h |  4 ++++
+ arch/x86/kvm/lapic.c  |  4 ++--
+ arch/x86/kvm/lapic.h  |  2 +-
+ arch/x86/kvm/x86.c    |  2 +-
+ 5 files changed, 29 insertions(+), 6 deletions(-)
+
+```
+#### [PATCH] KVM: VMX: enable nested virtualization by default
+##### From: Paolo Bonzini <pbonzini@redhat.com>
+
+```c
+With live migration support and finally a good solution for CR2/DR6
+exception payloads, nested VMX should finally be ready for having a stable
+userspace ABI.  The results of syzkaller fuzzing are not perfect but not
+horrible either (and might be partially due to running on GCE, so that
+effectively we're testing three-level nesting on a fork of upstream KVM!).
+Enabling it by default seems like a nice way to conclude the 4.20
+pull request. :)
+
+Unfortunately, enabling nested SVM in 2009 was a bit premature.  However,
+until live migration support is in place we can reasonably expect that
+it does not offer much in terms of ABI guarantees.  Therefore we are
+still in time to break things and conform as much as possible to the
+interface used for VMX.
+
+Suggested-by: Jim Mattson <jmattson@google.com>
+Suggested-by: Liran Alon <liran.alon@oracle.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+Reviewed-by: Liran Alon <liran.alon@oracle.com>
+---
+ arch/x86/kvm/vmx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+```
 #### [PATCH 1/4] ptr_ring: port ptr_ring from linux kernel to QEMU
 ##### From: guangrong.xiao@gmail.com
 
@@ -458,6 +536,20 @@ index 0000000000..9340d3a748
 + */
 +void threads_wait_done(Threads *threads);
 +#endif
+```
+#### [PATCH v2 1/7] KVM: Documentation: Fix omission in struct kvm_vcpu_events
+##### From: Jim Mattson <jmattson@google.com>
+
+```c
+The header file indicates that there are 36 reserved bytes at the end
+of this structure. Adjust the documentation to agree with the header
+file.
+
+Signed-off-by: Jim Mattson <jmattson@google.com>
+---
+ Documentation/virtual/kvm/api.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
 ```
 #### [PATCH v2]  kvm:x86 :remove unnecessary recalculate_apic_map
 ##### From: Peng Hao <peng.hao2@zte.com.cn>
