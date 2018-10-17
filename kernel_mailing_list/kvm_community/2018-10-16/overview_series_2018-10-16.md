@@ -28,27 +28,6 @@ Reviewed-by: Neo Jia <cjia@nvidia.com>
  1 file changed, 91 insertions(+)
 
 ```
-#### [PATCH v6 01/13] KVM: hyperv: define VP assist page helpers
-##### From: Vitaly Kuznetsov <vkuznets@redhat.com>
-
-```c
-From: Ladi Prosek <lprosek@redhat.com>
-
-The state related to the VP assist page is still managed by the LAPIC
-code in the pv_eoi field.
-
-Signed-off-by: Ladi Prosek <lprosek@redhat.com>
-Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
-Reviewed-by: Liran Alon <liran.alon@oracle.com>
----
- arch/x86/kvm/hyperv.c | 23 +++++++++++++++++++++--
- arch/x86/kvm/hyperv.h |  4 ++++
- arch/x86/kvm/lapic.c  |  4 ++--
- arch/x86/kvm/lapic.h  |  2 +-
- arch/x86/kvm/x86.c    |  2 +-
- 5 files changed, 29 insertions(+), 6 deletions(-)
-
-```
 #### [PATCH] KVM: VMX: enable nested virtualization by default
 ##### From: Paolo Bonzini <pbonzini@redhat.com>
 
@@ -74,6 +53,27 @@ Reviewed-by: Liran Alon <liran.alon@oracle.com>
 ---
  arch/x86/kvm/vmx.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
+
+```
+#### [PATCH v6 01/13] KVM: hyperv: define VP assist page helpers
+##### From: Vitaly Kuznetsov <vkuznets@redhat.com>
+
+```c
+From: Ladi Prosek <lprosek@redhat.com>
+
+The state related to the VP assist page is still managed by the LAPIC
+code in the pv_eoi field.
+
+Signed-off-by: Ladi Prosek <lprosek@redhat.com>
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+Reviewed-by: Liran Alon <liran.alon@oracle.com>
+---
+ arch/x86/kvm/hyperv.c | 23 +++++++++++++++++++++--
+ arch/x86/kvm/hyperv.h |  4 ++++
+ arch/x86/kvm/lapic.c  |  4 ++--
+ arch/x86/kvm/lapic.h  |  2 +-
+ arch/x86/kvm/x86.c    |  2 +-
+ 5 files changed, 29 insertions(+), 6 deletions(-)
 
 ```
 #### [PATCH 1/4] ptr_ring: port ptr_ring from linux kernel to QEMU
