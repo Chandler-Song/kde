@@ -1,3 +1,24 @@
+#### [PATCH 01/26] kvm: arm/arm64: Fix stage2_flush_memslot for 4 level page table
+##### From: Marc Zyngier <marc.zyngier@arm.com>
+
+```c
+From: Suzuki K Poulose <suzuki.poulose@arm.com>
+
+So far we have only supported 3 level page table with fixed IPA of
+40bits, where PUD is folded. With 4 level page tables, we need
+to check if the PUD entry is valid or not. Fix stage2_flush_memslot()
+to do this check, before walking down the table.
+
+Acked-by: Christoffer Dall <cdall@kernel.org>
+Acked-by: Marc Zyngier <marc.zyngier@arm.com>
+Reviewed-by: Eric Auger <eric.auger@redhat.com>
+Signed-off-by: Suzuki K Poulose <suzuki.poulose@arm.com>
+Signed-off-by: Marc Zyngier <marc.zyngier@arm.com>
+---
+ virt/kvm/arm/mmu.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+```
 #### [PATCH kvmtool 1/2] kvm: Do not pause already paused vcpus
 ##### From: Julien Thierry <julien.thierry@arm.com>
 
