@@ -86,3 +86,43 @@ Signed-off-by: Paul Mackerras <paulus@ozlabs.org>
  2 files changed, 3 insertions(+), 6 deletions(-)
 
 ```
+#### [PATCH] vfio-mdev/samples: Use u8 instead of char for handle functions
+##### From: Nathan Chancellor <natechancellor@gmail.com>
+
+```c
+Clang warns:
+
+samples/vfio-mdev/mtty.c:592:39: warning: implicit conversion from 'int'
+to 'char' changes value from 162 to -94 [-Wconstant-conversion]
+                *buf = UART_MSR_DSR | UART_MSR_DDSR | UART_MSR_DCD;
+                     ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~
+1 warning generated.
+
+Turns out that all uses of buf in this function ultimately end up stored
+or cast to an unsigned type. Just use u8, which has the same number of
+bits but can store this larger number so Clang no longer warns.
+
+Signed-off-by: Nathan Chancellor <natechancellor@gmail.com>
+---
+ samples/vfio-mdev/mtty.c | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+```
+#### [PATCH] x86/kvm/nVMX: tweak shadow fields
+##### From: Vitaly Kuznetsov <vkuznets@redhat.com>
+
+```c
+It seems we have some leftovers from times when 'unrestricted guest'
+wasn't exposed to L1. Stop shadowing GUEST_CS_{BASE,LIMIT,AR_SELECTOR}
+and GUEST_ES_BASE, shadow GUEST_SS_AR_BYTES as it was found that some
+hypervisors (e.g. Hyper-V without Enlightened VMCS) access it pretty
+often.
+
+Suggested-by: Paolo Bonzini <pbonzini@redhat.com>
+Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+---
+ arch/x86/kvm/vmx.c               | 10 +++++-----
+ arch/x86/kvm/vmx_shadow_fields.h |  5 +----
+ 2 files changed, 6 insertions(+), 9 deletions(-)
+
+```
