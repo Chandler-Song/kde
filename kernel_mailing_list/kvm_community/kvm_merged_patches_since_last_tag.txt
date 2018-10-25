@@ -1,0 +1,106 @@
+* commit 5f8bb004bca43f7b5043c02b4aa5b9b43e15fe50
+| Author: Vitaly Kuznetsov <vkuznets@redhat.com>
+| Date:   Thu Oct 11 12:03:12 2018 +0200
+| 
+|     KVM: vmx: hyper-v: don't pass EPT configuration info to vmx_hv_remote_flush_tlb()
+|     
+|     I'm observing random crashes in multi-vCPU L2 guests running on KVM on
+|     Hyper-V. I bisected the issue to the commit 877ad952be3d ("KVM: vmx: Add
+|     tlb_remote_flush callback support"). Hyper-V TLFS states:
+|     
+|     "AddressSpace specifies an address space ID (an EPT PML4 table pointer)"
+|     
+|     So apparently, Hyper-V doesn't expect us to pass naked EPTP, only PML4
+|     pointer should be used. Strip off EPT configuration information before
+|     calling into vmx_hv_remote_flush_tlb().
+|     
+|     Fixes: 877ad952be3d ("KVM: vmx: Add tlb_remote_flush callback support")
+|     Signed-off-by: Vitaly Kuznetsov <vkuznets@redhat.com>
+|     Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+|   
+*   commit 4cebf459b6eb834eb28149da7ff51fadd83f2b19
+|\  Merge: 853c110982ea ec876f4b252c
+| | Author: Paolo Bonzini <pbonzini@redhat.com>
+| | Date:   Tue Oct 9 18:49:32 2018 +0200
+| | 
+| |     Merge tag 'kvmarm-fixes-for-4.19-2' of git://git.kernel.org/pub/scm/linux/kernel/git/kvmarm/kvmarm into kvm-master
+| |     
+| |     KVM/arm fixes for 4.19, take #2
+| |     
+| |     - Correctly order GICv3 SGI registers in the cp15 array
+| | 
+| * commit ec876f4b252c4084acad259ce3e65ad97f44f040
+|   Author: Marc Zyngier <marc.zyngier@arm.com>
+|   Date:   Thu Oct 4 09:35:35 2018 +0100
+|   
+|       ARM: KVM: Correctly order SGI register entries in the cp15 array
+|       
+|       The ICC_ASGI1R and ICC_SGI0R register entries in the cp15 array
+|       are not correctly ordered, leading to a BUG() at boot time.
+|       
+|       Move them to their natural location.
+|       
+|       Fixes: 3e8a8a50c7ef ("KVM: arm: vgic-v3: Add support for ICC_SGI0R and ICC_ASGI1R accesses")
+|       Reported-by: Florian Fainelli <f.fainelli@gmail.com>
+|       Tested-by: Florian Fainelli <f.fainelli@gmail.com>
+|       Signed-off-by: Marc Zyngier <marc.zyngier@arm.com>
+| 
+* commit 853c110982eaff0d99dace3f66f1ba58b5bfd9d5
+| Author: Paolo Bonzini <pbonzini@redhat.com>
+| Date:   Tue Oct 9 18:35:29 2018 +0200
+| 
+|     KVM: x86: support CONFIG_KVM_AMD=y with CONFIG_CRYPTO_DEV_CCP_DD=m
+|     
+|     SEV requires access to the AMD cryptographic device APIs, and this
+|     does not work when KVM is builtin and the crypto driver is a module.
+|     Actually the Kconfig conditions for CONFIG_KVM_AMD_SEV try to disable
+|     SEV in that case, but it does not work because the actual crypto
+|     calls are not culled, only sev_hardware_setup() is.
+|     
+|     This patch adds two CONFIG_KVM_AMD_SEV checks that gate all the remaining
+|     SEV code; it fixes this particular configuration, and drops 5 KiB of
+|     code when CONFIG_KVM_AMD_SEV=n.
+|     
+|     Reported-by: Guenter Roeck <linux@roeck-us.net>
+|     Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+| 
+* commit cc906f07d7d569a30bb6f0baf8f80b2968353dc9
+| Merge: 7e7126846c95 6579804c4317
+| Author: Paolo Bonzini <pbonzini@redhat.com>
+| Date:   Fri Oct 5 09:39:53 2018 +0200
+| 
+|     Merge tag 'kvm-ppc-fixes-4.19-3' of git://git.kernel.org/pub/scm/linux/kernel/git/paulus/powerpc into kvm-master
+|     
+|     Third set of PPC KVM fixes for 4.19
+|     
+|     One patch here, fixing a potential host crash introduced (or at least
+|     exacerbated) by a previous fix for corruption relating to radix guest
+|     page faults and THP operations.
+| 
+* commit 6579804c431712d56956a63b1a01509441cc6800
+  Author: Paul Mackerras <paulus@ozlabs.org>
+  Date:   Thu Oct 4 14:51:11 2018 +1000
+  
+      KVM: PPC: Book3S HV: Avoid crash from THP collapse during radix page fault
+      
+      Commit 71d29f43b633 ("KVM: PPC: Book3S HV: Don't use compound_order to
+      determine host mapping size", 2018-09-11) added a call to
+      __find_linux_pte() and a dereference of the returned PTE pointer to the
+      radix page fault path in the common case where the page is normal
+      system memory.  Previously, __find_linux_pte() was only called for
+      mappings to physical addresses which don't have a page struct (e.g.
+      memory-mapped I/O) or where the page struct is marked as reserved
+      memory.
+      
+      This exposes us to the possibility that the returned PTE pointer
+      could be NULL, for example in the case of a concurrent THP collapse
+      operation.  Dereferencing the returned NULL pointer causes a host
+      crash.
+      
+      To fix this, we check for NULL, and if it is NULL, we retry the
+      operation by returning to the guest, with the expectation that it
+      will generate the same page fault again (unless of course it has
+      been fixed up by another CPU in the meantime).
+      
+      Fixes: 71d29f43b633 ("KVM: PPC: Book3S HV: Don't use compound_order to determine host mapping size")
+      Signed-off-by: Paul Mackerras <paulus@ozlabs.org>
