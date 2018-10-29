@@ -1,3 +1,19 @@
+#### [PATCH V5 1/5] KVM: X86: Memory ROE documentation
+##### From: Ahmed Abd El Mawgood <ahmedsoliman0x666@gmail.com>
+
+```c
+Following up with my previous threads on KVM assisted Anti rootkit
+protections.
+The current version doesn't address the attacks involving pages
+remapping. It is still design in progress, nevertheless, it will be in
+my later patch sets.
+
+Signed-off-by: Ahmed Abd El Mawgood <ahmedsoliman0x666@gmail.com>
+---
+ Documentation/virtual/kvm/hypercalls.txt | 31 ++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+```
 #### [kvm PATCH v4 1/2] kvm: vmx: refactor vmx_msrs struct for vmallocFrom: Marc Orr <marcorr@google.com>
 ##### From: Marc Orr <marcorr@google.com>
 
