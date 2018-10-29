@@ -6,8 +6,17 @@ OUTPUT=`echo $1 | sed 's/\//_/g'`
 echo "" > ${OUTPUT}.h
 cat ${F} | grep "EXPORT_SYMBOL_GPL" >> ${OUTPUT}.h
 echo "\n" >> ${OUTPUT}.h
-cat ${F} | grep -v "#if" > ${FILE}
+cat ${F} | grep -v "#if" | grep -v "#else" > ${FILE}
 cat ${FILE} | grep -n "^{" | awk -F ":" '{ print $1 }' > lines
+
+if [ `cat lines | wc -l` -eq 0 ];then
+rm lines
+rm ${FILE}
+echo "The file $1 has none funtions."
+cat ${F} | grep "struct" | grep -v "\*" | sed 's/\t//g' | sed 's/{//g' | sed 's/;//g' | sort | uniq >> ${OUTPUT}.h
+exit
+fi
+
 while read line
 do
 i=`expr ${line} - 1`
