@@ -1,3 +1,5 @@
+arch/arm64/kernel/acpi.c
+arch/ia64/kernel/acpi.c
 arch/x86/entry/vdso/vma.c
 arch/x86/events/core.c
 arch/x86/events/intel/bts.c
@@ -52,6 +54,8 @@ arch/x86/include/asm/mpspec.h
 arch/x86/include/asm/msr.h
 arch/x86/include/asm/msr-index.h
 arch/x86/include/asm/nmi.h
+arch/x86/include/asm/numachip/numachip_csr.h
+arch/x86/include/asm/numachip/numachip.h
 arch/x86/include/asm/numa.h
 arch/x86/include/asm/pat.h
 arch/x86/include/asm/pci.h
@@ -69,6 +73,7 @@ arch/x86/include/uapi/asm/kvm.h
 arch/x86/include/uapi/asm/kvm_para.h
 arch/x86/include/uapi/asm/kvm_perf.h
 arch/x86/include/uapi/asm/vmx.h
+arch/x86/kernel/acpi/boot.c
 arch/x86/kernel/acpi/cstate.c
 arch/x86/kernel/apic/apic.c
 arch/x86/kernel/apic/apic_numachip.c
@@ -92,6 +97,7 @@ arch/x86/kernel/cpu/rdrand.c
 arch/x86/kernel/cpu/scattered.c
 arch/x86/kernel/cpu/topology.c
 arch/x86/kernel/cpu/transmeta.c
+arch/x86/kernel/early-quirks.c
 arch/x86/kernel/fpu/init.c
 arch/x86/kernel/irq.c
 arch/x86/kernel/irqinit.c
@@ -147,8 +153,12 @@ arch/x86/kvm/x86.c
 arch/x86/kvm/x86.h
 arch/x86/lib/msr.c
 arch/x86/mm/init_64.c
+arch/x86/mm/numa.c
 arch/x86/mm/pat.c
+arch/x86/mm/srat.c
+arch/x86/pci/bus_numa.h
 arch/x86/pci/common.c
+arch/x86/pci/numachip.c
 arch/x86/um/asm/processor.h
 arch/x86/xen/setup.c
 Documentation/kprobes.txt
@@ -177,7 +187,24 @@ Documentation/virtual/kvm/timekeeping.txt
 Documentation/virtual/kvm/vcpu-requests.rst
 Documentation/virtual/paravirt_ops.txt
 Documentation/virtual/uml/UserModeLinux-HOWTO.txt
+drivers/acpi/acpica/tbxface.c
+drivers/acpi/acpi_lpit.c
+drivers/acpi/acpi_watchdog.c
+drivers/acpi/apei/bert.c
+drivers/acpi/apei/einj.c
+drivers/acpi/apei/erst.c
+drivers/acpi/apei/hest.c
+drivers/acpi/ec.c
+drivers/acpi/nfit/core.c
+drivers/acpi/numa.c
+drivers/acpi/pci_mcfg.c
 drivers/acpi/pptt.c
+drivers/acpi/processor_core.c
+drivers/acpi/scan.c
+drivers/acpi/sleep.c
+drivers/acpi/spcr.c
+drivers/acpi/sysfs.c
+drivers/acpi/tables.c
 drivers/base/node.c
 drivers/base/topology.c
 drivers/char/random.c
@@ -227,6 +254,7 @@ drivers/irqchip/irqchip.c
 drivers/net/vsockmon.c
 drivers/of/base.c
 drivers/pci/pci-sysfs.c
+drivers/pci/quirks.c
 drivers/vfio/Kconfig
 drivers/vfio/Makefile
 drivers/vfio/mdev/Kconfig
@@ -308,9 +336,12 @@ fs/proc/uptime.c
 fs/proc/util.c
 fs/proc/version.c
 fs/proc/vmcore.c
+include/acpi/acpi_numa.h
+include/acpi/acpixf.h
 include/acpi/processor.h
 include/asm-generic/kvm_para.h
 include/kvm/iodev.h
+include/linux/acpi.h
 include/linux/arch_topology.h
 include/linux/bootmem.h
 include/linux/compiler.h
@@ -341,6 +372,7 @@ include/linux/mm_types.h
 include/linux/mmzone.h
 include/linux/mutex.h
 include/linux/node.h
+include/linux/numa.h
 include/linux/of_iommu.h
 include/linux/pagemap.h
 include/linux/percpu-defs.h
@@ -353,6 +385,7 @@ include/linux/proc_fs.h
 include/linux/sched.h
 include/linux/sched/topology.h
 include/linux/seq_file.h
+include/linux/sfi_acpi.h
 include/linux/slab.h
 include/linux/slub_def.h
 include/linux/spinlock_types.h
