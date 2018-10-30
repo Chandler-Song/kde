@@ -91,6 +91,7 @@ Cc: kvm@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org
 Fixes: 6de84e581c0 ("nVMX x86: check posted-interrupt descriptor addresss on vmentry of L2")
 Signed-off-by: KarimAllah Ahmed <karahmed@amazon.de>
+Reviewed-by: Sean Christopherson <sean.j.christopherson@intel.com>
 ---
  arch/x86/kvm/vmx.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
@@ -121,6 +122,7 @@ assumes that there is a "struct page" for guest memory.
 
 Suggested-by: Jim Mattson <jmattson@google.com>
 Signed-off-by: KarimAllah Ahmed <karahmed@amazon.de>
+Reviewed-by: Jim Mattson <jmattson@google.com>
 ---
 v1 -> v2:
 - Massage commit message a bit.
@@ -154,6 +156,8 @@ Cc: kvm@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org
 Fixes: 6de84e581c0 ("nVMX x86: check posted-interrupt descriptor addresss on vmentry of L2")
 Signed-off-by: KarimAllah Ahmed <karahmed@amazon.de>
+Reviewed-by: Jim Mattson <jmattson@google.com>
+Reviewed-by: Krish Sadhuhan <krish.sadhukhan@oracle.com>
 ---
  arch/x86/kvm/vmx.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

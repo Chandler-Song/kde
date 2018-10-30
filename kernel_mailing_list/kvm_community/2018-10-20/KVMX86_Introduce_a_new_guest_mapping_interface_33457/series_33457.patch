@@ -87,6 +87,7 @@ assumes that there is a "struct page" for guest memory.
 
 Suggested-by: Jim Mattson <jmattson@google.com>
 Signed-off-by: KarimAllah Ahmed <karahmed@amazon.de>
+Reviewed-by: Jim Mattson <jmattson@google.com>
 ---
 v1 -> v2:
 - Massage commit message a bit.
