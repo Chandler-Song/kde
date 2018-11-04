@@ -40,6 +40,92 @@ Cc: Paolo Bonzini <pbonzini@redhat.com>
  2 files changed, 38 insertions(+)
 
 ```
+#### [PULL] vhost: cleanups and fixes
+##### From: "Michael S. Tsirkin" <mst@redhat.com>
+
+```c
+The following changes since commit 84df9525b0c27f3ebc2ebb1864fa62a97fdedb7d:
+
+  Linux 4.19 (2018-10-22 07:37:37 +0100)
+
+are available in the Git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/mst/vhost.git tags/for_linus
+
+for you to fetch changes up to 79f800b2e76923cd8ce0aa659cb5c019d9643bc9:
+
+  MAINTAINERS: remove reference to bogus vsock file (2018-10-24 21:16:14 -0400)
+
+----------------------------------------------------------------
+virtio, vhost: fixes, tweaks
+
+virtio balloon page hinting support
+vhost scsi control queue
+
+misc fixes.
+
+Signed-off-by: Michael S. Tsirkin <mst@redhat.com>
+
+----------------------------------------------------------------
+Bijan Mottahedeh (3):
+      vhost/scsi: Respond to control queue operations
+      vhost/scsi: Extract common handling code from control queue handler
+      vhost/scsi: Use common handling code in request queue handler
+
+Greg Edwards (1):
+      vhost/scsi: truncate T10 PI iov_iter to prot_bytes
+
+Lénaïc Huard (1):
+      kvm_config: add CONFIG_VIRTIO_MENU
+
+Stefan Hajnoczi (1):
+      MAINTAINERS: remove reference to bogus vsock file
+
+Wei Wang (3):
+      virtio-balloon: VIRTIO_BALLOON_F_FREE_PAGE_HINT
+      mm/page_poison: expose page_poisoning_enabled to kernel modules
+      virtio-balloon: VIRTIO_BALLOON_F_PAGE_POISON
+
+ MAINTAINERS                         |   1 -
+ drivers/vhost/scsi.c                | 426 ++++++++++++++++++++++++++++--------
+ drivers/virtio/virtio_balloon.c     | 380 +++++++++++++++++++++++++++++---
+ include/uapi/linux/virtio_balloon.h |   8 +
+ kernel/configs/kvm_guest.config     |   1 +
+ mm/page_poison.c                    |   6 +
+ 6 files changed, 688 insertions(+), 134 deletions(-)
+Signed-off-by: Michael S. Tsirkin <mst@redhat.com>
+```
+#### [RFC] vhost/vsock: fix use-after-free in network stack callers
+##### From: Stefan Hajnoczi <stefanha@redhat.com>
+
+```c
+If the network stack calls .send_pkt()/.cancel_pkt() during .release(),
+a struct vhost_vsock use-after-free is possible.  This occurs because
+.release() does not wait for other CPUs to stop using struct
+vhost_vsock.
+
+Introduce a refcount for network stack callers in struct vhost_vsock and
+wake up .release() when the refcount reaches zero.
+
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+---
+Hi Michael & Jason,
+Here's the refcount approach to avoiding struct vhost_vsock
+use-after-free.  On the plus side it allows multiple CPUs to run
+.send_pkt()/.cancel_pkt() instead of the previous locking solution.  On
+the other hand, it results in a useless waitqueue wake_up() on most
+.send_pkt()/.cancel_pkt() calls (which involves a waitqueue spinlock).
+
+Any strong feelings either way?  I will benchmark them if you both
+approaches are the same to you.
+
+I'm currently running this through syzkaller to confirm it solves the
+crashes that have been reported.
+
+ drivers/vhost/vsock.c | 30 ++++++++++++++++++++++++++++--
+ 1 file changed, 28 insertions(+), 2 deletions(-)
+
+```
 #### [PATCH v2] KVM: nVMX: Verify eVMCS revision id match supported eVMCS version on eVMCS VMPTRLD
 ##### From: Liran Alon <liran.alon@oracle.com>
 
@@ -77,6 +163,45 @@ Reviewed-by: Vitaly Kuznetsov <vkuznets@redhat.com>
 ---
  arch/x86/kvm/vmx.c | 25 ++++++++++++++++++++++++-
  1 file changed, 24 insertions(+), 1 deletion(-)
+
+```
+#### [PATCH v2] vhost/vsock: fix use-after-free in network stack callers
+##### From: Stefan Hajnoczi <stefanha@redhat.com>
+
+```c
+If the network stack calls .send_pkt()/.cancel_pkt() during .release(),
+a struct vhost_vsock use-after-free is possible.  This occurs because
+.release() does not wait for other CPUs to stop using struct
+vhost_vsock.
+
+Introduce a refcount for network stack callers in struct vhost_vsock and
+wake up .release() when the refcount reaches zero.
+
+Reported-and-tested-by: syzbot+bd391451452fb0b93039@syzkaller.appspotmail.com
+Reported-by: syzbot+e3e074963495f92a89ed@syzkaller.appspotmail.com
+Reported-by: syzbot+d5a0a170c5069658b141@syzkaller.appspotmail.com
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+---
+Here is a version that avoids unnecessary wake_up() calls and passes
+syzbot.  I'm happy with this fix now.
+
+ drivers/vhost/vsock.c | 33 +++++++++++++++++++++++++++++++--
+ 1 file changed, 31 insertions(+), 2 deletions(-)
+
+```
+#### [PATCH v2]  x86/kvmclock : convert to SPDX identifiers
+##### From: Peng Hao <penghao122@sina.com.cn>
+
+```c
+From: Peng Hao <peng.hao2@zte.com.cn>
+
+This patch updates license to use SPDX-License-Identifier
+instead of verbose license text
+
+Signed-off-by: Peng Hao <peng.hao2@zte.com.cn>
+---
+ arch/x86/kernel/kvmclock.c | 15 +--------------
+ 1 files changed, 1 insertions(+), 14 deletions(-)
 
 ```
 #### [PATCH v3 1/3] kvm, vmx: move CR2 context switch out of assembly path
