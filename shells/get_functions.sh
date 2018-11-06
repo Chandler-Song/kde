@@ -36,7 +36,7 @@ done < lines
 #     sed 's/  / /g' | sed -e 's/)/)\'$'\n/g' | sed 's/^ //g' >> ${OUTPUT}.h
 
 # linux
-sh /root/kde/shells/remove_comment.sh ${OUTPUT} | tr "\t" " " | tr "\n" " " | tr " " "#" | \
+sh ~/kde/shells/remove_comment.sh ${OUTPUT} | tr "\t" " " | tr "\n" " " | tr " " "#" | \
     sed 's/##//g' | sed 's/#/ /g' | sed 's/,/, /g' | \
     sed 's/  / /g' | sed -e 's/)/)\n/g' | sed 's/^ //g' >> ${OUTPUT}.h
 
