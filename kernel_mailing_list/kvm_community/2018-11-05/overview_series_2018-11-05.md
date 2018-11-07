@@ -111,6 +111,7 @@ Reported-and-tested-by: syzbot+bd391451452fb0b93039@syzkaller.appspotmail.com
 Reported-by: syzbot+e3e074963495f92a89ed@syzkaller.appspotmail.com
 Reported-by: syzbot+d5a0a170c5069658b141@syzkaller.appspotmail.com
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+Acked-by: Jason Wang <jasowang@redhat.com>
 ---
 I have now manually tested the RCU hashtable fix and am happy with this
 patch.
@@ -218,6 +219,7 @@ be turned into a mutex.  It's only used by .release() and in the
 Depends-on: <20181105103547.22018-1-stefanha@redhat.com>
 Suggested-by: Jason Wang <jasowang@redhat.com>
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+Acked-by: Jason Wang <jasowang@redhat.com>
 ---
 Hi Jason,
 Thanks for pointing out that spin_lock_bh() is no longer necessary.

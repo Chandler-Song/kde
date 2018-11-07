@@ -74,6 +74,7 @@ Reported-and-tested-by: syzbot+bd391451452fb0b93039@syzkaller.appspotmail.com
 Reported-by: syzbot+e3e074963495f92a89ed@syzkaller.appspotmail.com
 Reported-by: syzbot+d5a0a170c5069658b141@syzkaller.appspotmail.com
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+Acked-by: Jason Wang <jasowang@redhat.com>
 ---
 I have now manually tested the RCU hashtable fix and am happy with this
 patch.
