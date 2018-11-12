@@ -135,6 +135,7 @@ right one.
 Signed-off-by: Janosch Frank <frankja@linux.ibm.com>
 Reviewed-by: Cornelia Huck <cohuck@redhat.com>
 Reviewed-by: David Hildenbrand <david@redhat.com>
+Reviewed-by: Thomas Huth <thuth@redhat.com>
 ---
  lib/s390x/interrupt.c | 2 +-
  s390x/cstart64.S      | 4 ++--
